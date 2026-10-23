@@ -3,11 +3,15 @@ package com.flexkeys.keyboard
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
+import android.graphics.RadialGradient
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
@@ -214,7 +218,9 @@ class KeyboardView(context: Context) : View(context) {
         for (key in keys) {
             val p = pressProgress(key, now)
             if ((key.pressed && p < 1f) || (!key.pressed && p > 0f)) animating = true
-            if (t.glassKeys) {
+            if (key.def.type == KeyType.SPACE) {
+                drawSpaceCard(canvas, key, t, p)
+            } else if (t.glassKeys) {
                 drawGlassKeyBackground(canvas, key, t, h, p)
             } else {
                 h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, fillFor(key, t), p,
@@ -232,6 +238,85 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private var fontKey: String? = null
+
+    // ---- the space bar as a frosted glass card ----
+    private val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val cardPath = Path()
+    private var cardGlows: List<Shader> = emptyList()
+    private var cardEdge: Shader? = null
+    private var cardTheme: GlassTheme? = null
+    private var cardW = 0f
+    private var cardH = 0f
+
+    private fun buildCard(t: GlassTheme, w: Float, h: Float) {
+        cardTheme = t
+        cardW = w
+        cardH = h
+        fun glow(x: Float, y: Float, r: Float, color: Int) =
+            RadialGradient(x, y, r, color, color and 0x00FFFFFF, Shader.TileMode.CLAMP)
+        val blue = t.gradientColors[0]
+        val purple = t.gradientColors[1]
+        val magenta = GlassTheme.rotateHue(t.gradientColors[2], -18f)
+        cardGlows = listOf(
+            glow(w * 0.14f, h * 0.30f, w * 0.46f, blue),
+            glow(w * 0.52f, h * 1.05f, w * 0.40f, purple),
+            glow(w * 0.88f, h * 0.85f, w * 0.40f, magenta),
+        )
+        cardEdge = LinearGradient(0f, 0f, w, h, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.42f else 0.85f),
+            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.07f else 0.25f), Shader.TileMode.CLAMP)
+    }
+
+    /**
+     * The space bar: dark translucent glass with soft blue, purple and magenta glows showing through
+     * and a faint light edge, like a frosted card. The glow strength follows the gradient setting.
+     */
+    private fun drawSpaceCard(canvas: Canvas, key: Key, t: GlassTheme, pressed: Float) {
+        val v = key.visual
+        val w = v.width()
+        val h = v.height()
+        if (cardTheme !== t || cardW != w || cardH != h) buildCard(t, w, h)
+        val r = t.cornerRadiusPx.coerceAtMost(h / 2f)
+        canvas.save()
+        if (pressed > 0f) {
+            val sc = 1f - 0.05f * pressed
+            canvas.scale(sc, sc, v.centerX(), v.centerY())
+        }
+        canvas.translate(v.left, v.top)
+        cardPath.reset()
+        cardPath.addRoundRect(0f, 0f, w, h, r, r, Path.Direction.CW)
+
+        canvas.save()
+        canvas.clipPath(cardPath)
+        cardPaint.style = Paint.Style.FILL
+        cardPaint.shader = null
+        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF0A0A14.toInt(), 0.50f) else GlassTheme.withAlpha(Color.WHITE, 0.45f)
+        canvas.drawRect(0f, 0f, w, h, cardPaint)
+        val strength = t.gradientStrength.coerceAtLeast(0.35f)
+        val glowAlpha = ((if (t.dark) 0.85f else 0.55f) * strength * 255f).toInt().coerceIn(0, 255)
+        for (g in cardGlows) {
+            cardPaint.shader = g
+            cardPaint.alpha = glowAlpha
+            canvas.drawRect(0f, 0f, w, h, cardPaint)
+        }
+        cardPaint.shader = null
+        if (pressed > 0f) {
+            cardPaint.color = GlassTheme.withAlpha(t.pressedOverlay, (t.pressedOverlay ushr 24) / 255f * pressed)
+            canvas.drawRect(0f, 0f, w, h, cardPaint)
+        }
+        canvas.restore()
+
+        // Faint light edge, brighter at the top left.
+        val stroke = t.dp(1f)
+        cardPaint.style = Paint.Style.STROKE
+        cardPaint.strokeWidth = stroke
+        cardPaint.shader = cardEdge
+        cardPath.reset()
+        cardPath.addRoundRect(stroke / 2f, stroke / 2f, w - stroke / 2f, h - stroke / 2f, r, r, Path.Direction.CW)
+        canvas.drawPath(cardPath, cardPaint)
+        cardPaint.shader = null
+        cardPaint.style = Paint.Style.FILL
+        canvas.restore()
+    }
 
     private fun applyFonts(t: GlassTheme) {
         if (fontKey == t.fontId) return
