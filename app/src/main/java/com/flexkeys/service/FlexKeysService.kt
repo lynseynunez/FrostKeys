@@ -247,10 +247,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             // Gboard-style emoji suggestions for the word being typed or just typed.
             when {
                 composing.isNotEmpty() -> engine.suggest(composing.toString(), ctx.previous, correctionOn).let { s ->
-                    EmojiIndex.forWord(composing.toString()).firstOrNull()?.let { s.withEmoji(it) } ?: s
+                    EmojiIndex.forWord(composing.toString()).firstOrNull()?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
                 }
                 ctx.afterSpace -> engine.predict(ctx.previous, ctx.sentenceStart).let { s ->
-                    ctx.previous?.let { EmojiIndex.forWord(it).firstOrNull() }?.let { s.withEmoji(it) } ?: s
+                    ctx.previous?.let { EmojiIndex.forWord(it).firstOrNull() }?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
                 }
                 else -> Suggestions.EMPTY
             }
@@ -708,7 +708,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         private val BEHAVIOR_KEYS = setOf(
             Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT, Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP,
             Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND, Prefs.KEY_SOUND_VOLUME,
-            Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SKIN_TONES,
+            Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SKIN_TONES, Prefs.KEY_SKIN_DEFAULT,
             Prefs.KEY_GIFS, Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER,
             Prefs.KEY_TRANSLATOR, Prefs.KEY_TRANSLATE_FROM, Prefs.KEY_TRANSLATE_TO, Prefs.KEY_TRANSLATE_EMAIL,
         )

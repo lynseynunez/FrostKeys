@@ -54,6 +54,8 @@ class Prefs private constructor(context: Context) {
     // ---- emoji ----
     var recentEmoji by string(KEY_RECENT_EMOJI, "")
     var skinTones by string(KEY_SKIN_TONES, "")
+    /** Default skin tone for people and hand emoji: 0 none (yellow), 1..5 light to dark. */
+    var skinToneDefault by int(KEY_SKIN_DEFAULT, 0)
 
     // ---- translator (sends only the text typed or pasted into the translator panel) ----
     var translatorEnabled by bool(KEY_TRANSLATOR, true)
@@ -114,6 +116,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_CLIPBOARD = "clipboard_history"
         const val KEY_RECENT_EMOJI = "recent_emoji"
         const val KEY_SKIN_TONES = "skin_tones"
+        const val KEY_SKIN_DEFAULT = "skin_tone_default"
         const val KEY_TRANSLATOR = "translator_enabled"
         const val KEY_TRANSLATE_FROM = "translate_from"
         const val KEY_TRANSLATE_TO = "translate_to"

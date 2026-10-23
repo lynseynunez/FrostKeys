@@ -106,7 +106,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     }
 
     /** The emoji as shown: with the user's remembered skin tone applied. */
-    private fun display(base: String): String = tones[base] ?: base
+    private fun display(base: String): String = EmojiIndex.displayFor(prefs, base, tones)
 
     private fun pick(emoji: String) {
         EmojiIndex.addRecent(prefs, emoji)
@@ -147,7 +147,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         override fun getItem(position: Int) = items[position]
         override fun getItemId(position: Int) = position.toLong()
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-            val tv = (convertView as? TextView) ?: TextView(context).apply {
+            val tv = (convertView as? EmojiCell) ?: EmojiCell(context).apply {
                 gravity = Gravity.CENTER
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
                 layoutParams = AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46f))
@@ -155,7 +155,34 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
             }
             tv.text = display(items[position])
             tv.setTextColor(host?.theme?.textColor ?: Color.BLACK)
+            // A small corner mark shows which emoji have skin tones (long-press them).
+            tv.hasTones = EmojiIndex.supportsSkinTone(items[position])
+            tv.markColor = host?.theme?.secondaryTextColor ?: Color.GRAY
             return tv
+        }
+    }
+
+    /** An emoji cell that draws a tiny triangle in its corner when the emoji has skin tone variants. */
+    private class EmojiCell(context: Context) : TextView(context) {
+        var hasTones = false
+        var markColor = Color.GRAY
+        private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val mark = android.graphics.Path()
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            if (!hasTones) return
+            val d = resources.displayMetrics.density
+            val right = width - 5f * d
+            val bottom = height - 5f * d
+            val size = 5f * d
+            mark.reset()
+            mark.moveTo(right, bottom - size)
+            mark.lineTo(right, bottom)
+            mark.lineTo(right - size, bottom)
+            mark.close()
+            markPaint.color = markColor
+            canvas.drawPath(mark, markPaint)
         }
     }
 

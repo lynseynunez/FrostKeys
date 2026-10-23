@@ -341,7 +341,7 @@ class KeyboardView(context: Context) : View(context) {
     /** The space bar emblem: the supplied flower artwork in white, about the height of the letters. */
     private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, t: GlassTheme) {
         val bitmap = emblem() ?: return
-        val size = rowHeight * 0.5f * t.fontScale.coerceIn(0.8f, 1.3f)
+        val size = rowHeight * 0.40f * t.fontScale.coerceIn(0.8f, 1.3f)
         emblemRect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f)
         val color = if (t.glassKeys) t.glassTextFill else t.textColor
         if (color != emblemTint) {

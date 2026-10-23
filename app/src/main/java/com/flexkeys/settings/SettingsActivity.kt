@@ -94,7 +94,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             }
             Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT,
             Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP, Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND,
-            Prefs.KEY_SOUND_VOLUME, Prefs.KEY_SKIN_TONES,
+            Prefs.KEY_SOUND_VOLUME, Prefs.KEY_SKIN_TONES, Prefs.KEY_SKIN_DEFAULT,
             Prefs.KEY_GIFS, Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATOR,
             Prefs.KEY_TRANSLATE_FROM, Prefs.KEY_TRANSLATE_TO, Prefs.KEY_TRANSLATE_EMAIL -> Unit
             Prefs.KEY_ACCENT -> {
@@ -505,6 +505,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     }
 
     private fun typingCard() = card("Typing") {
+        segmented("Default skin tone", listOf("Off", "🏻", "🏼", "🏽", "🏾", "🏿"), prefs.skinToneDefault) { prefs.skinToneDefault = it }
+        text("Used for people and hand emoji. In the emoji panel, long-press one (marked with a small corner triangle) to pick a different tone for just that emoji.", secondary = true)
         toggle("Suggestions", "Completions and next-word predictions", prefs::suggestions)
         toggle("Autocorrect", "Fix typos on space. Backspace right after undoes it.", prefs::autocorrect)
         toggle("Learn my words", "Improve suggestions from what you type, on-device only", prefs::learnWords)

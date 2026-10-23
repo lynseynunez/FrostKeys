@@ -86,7 +86,9 @@ class EmojiSearchBar(
         results.removeAllViews()
         if (gifMode) return
         val found = if (query.isBlank()) EmojiIndex.recents(prefs) else EmojiIndex.search(query)
-        for (emoji in found) {
+        val chosen = EmojiIndex.chosenTones(prefs)
+        for (base in found) {
+            val emoji = EmojiIndex.displayFor(prefs, base, chosen)
             results.addView(TextView(context).apply {
                 text = emoji
                 gravity = Gravity.CENTER

@@ -76,6 +76,20 @@ object EmojiIndex {
         }.sortedBy { it.second }.take(limit).map { it.first }
     }
 
+    /**
+     * How [base] should be shown and inserted: the tone the user picked for it, else their default
+     * skin tone for people and hand emoji, else as is.
+     */
+    fun displayFor(prefs: Prefs, base: String, chosen: Map<String, String> = chosenTones(prefs)): String {
+        chosen[base]?.let { return it }
+        val d = prefs.skinToneDefault
+        if (d in 1..SKIN_TONES.size && supportsSkinTone(base)) {
+            val toned = withTone(base, SKIN_TONES[d - 1])
+            if (glyphPaint.hasGlyph(toned)) return toned
+        }
+        return base
+    }
+
     fun supportsSkinTone(emoji: String): Boolean = stripVariation(emoji) in skinCapable
 
     /** The emoji itself followed by its five skin tone variants. */
@@ -118,7 +132,8 @@ object EmojiIndex {
 
     fun rememberTone(prefs: Prefs, base: String, variant: String) {
         val map = chosenTones(prefs).toMutableMap()
-        if (variant == base) map.remove(base) else map[base] = variant
+        // With a default tone set, picking the plain yellow one has to be remembered explicitly.
+        if (variant == base && prefs.skinToneDefault == 0) map.remove(base) else map[base] = variant
         prefs.skinTones = map.entries.joinToString(" ") { "${it.key}=${it.value}" }
     }
 }
