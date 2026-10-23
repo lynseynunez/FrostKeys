@@ -265,10 +265,12 @@ class KeyboardView(context: Context) : View(context) {
      */
     private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, t: GlassTheme) {
         val fontScale = t.fontScale.coerceIn(0.8f, 1.3f)
-        val size = rowHeight * 0.38f * fontScale
+        val size = rowHeight * 0.46f * fontScale
         emblemMatrix.setScale(size, size)
         emblemMatrix.postTranslate(cx - size / 2f, cy - size / 2f)
         emblemPath.transform(emblemMatrix, emblemScaled)
+        // Even-odd keeps the inside of the line art hollow; set it explicitly since transform may not carry it over.
+        emblemScaled.fillType = Path.FillType.EVEN_ODD
 
         // The artwork's own lines are about 6% of its size; top them up to the weight of the letters' strokes.
         val letterStem = rowHeight * 0.41f * fontScale * 0.085f
