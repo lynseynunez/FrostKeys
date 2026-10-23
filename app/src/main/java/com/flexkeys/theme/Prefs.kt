@@ -26,7 +26,7 @@ class Prefs private constructor(context: Context) {
     var haptics by bool(KEY_HAPTICS, true)
     var sound by bool(KEY_SOUND, false)
     var soundVolume by int(KEY_SOUND_VOLUME, 40)
-    var keyPreview by bool(KEY_PREVIEW, true)
+    var keyPreview by bool(KEY_PREVIEW, false)
 
     // ---- theme ----
     var themeMode by int(KEY_THEME_MODE, THEME_AUTO)
