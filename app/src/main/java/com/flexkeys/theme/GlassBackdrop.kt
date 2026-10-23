@@ -150,7 +150,6 @@ class GlassBackdrop {
             return
         }
         if (softDirty || softBlur == null) {
-            softBlur?.recycle()
             val sw = (width / SOFT_SCALE).coerceAtLeast(1)
             val sh = (height / SOFT_SCALE).coerceAtLeast(1)
             val small = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888)
@@ -169,7 +168,6 @@ class GlassBackdrop {
     }
 
     fun release() {
-        softBlur?.recycle()
         softBlur = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) (node as? RenderNode)?.discardDisplayList()
         node = null

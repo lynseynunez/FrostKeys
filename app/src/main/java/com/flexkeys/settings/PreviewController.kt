@@ -1,0 +1,109 @@
+package com.flexkeys.settings
+
+import android.os.SystemClock
+import android.widget.TextView
+import com.flexkeys.keyboard.KeyboardState
+import com.flexkeys.keyboard.KeyboardView
+import com.flexkeys.layout.KeyDef
+import com.flexkeys.layout.KeyType
+import com.flexkeys.layout.Layer
+import com.flexkeys.service.Feedback
+import com.flexkeys.service.FlexKeysService
+import com.flexkeys.theme.Prefs
+import com.flexkeys.ui.KeyboardRootView
+
+/**
+ * Drives the keyboard preview in the settings screen. Typing goes into a small demo line so
+ * every setting (layout, sizes, feedback, glass) can be tried without leaving the app.
+ */
+class PreviewController(
+    private val root: KeyboardRootView,
+    private val output: TextView,
+    private val prefs: Prefs,
+    private val feedback: Feedback,
+) : KeyboardView.Listener {
+
+    private val state = KeyboardState()
+    private val text = StringBuilder()
+
+    init {
+        root.keyboardView.listener = this
+        refresh()
+        render()
+    }
+
+    fun refresh() {
+        state.lettersId = prefs.layoutId
+        state.numberRow = prefs.numberRow
+        val kv = root.keyboardView
+        kv.layer = state.layer
+        kv.layout = state.layout
+        kv.shiftState = state.shift
+        kv.showKeyPreview = prefs.keyPreview
+    }
+
+    private fun render() {
+        output.text = if (text.isEmpty()) "Type on the preview to try your settings" else text
+        output.alpha = if (text.isEmpty()) 0.6f else 1f
+    }
+
+    private fun autoCaps() {
+        val trimmed = text.trimEnd()
+        val caps = prefs.autoCapitalize && (trimmed.isEmpty() || (text.endsWith(" ") && trimmed.last() in ".!?"))
+        state.applyAutoCaps(caps)
+        root.keyboardView.shiftState = state.shift
+    }
+
+    override fun onKeyDown(key: KeyDef) = feedback.keyPress(key.type)
+
+    override fun onKey(key: KeyDef) {
+        when (key.type) {
+            KeyType.CHAR -> type(if (key.isLetter && state.isShifted) key.output.uppercase() else key.output)
+            KeyType.SPACE -> type(" ")
+            KeyType.ENTER -> {
+                text.clear()
+                render()
+                autoCaps()
+            }
+            KeyType.BACKSPACE -> if (text.isNotEmpty()) {
+                text.setLength(text.length - FlexKeysService.lastGraphemeLength(text))
+                render()
+                autoCaps()
+            }
+            KeyType.SHIFT -> {
+                state.onShiftTap(SystemClock.uptimeMillis())
+                root.keyboardView.shiftState = state.shift
+            }
+            KeyType.LAYER -> {
+                state.setLayer(key.target ?: Layer.LETTERS)
+                refresh()
+                autoCaps()
+            }
+            KeyType.EMOJI -> type("🙂")
+            KeyType.SPACER -> Unit
+        }
+    }
+
+    private fun type(s: String) {
+        if (text.length > 80) text.delete(0, text.length - 60)
+        text.append(s)
+        state.onCharacterTyped()
+        render()
+        autoCaps()
+    }
+
+    override fun onText(text: String) = type(text)
+
+    override fun onLongPress(key: KeyDef): Boolean {
+        if (key.type == KeyType.SHIFT) {
+            feedback.longPress()
+            state.lockCaps()
+            root.keyboardView.shiftState = state.shift
+            return true
+        }
+        if (key.popup.isNotEmpty()) feedback.longPress()
+        return false
+    }
+
+    override fun onCursorMove(steps: Int) = Unit
+}

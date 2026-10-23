@@ -6,7 +6,10 @@ import android.graphics.PointF
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import com.flexkeys.keyboard.KeyboardView
+import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.GlassBackdrop
 import com.flexkeys.theme.GlassPainter
 import com.flexkeys.theme.GlassTheme
@@ -40,8 +43,27 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         invalidateTree(this)
     }
 
-    /** Called when the backdrop photo changed. */
-    fun onBackdropChanged() = invalidateTree(this)
+    private var photoRequest = 0
+
+    /** Loads the background photo (if any) off the main thread and redraws when ready. */
+    fun reloadPhoto() {
+        val request = ++photoRequest
+        val app = context.applicationContext
+        val maxDim = maxOf(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels)
+        loader.execute {
+            val bitmap = BackgroundImageStore.load(app, maxDim)
+            post {
+                if (request != photoRequest) {
+                    bitmap?.recycle()
+                    return@post
+                }
+                // The previous bitmap is not recycled: an already recorded display list may
+                // still reference it. It is garbage collected once nothing draws it.
+                backdrop.setPhoto(bitmap)
+                invalidateTree(this)
+            }
+        }
+    }
 
     private fun invalidateTree(view: View) {
         view.invalidate()
@@ -88,5 +110,13 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     override fun invalidateOverlay() = invalidate()
 
-    fun release() = backdrop.release()
+    fun release() {
+        photoRequest++
+        backdrop.setPhoto(null)
+        backdrop.release()
+    }
+
+    private companion object {
+        val loader: ExecutorService = Executors.newSingleThreadExecutor()
+    }
 }

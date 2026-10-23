@@ -48,6 +48,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener,
         view.keyboardView.listener = this
         root = view
         refreshKeyboard()
+        view.reloadPhoto()
         return view
     }
 
@@ -230,6 +231,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener,
         val r = root ?: return
         when (key) {
             Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW -> refreshKeyboard()
+            Prefs.KEY_BG_VERSION -> r.reloadPhoto()
             else -> r.applyTheme(GlassTheme.from(this, prefs))
         }
     }
