@@ -83,6 +83,9 @@ class KeyboardView(context: Context) : View(context) {
 
     var listener: Listener? = null
 
+    private val prefs = com.flexkeys.theme.Prefs.get(context)
+    private val effects = TypingEffects(resources.displayMetrics.density)
+
     var layout: LayoutDef? = null
         set(value) {
             if (field == value) return
@@ -486,6 +489,10 @@ class KeyboardView(context: Context) : View(context) {
     fun drawOverlay(canvas: Canvas) {
         val h = host ?: return
         val t = h.theme
+        if (effects.active || prefs.typingEffect != TypingEffects.OFF) {
+            effects.draw(canvas, SystemClock.uptimeMillis(), width.toFloat(), height.toFloat(), t.accent)
+            if (effects.active) h.invalidateOverlay()
+        }
         h.backdropOffset(this, offset)
         val bubbleFill = GlassTheme.withAlpha(if (t.dark) 0xFF3A3D4A.toInt() else 0xFFFFFFFF.toInt(), 0.94f)
 
@@ -560,6 +567,11 @@ class KeyboardView(context: Context) : View(context) {
         pointers[id] = p
         press(key)
         listener?.onKeyDown(key.def)
+        val style = prefs.typingEffect
+        if (style != TypingEffects.OFF) {
+            effects.onPress(style, key.visual.centerX(), key.visual.centerY(), rowHeight * 1.1f, SystemClock.uptimeMillis())
+            host?.invalidateOverlay()
+        }
         if (showKeyPreview && key.def.type == KeyType.CHAR) setPreview(key)
         scheduleLongPress(id, p)
     }
