@@ -55,6 +55,12 @@ class KeyboardView(context: Context) : View(context) {
 
         /** Horizontal swipe on the space bar moves the cursor by [steps] characters. */
         fun onCursorMove(steps: Int)
+
+        /** Swiping left on backspace has selected [words] words before the cursor so far. */
+        fun onBackspaceSwipe(words: Int) {}
+
+        /** The backspace swipe ended; the selected words should be deleted. */
+        fun onBackspaceSwipeEnd() {}
     }
 
     class Key(val def: KeyDef, val cell: RectF, val visual: RectF) {
@@ -554,11 +560,6 @@ class KeyboardView(context: Context) : View(context) {
         pointers[id] = p
         press(key)
         listener?.onKeyDown(key.def)
-        if (key.def.type == KeyType.BACKSPACE) {
-            // Delete immediately for a snappy feel; holding repeats.
-            p.handled = true
-            listener?.onKey(key.def)
-        }
         if (showKeyPreview && key.def.type == KeyType.CHAR) setPreview(key)
         scheduleLongPress(id, p)
     }
@@ -576,6 +577,7 @@ class KeyboardView(context: Context) : View(context) {
         val def = p.key.def
         when {
             def.type == KeyType.BACKSPACE -> {
+                p.handled = true
                 p.repeating = true
                 startRepeat(id, 0)
             }
@@ -636,6 +638,15 @@ class KeyboardView(context: Context) : View(context) {
         }
         if (p.repeating || p.handled && !p.cursorMode) return
         val t = theme ?: return
+        if (p.key.def.type == KeyType.BACKSPACE) {
+            if (!p.cursorMode && p.downX - x > t.dp(20f)) {
+                p.cursorMode = true
+                p.handled = true
+                p.longPress?.let { handler.removeCallbacks(it) }
+            }
+            if (p.cursorMode) listener?.onBackspaceSwipe(maxOf(0, ((p.downX - x) / t.dp(26f)).toInt()))
+            return
+        }
         if (p.key.def.type == KeyType.SPACE) {
             if (!p.cursorMode && abs(x - p.downX) > t.dp(16f)) {
                 p.cursorMode = true
@@ -655,6 +666,15 @@ class KeyboardView(context: Context) : View(context) {
         }
         // Sliding a finger across character keys moves the press to the key under it.
         if (p.key.def.type != KeyType.CHAR) return
+        // A swipe down on a key types the symbol shown in its corner.
+        val hint = p.key.def.hint
+        if (hint != null && !p.handled && y - p.downY > t.dp(24f) && y - p.downY > abs(x - p.downX)) {
+            p.handled = true
+            p.longPress?.let { handler.removeCallbacks(it) }
+            setPreview(null)
+            listener?.onText(hint)
+            return
+        }
         val k = keyAt(x, y) ?: return
         if (k !== p.key && k.def.type == KeyType.CHAR && !p.key.cell.contains(x, y)) {
             release(p.key)
@@ -678,6 +698,7 @@ class KeyboardView(context: Context) : View(context) {
                 host?.invalidateOverlay()
                 listener?.onText(popup.options[popup.selected])
             }
+            p.cursorMode && p.key.def.type == KeyType.BACKSPACE -> listener?.onBackspaceSwipeEnd()
             !p.handled -> listener?.onKey(p.key.def)
         }
     }

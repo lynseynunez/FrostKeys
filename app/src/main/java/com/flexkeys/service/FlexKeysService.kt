@@ -36,6 +36,8 @@ import com.flexkeys.suggest.Suggestions
 import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.KeyboardRootView
+import com.flexkeys.voice.VoiceBridge
+import com.flexkeys.voice.VoiceInputActivity
 
 /**
  * The input method. Owns the views and turns key events into edits on the text field.
@@ -58,6 +60,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     private var learningOn = false
 
     private val composing = StringBuilder()
+    private var selectionEnd = -1
+    private var swipeAnchor = -1
+    private var swipeText = ""
     private var suggestions = Suggestions.EMPTY
     private var lastSpaceTime = 0L
     /** The last autocorrection, so an immediate backspace can undo it. */
@@ -146,6 +151,18 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         refreshKeyboard()
         updateShiftState()
         updateSuggestions()
+        VoiceBridge.take()?.let { insertSpoken(it) }
+    }
+
+    /** Types what the speech recognizer heard, with a space in front when it follows other text. */
+    private fun insertSpoken(spoken: String) {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(1, 0)?.toString().orEmpty()
+        val lead = if (before.isNotEmpty() && !before.last().isWhitespace()) " " else ""
+        ic.commitText(lead + spoken, 1)
+        lastCorrection = null
+        updateShiftState()
+        updateSuggestions()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -173,6 +190,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         candidatesStart: Int, candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        selectionEnd = newSelEnd
         // The cursor left the word being composed (e.g. the user tapped elsewhere in the text).
         if (composing.isNotEmpty() && candidatesStart >= 0 &&
             (newSelStart != candidatesEnd || newSelEnd != candidatesEnd)
@@ -310,6 +328,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
+            SuggestionStripView.Action.MIC -> {
+                requestHideSelf(0)
+                startActivity(Intent(this, VoiceInputActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
             SuggestionStripView.Action.TRANSLATE -> {
                 root?.startTranslate()
                 updateShiftState()
@@ -491,6 +513,32 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             }
             else -> false
         }
+    }
+
+    override fun onBackspaceSwipe(words: Int) {
+        val ic = currentInputConnection ?: return
+        if (swipeAnchor < 0) {
+            if (composing.isNotEmpty()) {
+                ic.finishComposingText()
+                composing.clear()
+            }
+            if (selectionEnd < 0) return
+            swipeAnchor = selectionEnd
+            swipeText = ic.getTextBeforeCursor(SWIPE_CONTEXT, 0)?.toString() ?: ""
+        }
+        val back = WordSelect.charsBack(swipeText, words)
+        ic.setSelection(swipeAnchor - back, swipeAnchor)
+    }
+
+    override fun onBackspaceSwipeEnd() {
+        val ic = currentInputConnection
+        if (ic != null && swipeAnchor >= 0 && ic.getSelectedText(0)?.isNotEmpty() == true) {
+            ic.commitText("", 1)
+            lastCorrection = null
+        }
+        swipeAnchor = -1
+        swipeText = ""
+        updateSuggestions()
     }
 
     override fun onCursorMove(steps: Int) {
@@ -696,6 +744,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     companion object {
+        /** How much text before the cursor a backspace swipe can select back through. */
+        private const val SWIPE_CONTEXT = 500
+
         private const val DOUBLE_SPACE_MS = 600L
         private const val MAX_RESTART = 32
         /** ClipDescription.EXTRA_IS_SENSITIVE, also set by some apps before Android 13. */

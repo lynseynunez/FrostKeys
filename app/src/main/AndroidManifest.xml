@@ -6,6 +6,13 @@
     <!-- Used only for GIF search, and only after the user turns it on and adds a Klipy key. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Lets the keyboard find the phone's speech recognizer (Android 11+ package visibility). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -32,6 +39,12 @@
         <activity
             android:name=".settings.PhotoAdjustActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".voice.VoiceInputActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/FlexKeys.Transparent" />
 
         <provider
             android:name=".gif.GifProvider"

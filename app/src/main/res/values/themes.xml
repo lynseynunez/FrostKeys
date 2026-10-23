@@ -8,4 +8,5 @@
         <item name="android:navigationBarColor">#FFF2F3F8</item>
         <item name="android:windowBackground">@color/settings_bg</item>
     </style>
+    <style name="FlexKeys.Transparent" parent="@android:style/Theme.Translucent.NoTitleBar" />
 </resources>
