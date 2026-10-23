@@ -690,8 +690,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 r.reloadPhoto()
                 refreshKeyboard()
             }
-            in BEHAVIOR_KEYS -> Unit // Read when next used.
-            else -> r.applyTheme(GlassTheme.from(this, prefs))
+            in Prefs.THEME_KEYS -> r.applyTheme(GlassTheme.from(this, prefs))
+            else -> Unit // Behavior settings are read when next used.
         }
     }
 
@@ -704,15 +704,6 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         private val WORD_AT_END = Regex("[\\p{L}\\p{N}'’]+$")
         private val CORRECTING_PUNCTUATION = setOf(".", ",", "!", "?", ":", ";", ")")
         private val ATTACHING_PUNCTUATION = setOf(".", ",", "!", "?", ":", ";")
-
-        /** Settings that change behavior but not how the keyboard looks. */
-        private val BEHAVIOR_KEYS = setOf(
-            Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT, Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP,
-            Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND, Prefs.KEY_SOUND_VOLUME,
-            Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SKIN_TONES, Prefs.KEY_SKIN_DEFAULT,
-            Prefs.KEY_GIFS, Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER,
-            Prefs.KEY_TRANSLATOR, Prefs.KEY_TRANSLATE_FROM, Prefs.KEY_TRANSLATE_TO, Prefs.KEY_TRANSLATE_EMAIL,
-        )
 
         private val PASSWORD_VARIATIONS = setOf(
             InputType.TYPE_TEXT_VARIATION_PASSWORD,

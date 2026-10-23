@@ -34,6 +34,10 @@ class Prefs private constructor(context: Context) {
     var haptics by bool(KEY_HAPTICS, true)
     var sound by bool(KEY_SOUND, false)
     var soundVolume by int(KEY_SOUND_VOLUME, 40)
+    /** 0 custom strength, 1 tick, 2 click, 3 heavy (the phone's built-in effects where available). */
+    var hapticStyle by int(KEY_HAPTIC_STYLE, 0)
+    /** Strength of the custom vibration, 0..100. */
+    var hapticStrength by int(KEY_HAPTIC_STRENGTH, 50)
     var keyPreview by bool(KEY_PREVIEW, false)
 
     // ---- theme ----
@@ -99,6 +103,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_HAPTICS = "haptics"
         const val KEY_SOUND = "sound"
         const val KEY_SOUND_VOLUME = "sound_volume"
+        const val KEY_HAPTIC_STYLE = "haptic_style"
+        const val KEY_HAPTIC_STRENGTH = "haptic_strength"
         const val KEY_PREVIEW = "key_preview"
         const val KEY_THEME_MODE = "theme_mode"
         const val KEY_ACCENT = "accent"
@@ -139,6 +145,16 @@ class Prefs private constructor(context: Context) {
         const val THEME_DARK = 2
 
         const val DEFAULT_ACCENT = 0xFF5B8CFF.toInt()
+
+        /**
+         * Settings that change how the keyboard looks. Changing one of these rebuilds the theme;
+         * every other setting is simply read the next time it is used.
+         */
+        val THEME_KEYS: Set<String> = setOf(
+            KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
+            KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
+            KEY_SPACE_GLASS, KEY_EMBLEM_SIZE,
+        )
 
         @Volatile private var instance: Prefs? = null
 

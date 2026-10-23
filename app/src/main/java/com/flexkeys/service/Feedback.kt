@@ -22,7 +22,7 @@ class Feedback(context: Context, private val prefs: Prefs) {
         }
 
     fun keyPress(type: KeyType) {
-        if (prefs.haptics) vibrate(KEY_MS)
+        if (prefs.haptics) buzz(long = false)
         if (prefs.sound) {
             val effect = when (type) {
                 KeyType.BACKSPACE -> AudioManager.FX_KEYPRESS_DELETE
@@ -34,24 +34,39 @@ class Feedback(context: Context, private val prefs: Prefs) {
         }
     }
 
-    /** A slightly longer pulse for long presses (popups, caps lock). */
+    /** A slightly stronger pulse for long presses (popups, caps lock). */
     fun longPress() {
-        if (prefs.haptics) vibrate(LONG_MS)
+        if (prefs.haptics) buzz(long = true)
     }
 
-    private fun vibrate(ms: Long) {
+    /** Plays the haptic style chosen in settings: the phone's own tick/click/heavy effects, or a custom strength. */
+    private fun buzz(long: Boolean) {
         val v = vibrator ?: return
         if (!v.hasVibrator()) return
         try {
-            val amplitude = if (v.hasAmplitudeControl()) 90 else VibrationEffect.DEFAULT_AMPLITUDE
+            val predefined = when (prefs.hapticStyle) {
+                STYLE_TICK -> VibrationEffect.EFFECT_TICK
+                STYLE_CLICK -> VibrationEffect.EFFECT_CLICK
+                STYLE_HEAVY -> VibrationEffect.EFFECT_HEAVY_CLICK
+                else -> -1
+            }
+            if (predefined >= 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                v.vibrate(VibrationEffect.createPredefined(if (long) VibrationEffect.EFFECT_HEAVY_CLICK else predefined))
+                return
+            }
+            val strength = prefs.hapticStrength.coerceIn(0, 100)
+            val ms = (6 + strength * 0.25f).toLong() + if (long) 10L else 0L
+            val amplitude = if (v.hasAmplitudeControl()) (25 + strength * 2.3f).toInt().coerceIn(1, 255) else VibrationEffect.DEFAULT_AMPLITUDE
             v.vibrate(VibrationEffect.createOneShot(ms, amplitude))
         } catch (_: RuntimeException) {
             // Some OEM builds throw when vibration is restricted; feedback is best-effort.
         }
     }
 
-    private companion object {
-        const val KEY_MS = 12L
-        const val LONG_MS = 25L
+    companion object {
+        const val STYLE_CUSTOM = 0
+        const val STYLE_TICK = 1
+        const val STYLE_CLICK = 2
+        const val STYLE_HEAVY = 3
     }
 }

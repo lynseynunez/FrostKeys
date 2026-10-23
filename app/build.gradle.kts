@@ -11,8 +11,9 @@ android {
         applicationId = "com.flexkeys"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        // The release workflow passes the tag as the version; local and debug builds use these defaults.
+        versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
+        versionName = (findProperty("appVersionName") as String?) ?: "1.0.0"
     }
 
     signingConfigs {
@@ -26,9 +27,29 @@ android {
         }
     }
 
+    signingConfigs {
+        // Release signing comes from environment variables set by the release workflow, so the
+        // real key is never stored in the repository.
+        create("release") {
+            val path = System.getenv("RELEASE_KEYSTORE_PATH")
+            if (path != null) {
+                storeFile = file(path)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Without the release key (local builds) fall back to the debug key so the build still works.
+            signingConfig = if (System.getenv("RELEASE_KEYSTORE_PATH") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

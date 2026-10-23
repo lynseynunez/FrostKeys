@@ -92,16 +92,12 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 preview.reloadPhoto()
                 loadPagePhoto()
             }
-            Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT,
-            Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP, Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND,
-            Prefs.KEY_SOUND_VOLUME, Prefs.KEY_SKIN_TONES, Prefs.KEY_SKIN_DEFAULT,
-            Prefs.KEY_GIFS, Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATOR,
-            Prefs.KEY_TRANSLATE_FROM, Prefs.KEY_TRANSLATE_TO, Prefs.KEY_TRANSLATE_EMAIL -> Unit
             Prefs.KEY_ACCENT -> {
                 applyAccent()
                 applyKeyboardTheme()
             }
-            else -> applyKeyboardTheme()
+            in Prefs.THEME_KEYS -> applyKeyboardTheme()
+            else -> Unit
         }
     }
 
@@ -187,7 +183,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         list.addView(gifCard())
         list.addView(translatorCard())
         list.addView(clipboardCard())
+        list.addView(backupCard())
         list.addView(privacyCard())
+        list.addView(aboutCard())
 
         column.addView(previewDockView())
         return page
@@ -527,6 +525,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun feedbackCard() = card("Sound & vibration") {
         toggle("Vibrate on key press", null, prefs::haptics)
+        segmented("Haptic style", listOf("Custom", "Tick", "Click", "Heavy"), prefs.hapticStyle) { prefs.hapticStyle = it }
+        slider("Custom strength", 0, 100, prefs::hapticStrength) { "$it%" }
+        text("Tick, Click and Heavy use your phone's built-in vibration effects (Android 10+). Strength applies to Custom.", secondary = true)
         toggle("Sound on key press", null, prefs::sound)
         slider("Sound volume", 0, 100, prefs::soundVolume) { "$it%" }
     }
@@ -631,6 +632,99 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         })
     }
 
+    private var pendingBackupWithPhoto = false
+
+    private fun backupCard() = card("Backup & sharing") {
+        text("Save your settings, learned words and phrases to a file, and restore them after reinstalling or on another phone. API keys are never included.", secondary = true)
+        buttons(Triple("Export backup", true) {
+            AlertDialog.Builder(this@SettingsActivity)
+                .setMessage("Include your background photo in the backup?")
+                .setPositiveButton("With photo") { _, _ -> startExport(true) }
+                .setNegativeButton("Without") { _, _ -> startExport(false) }
+                .setNeutralButton("Cancel", null)
+                .show()
+        }, Triple("Import backup", false) {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+            }
+            try {
+                startActivityForResult(intent, REQUEST_IMPORT)
+            } catch (e: ActivityNotFoundException) {
+                toast("No file picker found")
+            }
+        })
+        text("Share your look as a short code anyone can apply. It covers colors, glass, fonts and sizes, not your photo.", secondary = true)
+        buttons(Triple("Share my theme", true) {
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, ThemeShare.encode(prefs))
+            }
+            startActivity(Intent.createChooser(send, "Share theme code"))
+        }, Triple("Apply a theme code", false) { showApplyThemeDialog() })
+    }
+
+    private fun startExport(withPhoto: Boolean) {
+        pendingBackupWithPhoto = withPhoto
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "SakuriKey-backup.json")
+        }
+        try {
+            startActivityForResult(intent, REQUEST_EXPORT)
+        } catch (e: ActivityNotFoundException) {
+            toast("No file picker found")
+        }
+    }
+
+    private fun showApplyThemeDialog() {
+        val clip = try {
+            (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip
+                ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+        } catch (e: SecurityException) {
+            null
+        }
+        val input = EditText(this).apply {
+            hint = "Paste a theme code"
+            if (ThemeShare.isThemeCode(clip)) setText(clip)
+            setSingleLine(true)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Apply a theme code")
+            .setView(input)
+            .setPositiveButton("Apply") { _, _ ->
+                if (ThemeShare.apply(prefs, input.text.toString())) {
+                    toast("Theme applied")
+                    recreate()
+                } else {
+                    toast("That isn't a valid theme code")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun aboutCard() = card("About") {
+        text("SakuriKey ${UpdateChecker.currentVersion(this@SettingsActivity)}", secondary = true)
+        buttons(Triple("Check for updates", false) {
+            toast("Checking…")
+            UpdateChecker.check(this@SettingsActivity) { r ->
+                when {
+                    r.error != null -> toast(r.error)
+                    r.newer -> AlertDialog.Builder(this@SettingsActivity)
+                        .setMessage("Version ${r.latest} is available.")
+                        .setPositiveButton("Open download page") { _, _ ->
+                            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(r.url)))
+                        }
+                        .setNegativeButton("Later", null)
+                        .show()
+                    else -> toast("You're up to date")
+                }
+            }
+        })
+    }
+
     private fun privacyCard() = card("Privacy") {
         text(
             "SakuriKey has no analytics. The only things that use the internet are GIF search and the " +
@@ -670,7 +764,12 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_PHOTO || resultCode != RESULT_OK) return
+        if (resultCode != RESULT_OK) return
+        if (requestCode == REQUEST_EXPORT || requestCode == REQUEST_IMPORT) {
+            handleBackupResult(requestCode, data?.data ?: return)
+            return
+        }
+        if (requestCode != REQUEST_PHOTO) return
         val uri = data?.data ?: return
         val app = applicationContext
         Thread {
@@ -686,9 +785,34 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         }.start()
     }
 
+    private fun handleBackupResult(requestCode: Int, uri: android.net.Uri) {
+        val app = applicationContext
+        val withPhoto = pendingBackupWithPhoto
+        Thread {
+            val message = try {
+                if (requestCode == REQUEST_EXPORT) {
+                    val json = BackupManager.export(app, withPhoto)
+                    app.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+                    "Backup saved"
+                } else {
+                    val text = app.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } ?: ""
+                    BackupManager.import(app, text).message
+                }
+            } catch (e: java.io.IOException) {
+                "Couldn't read or write that file"
+            }
+            runOnUiThread {
+                toast(message)
+                if (requestCode == REQUEST_IMPORT) recreate()
+            }
+        }.start()
+    }
+
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
     private companion object {
         const val REQUEST_PHOTO = 1
+        const val REQUEST_EXPORT = 2
+        const val REQUEST_IMPORT = 3
     }
 }

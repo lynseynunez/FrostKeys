@@ -116,16 +116,35 @@ class UserDictionary(context: Context) {
         drop.forEach { words.remove(it); bigrams.remove(it) }
     }
 
+    /** All learned words and word pairs in the file format, for backups. */
+    fun exportText(): String = buildString {
+        for ((k, v) in words) append("w\t").append(k).append('\t').append(v).append('\n')
+        for ((prev, nexts) in bigrams) for ((k, v) in nexts) {
+            append("b\t").append(prev).append('\t').append(k).append('\t').append(v).append('\n')
+        }
+    }
+
+    /** Adds the words from [exportText] output to the ones already learned. */
+    fun importText(text: String) {
+        for (line in text.lineSequence()) {
+            val p = line.split('\t')
+            when {
+                p.size == 3 && p[0] == "w" -> p[2].toIntOrNull()?.let { words[p[1]] = maxOf(words[p[1]] ?: 0, it) }
+                p.size == 4 && p[0] == "b" -> p[3].toIntOrNull()?.let {
+                    val map = bigrams.getOrPut(p[1]) { HashMap() }
+                    map[p[2]] = maxOf(map[p[2]] ?: 0, it)
+                }
+            }
+        }
+        dirty++
+        save()
+    }
+
     /** Writes pending changes in the background. */
     fun save() {
         if (dirty == 0 || !loaded) return
         dirty = 0
-        val snapshot = buildString {
-            for ((k, v) in words) append("w\t").append(k).append('\t').append(v).append('\n')
-            for ((prev, nexts) in bigrams) for ((k, v) in nexts) {
-                append("b\t").append(prev).append('\t').append(k).append('\t').append(v).append('\n')
-            }
-        }
+        val snapshot = exportText()
         writer.execute {
             try {
                 val tmp = File(file.path + ".tmp")

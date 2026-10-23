@@ -60,6 +60,24 @@ Updating works the same way: install the newer APK over the old one. Your settin
 and clipboard history are kept. Every build is signed with the same debug key (`app/debug.keystore`),
 so updates install in place.
 
+## Making a signed release (optional)
+
+Debug builds from every push are signed with a shared debug key. For a proper release that you can
+update from the app's "Check for updates" button, set up a private signing key once:
+
+1. Create a key on your computer (keep the file and passwords safe, and never commit them):
+   `keytool -genkeypair -v -keystore sakurikey-release.jks -alias sakurikey -keyalg RSA -keysize 2048 -validity 10000`
+2. Turn it into text: `base64 -w0 sakurikey-release.jks` (on Mac: `base64 -i sakurikey-release.jks`).
+3. In the GitHub repository open **Settings → Secrets and variables → Actions** and add four secrets:
+   `RELEASE_KEYSTORE_BASE64` (the text from step 2), `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`
+   (`sakurikey` above) and `RELEASE_KEY_PASSWORD`.
+4. Publish: `git tag v1.0.0 && git push origin v1.0.0`. The **Release** workflow builds the signed APK and
+   attaches it to a GitHub Release.
+
+Heads up: a release is signed with a different key from the debug builds, so Android will not install it over
+a debug build. Export a backup first (Settings → Backup & sharing), uninstall the debug build, install the
+release, then import the backup. After that, every later release updates in place.
+
 ## Set it up
 
 Open **SakuriKey** from your app drawer. The first card walks you through it:
