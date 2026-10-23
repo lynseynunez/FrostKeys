@@ -11,7 +11,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY,
+    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI,
 }
 
 object Icons {
@@ -118,6 +118,21 @@ object Icons {
                 paint.textSize = oldSize
                 paint.style = Paint.Style.STROKE
                 canvas.restoreToCount(layer)
+            }
+            Icon.AI -> {
+                // A large four-point sparkle with a small one beside it.
+                fun sparkle(cx0: Float, cy0: Float, r: Float) {
+                    path.reset()
+                    path.moveTo(x(cx0), y(cy0 - r))
+                    path.quadTo(x(cx0), y(cy0), x(cx0 + r), y(cy0))
+                    path.quadTo(x(cx0), y(cy0), x(cx0), y(cy0 + r))
+                    path.quadTo(x(cx0), y(cy0), x(cx0 - r), y(cy0))
+                    path.quadTo(x(cx0), y(cy0), x(cx0), y(cy0 - r))
+                    path.close()
+                    canvas.drawPath(path, paint)
+                }
+                sparkle(-0.08f, 0.08f, 0.40f)
+                sparkle(0.32f, -0.32f, 0.17f)
             }
             Icon.FANCY -> {
                 // A big and a small "a" side by side, drawn as strokes.

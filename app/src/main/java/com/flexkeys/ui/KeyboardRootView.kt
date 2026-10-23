@@ -19,6 +19,7 @@ import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
 import com.flexkeys.phrases.PhrasesPanel
 import com.flexkeys.gif.GifPanel
+import com.flexkeys.ai.AiBar
 import com.flexkeys.fancy.FancyBar
 import com.flexkeys.translate.TranslateBar
 import com.flexkeys.translate.TranslateListener
@@ -85,6 +86,15 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         onClose = { endTool() },
     )
 
+    private val aiBar = AiBar(
+        context,
+        onReplace = { text, whole ->
+            panelListener?.onToolReplace(text, whole)
+            endTool()
+        },
+        onClose = { endTool() },
+    )
+
     /** The tool bar (translator, fancy text...) currently replacing the suggestion strip, if any. */
     private var activeTool: ToolBar? = null
     val translating get() = activeTool != null
@@ -133,6 +143,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         translateBar.visibility = View.GONE
         addView(fancyBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         fancyBar.visibility = View.GONE
+        addView(aiBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        aiBar.visibility = View.GONE
         addView(emojiSearchBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         emojiSearchBar.visibility = View.GONE
         addView(strip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -263,6 +275,12 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         fancyBar.start(text)
     }
 
+    /** Opens AI rewrite on [source]: the selection, or the whole field when nothing is selected. */
+    fun startAi(source: ToolSource) {
+        startTool(aiBar)
+        aiBar.start(source.text, source.isSelection)
+    }
+
     private fun startTool(bar: ToolBar) {
         if (activeTool === bar) return
         if (activeTool != null) endTool()
@@ -352,6 +370,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         rebuildGradient()
         translateBar.restyle()
         fancyBar.restyle()
+        aiBar.restyle()
         keyboardView.onThemeChanged()
         strip.requestLayout()
         invalidateTree(this)

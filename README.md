@@ -2,9 +2,10 @@
 
 A highly customizable Android keyboard with a **liquid glass** look: frosted keys over your own
 background photo, real-time blur on Android 12+, and full control over size, spacing, shape and color.
-Everything stays on your device. There are no analytics, and the only feature that uses the internet is
-**GIF search** (off until you turn it on and add your own free Klipy API key) and the **translator**
-(only the text you type or paste into it).
+Everything stays on your device. There are no analytics. The only features that use the internet are
+**GIF search** (off until you turn it on and add your own free Klipy API key), the **translator**
+(only the text you type or paste into it) and **AI rewrite** (off until you turn it on and add your own free
+Gemini key; only the text you choose to rewrite).
 
 ## Features
 
@@ -15,6 +16,10 @@ Everything stays on your device. There are no analytics, and the only feature th
 - Long-press popups for accents, digits and alternate symbols, key preview bubbles
 - Swipe the space bar to move the cursor; long-press space to switch keyboards
 - Double-space for ". "
+- Swipe left on backspace to select word by word and delete on release; swipe down on a letter to type the symbol in its corner
+- Voice typing: the mic button uses your phone's own speech recognizer (no microphone permission needed)
+- Phrases: save text you type often, optionally with a shortcut ("omw" becomes "On my way!") that expands on space, and insert phrases from a panel
+- Add your own characters to any key's long-press popup
 
 **Suggestions**
 - Word completions and next-word predictions in a glass suggestion strip
@@ -27,15 +32,21 @@ Everything stays on your device. There are no analytics, and the only feature th
 - GIF search powered by [Klipy](https://klipy.com) (bring your own free API key): trending, categories, search, and sending GIFs into apps that support them
 - Emoji panel with categories, recents, offline emoji search and skin tones (long-press an emoji; your choice is remembered)
 - Emoji suggestions while typing ("pizza" offers 🍕)
-- Clipboard history with pin, delete and clear (local only; items password managers mark as sensitive are skipped)
+- Clipboard history with pin, delete and clear (local only; items password managers mark as sensitive are skipped), optional auto-delete after an hour, day or week
+- Verification codes you copy from a message show above the keys for one-tap paste and are forgotten after 10 minutes
+- Kaomoji and symbols tabs in the emoji panel
+- Fancy text: 16 styles (bold, italic, script, gothic, circled, small caps, strikethrough...) with a live preview
+- AI rewrite (optional, bring your own free Gemini key): fix, friendlier, professional, shorter, longer, casual, add emoji, rephrase, or your own instruction
 
 **Liquid glass theme**
 - Keys and the suggestion bar are frosted glass panels with soft rim light, highlights and press animations
 - Real background blur with `RenderEffect` on Android 12+ (API 31), translucent frosted fallback on older versions
-- Custom background photo picked with the system document picker, downsampled and copied into app storage
+- Custom background photo picked with the system document picker, downsampled and copied into app storage; drag and pinch to choose the part that shows, match the accent color to the photo, and let the light/dark tint follow it
 - Sliders for photo opacity, glass opacity and blur strength with a live preview
 - Auto/light/dark tint and an accent color picker
-- Adjustable keyboard height, key spacing, corner radius and font size; haptics and key sound toggles
+- Adjustable keyboard height, key spacing, corner radius and font size; haptic style and strength (or the phone's built-in tick, click and heavy effects)
+- Backup and restore (settings, learned words, phrases and optionally your photo) and shareable theme codes; API keys are never included
+- Check for updates from the app (only when you tap it)
 - Two key styles: bare translucent "glass letters" (default) or a glass tile behind each key
 - A blue/purple/pink gradient glow across the glass, with its own slider
 - Modern fonts (Inter, Manrope) or your system font
@@ -125,6 +136,10 @@ app/src/main/java/com/flexkeys/
 ├── clipboard/  ClipboardStore, ClipboardPanel
 ├── gif/        KlipyClient, GifLoader, GifProvider, GifPanel
 ├── translate/  Languages, TextChunker, MyMemoryClient, TranslateBar
+├── phrases/    SnippetStore, PhrasesPanel, CustomKeys
+├── fancy/      FancyText (Unicode styles), FancyBar
+├── ai/         GeminiClient, AiBar
+├── voice/      VoiceInputActivity, VoiceBridge
 ├── ui/         KeyboardRootView (shared backdrop, panels), GlassHost, GlassButton, GlassPanelLayout
 └── settings/   SettingsActivity, PreviewController, ColorPickerView
 app/src/main/assets/words.txt    English word list with frequencies
@@ -149,15 +164,21 @@ layout, build a `LayoutDef` from `RowDef`s and `KeyDef`s (see `Layouts.symbols` 
 
 ## Privacy
 
-- Permissions: `VIBRATE`, and `INTERNET`, which is used only for GIF search (off by default). Without a Klipy key
-  and the GIF switch turned on, SakuriKey never makes a network request.
+- Permissions: `VIBRATE`, and `INTERNET`, which is used only for GIF search, the translator, AI rewrite and the
+  update check (GIFs and AI rewrite are off by default, and the update check runs only when you tap it).
+  Without them turned on, SakuriKey never makes a network request.
 - When you use the translator, the text you type or paste into it, the language pair and (optionally) your email
   go to `api.mymemory.translated.net`. Your normal typing is never sent.
 - When you use GIFs, requests go to `api.klipy.com` (search words, your key and a random on-device id) and
   the GIF files are downloaded from Klipy. Nothing you type anywhere else is sent.
+- When you use AI rewrite, the text you choose to rewrite and the style instruction go to
+  `generativelanguage.googleapis.com` with your own Gemini key. It is never used in password fields, and the key is
+  never included in backups.
+- Voice typing hands audio to your phone's own speech recognizer app; SakuriKey itself never records audio.
 - No analytics, crash reporting or third-party libraries.
-- Learned words (`files/user_words.tsv`), clipboard history (`files/clipboard.json`) and the background
-  photo (`files/background.jpg`) live in app-internal storage. Backups are disabled.
+- Learned words (`files/user_words.tsv`), clipboard history (`files/clipboard.json`), phrases (`files/snippets.json`)
+  and the background photo (`files/background.jpg`) live in app-internal storage. Android's own backup is disabled;
+  use Settings > Backup & sharing to make your own.
 - Clear learned words and clipboard history from the settings screen at any time.
 
 ## License

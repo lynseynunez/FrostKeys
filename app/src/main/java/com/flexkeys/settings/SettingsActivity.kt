@@ -26,6 +26,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import com.flexkeys.ai.GeminiClient
 import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.gif.KlipyClient
 import com.flexkeys.layout.Layouts
@@ -182,6 +183,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         list.addView(feedbackCard())
         list.addView(gifCard())
         list.addView(translatorCard())
+        list.addView(aiCard())
         list.addView(clipboardCard())
         list.addView(backupCard())
         list.addView(privacyCard())
@@ -636,6 +638,59 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { topMargin = dp(12f) })
         text("Without an email the free limit is about 5,000 characters a day; with one it is higher. The email is only sent along with translations.", secondary = true)
+    }
+
+    private fun LinearLayout.inputField(hint: String, initial: String, password: Boolean, onChange: (String) -> Unit) {
+        val field = EditText(context).apply {
+            this.hint = hint
+            setText(initial)
+            setTextColor(palette.text)
+            setHintTextColor(palette.secondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            inputType = InputType.TYPE_CLASS_TEXT or
+                if (password) InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            isSingleLine = true
+            setPadding(dp(18f), dp(12f), dp(18f), dp(12f))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(18f).toFloat()
+                setColor(palette.tonal)
+            }
+            // The real keyboard takes the preview's place while typing here.
+            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else View.VISIBLE }
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) = onChange(s?.toString()?.trim() ?: "")
+            })
+        }
+        addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(12f) })
+    }
+
+    private fun aiCard() = card("AI rewrite") {
+        toggle("AI rewrite", "Fix, reword or shorten text from the keyboard", prefs::aiEnabled)
+        text("Open it from the toolbar (the sparkle icon). It works on the text you select, or the whole field if nothing is selected, and is turned off in password fields.", secondary = true)
+        text("Uses Google Gemini with your own free key. Only the text you choose to rewrite is sent, and only when you tap a style. Your key stays on this phone and is never included in backups.", secondary = true)
+        buttons(Triple("Get a free key", false) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://aistudio.google.com/apikey")))
+            } catch (e: ActivityNotFoundException) {
+                toast("No browser found. Go to aistudio.google.com/apikey")
+            }
+        })
+        inputField("Paste your Gemini API key", prefs.geminiKey, password = true) { prefs.geminiKey = it }
+        inputField("Model", prefs.geminiModel, password = false) { prefs.geminiModel = it.ifEmpty { GeminiClient.DEFAULT_MODEL } }
+        buttons(Triple("Test my key", false) {
+            val key = prefs.geminiKey.trim()
+            if (key.isEmpty()) {
+                toast("Paste your key first")
+            } else {
+                toast("Testing…")
+                GeminiClient.rewrite(key, prefs.geminiModel, GeminiClient.Mode.FIX.instruction, "helo wrld, this is a tset") { text, error ->
+                    toast(if (text != null) "Key works: “$text”" else error ?: "That didn't work.")
+                }
+            }
+        })
     }
 
     private fun clipboardCard() = card("Clipboard") {

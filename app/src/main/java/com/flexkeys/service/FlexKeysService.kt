@@ -356,6 +356,15 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
             SuggestionStripView.Action.PHRASES -> togglePanel(KeyboardRootView.Panel.PHRASES)
+            SuggestionStripView.Action.AI -> when {
+                !prefs.aiEnabled || prefs.geminiKey.isBlank() ->
+                    Toast.makeText(this, "Turn on AI rewrite and add your Gemini key in SakuriKey settings", Toast.LENGTH_LONG).show()
+                passwordField -> Toast.makeText(this, "AI rewrite is off in password fields", Toast.LENGTH_SHORT).show()
+                else -> {
+                    root?.startAi(toolSource(wholeField = true))
+                    updateShiftState()
+                }
+            }
             SuggestionStripView.Action.FANCY -> {
                 root?.startFancy(toolSource(wholeField = false).text)
                 updateShiftState()

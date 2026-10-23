@@ -18,7 +18,7 @@ object BackupManager {
 
     private const val APP = "SakuriKey"
     private const val VERSION = 1
-    private val SECRET_KEYS = setOf(Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATE_EMAIL)
+    private val SECRET_KEYS = setOf(Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATE_EMAIL, Prefs.KEY_GEMINI_KEY)
 
     /** Extra data (like phrases) that other parts of the app add to a backup. */
     interface Section {
