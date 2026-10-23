@@ -128,6 +128,10 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
      * never makes the keyboard taller.
      */
     private class PanelFrame(context: Context) : FrameLayout(context) {
+        private companion object {
+            const val GIF_HEIGHT_FACTOR = 1.45f
+        }
+
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             val keys = getChildAt(0)
             if (keys == null) {
@@ -136,12 +140,16 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             }
             measureChild(keys, widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
             val width = MeasureSpec.getSize(widthMeasureSpec)
-            val height = keys.measuredHeight
+            var height = keys.measuredHeight
             for (i in 1 until childCount) {
-                getChildAt(i).measure(
+                val child = getChildAt(i)
+                // The GIF grid gets extra height: there is a lot to browse and scroll through.
+                val h = if (child is GifPanel) (keys.measuredHeight * GIF_HEIGHT_FACTOR).toInt() else keys.measuredHeight
+                child.measure(
                     MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
-                    MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY),
                 )
+                height = maxOf(height, h)
             }
             setMeasuredDimension(width, height)
         }
