@@ -263,7 +263,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun drawLabel(canvas: Canvas, key: Key, t: GlassTheme, v: RectF, cx: Float, cy: Float) {
         val label = labelFor(key.def)
         val single = label.codePointCount(0, label.length) == 1
-        textPaint.textSize = rowHeight * (if (single) 0.46f else 0.30f) * t.fontScale
+        textPaint.textSize = rowHeight * (if (single) 0.41f else 0.28f) * t.fontScale
         textPaint.color = t.textColor
         fitText(label, v.width() * 0.85f, textPaint)
         drawCentered(canvas, label, cx, cy, textPaint)

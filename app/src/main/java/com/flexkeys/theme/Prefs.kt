@@ -16,8 +16,8 @@ class Prefs private constructor(context: Context) {
     var numberRow by bool(KEY_NUMBER_ROW, false)
     /** Keyboard height in percent of the default. */
     var heightPercent by int(KEY_HEIGHT, 100)
-    var keySpacingDp by int(KEY_SPACING, 6)
-    var cornerRadiusDp by int(KEY_CORNER, 10)
+    var keySpacingDp by int(KEY_SPACING, 5)
+    var cornerRadiusDp by int(KEY_CORNER, 8)
     /** Label size in percent of the default. */
     var fontPercent by int(KEY_FONT, 100)
     var oneHanded by int(KEY_ONE_HANDED, ONE_HANDED_OFF)

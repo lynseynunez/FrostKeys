@@ -27,8 +27,10 @@ class GlassTheme(
 
     // Keys are flat translucent tiles on one frosted sheet, in the style of iOS 26 "Liquid Glass".
     val keyFill: Int =
-        if (dark) withAlpha(Color.WHITE, 0.07f + 0.36f * glassOpacity) else withAlpha(Color.WHITE, 0.28f + 0.6f * glassOpacity)
-    val specialKeyFill: Int = keyFill
+        if (dark) withAlpha(Color.WHITE, 0.12f + 0.34f * glassOpacity) else withAlpha(Color.WHITE, 0.40f + 0.5f * glassOpacity)
+    /** Shift, 123, return, backspace: a darker glass than the letter keys, as in modern glass keyboards. */
+    val specialKeyFill: Int =
+        if (dark) withAlpha(Color.BLACK, 0.16f + 0.22f * glassOpacity) else withAlpha(0xFF7D869A.toInt(), 0.18f + 0.22f * glassOpacity)
     val panelFill: Int = keyFill
     val pressedOverlay: Int = if (dark) withAlpha(Color.WHITE, 0.22f) else withAlpha(Color.WHITE, 0.6f)
     /** Tint over the blurred backdrop for the whole keyboard sheet. */
@@ -41,10 +43,10 @@ class GlassTheme(
     val accentSoft: Int = withAlpha(accent, 0.30f)
     val onAccent: Int = if (luminance(accent) > 0.6f) 0xFF15171C.toInt() else Color.WHITE
 
-    val borderTop: Int = withAlpha(Color.WHITE, if (dark) 0.16f else 0.55f)
-    val borderBottom: Int = withAlpha(Color.WHITE, if (dark) 0.02f else 0.12f)
-    val highlight: Int = withAlpha(Color.WHITE, if (dark) 0.06f else 0.18f)
-    val shadow: Int = withAlpha(Color.BLACK, if (dark) 0.10f else 0.04f)
+    val borderTop: Int = withAlpha(Color.WHITE, if (dark) 0.30f else 0.85f)
+    val borderBottom: Int = withAlpha(Color.WHITE, if (dark) 0.03f else 0.15f)
+    val highlight: Int = withAlpha(Color.WHITE, if (dark) 0.12f else 0.30f)
+    val shadow: Int = withAlpha(Color.BLACK, if (dark) 0.28f else 0.10f)
     val sheetRim: Int = withAlpha(Color.WHITE, if (dark) 0.22f else 0.7f)
     val divider: Int = withAlpha(textColor, 0.14f)
 
