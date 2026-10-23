@@ -99,7 +99,7 @@ class Prefs private constructor(context: Context) {
     var aiProvider by int(KEY_AI_PROVIDER, 1)
     /** The user's own free Groq API key. Stored only on this device and never backed up. */
     var groqKey by string(KEY_GROQ_KEY, "")
-    var groqModel by string(KEY_GROQ_MODEL, "llama-3.3-70b-versatile")
+    var groqModel by string(KEY_GROQ_MODEL, "openai/gpt-oss-20b")
     /** Actions shown in the top row, in order (see ToolbarItems). */
     var toolbarItems by string(KEY_TOOLBAR_ITEMS, "")
     /** The last fancy text style picked (index into FancyText.Style). */

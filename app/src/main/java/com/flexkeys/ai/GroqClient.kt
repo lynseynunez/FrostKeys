@@ -17,11 +17,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object GroqClient {
 
-    private class ApiException(message: String, val retry: Boolean = false) : IOException(message)
+    private class ApiException(message: String, val retry: Boolean = false, val unknownModel: Boolean = false) : IOException(message)
 
     private const val MAX_CHARS = 4000
     private const val TIMEOUT_MS = 50_000L
-    const val DEFAULT_MODEL = "llama-3.3-70b-versatile"
+    const val DEFAULT_MODEL = "openai/gpt-oss-20b"
     private const val FALLBACK_MODEL = "llama-3.1-8b-instant"
 
     private val pool = Executors.newSingleThreadExecutor()
@@ -36,14 +36,29 @@ object GroqClient {
         main.postDelayed({ finish(null, "Groq took too long to answer. Try again.") }, TIMEOUT_MS)
         pool.execute {
             try {
+                val k = key.trim()
+                val chosen = (resolved ?: model.trim().ifEmpty { DEFAULT_MODEL })
                 var last: ApiException? = null
-                for (m in listOf(model.trim().ifEmpty { DEFAULT_MODEL }, FALLBACK_MODEL).distinct()) {
+                var tried = mutableListOf<String>()
+                var next: String? = chosen
+                while (next != null && tried.size < 3) {
+                    val m: String = next
+                    tried.add(m)
+                    next = null
                     try {
-                        finish(call(key.trim(), m, instruction, text.take(MAX_CHARS)), null)
+                        finish(call(k, m, instruction, text.take(MAX_CHARS)), null)
+                        resolved = m
                         return@execute
                     } catch (e: ApiException) {
-                        if (!e.retry) throw e
                         last = e
+                        // A retired or misspelled model: ask Groq which ones exist and use the best.
+                        // An overloaded one: fall back to a small model.
+                        next = when {
+                            e.unknownModel -> pickModel(k, tried)
+                            e.retry -> FALLBACK_MODEL.takeIf { it !in tried }
+                            else -> null
+                        }
+                        if (next == null) throw e
                     }
                 }
                 throw last ?: ApiException("Groq is busy. Try again in a moment.")
@@ -59,11 +74,34 @@ object GroqClient {
         }
     }
 
+    @Volatile private var resolved: String? = null
+
+    /** Asks Groq which models this key can use and picks a good chat model that hasn't been tried. */
+    private fun pickModel(key: String, tried: List<String>): String? {
+        val c = URL("https://api.groq.com/openai/v1/models").openConnection() as HttpURLConnection
+        val ids = try {
+            c.connectTimeout = 10_000
+            c.readTimeout = 15_000
+            c.setRequestProperty("Authorization", "Bearer $key")
+            if (c.responseCode !in 200..299) return null
+            val data = JSONObject(c.inputStream.bufferedReader().use { it.readText() }).optJSONArray("data") ?: return null
+            (0 until data.length()).mapNotNull { data.optJSONObject(it)?.optString("id")?.takeIf { id -> id.isNotEmpty() } }
+        } finally {
+            c.disconnect()
+        }
+        val usable = ids.filter { id -> id !in tried && NOT_CHAT.none { id.contains(it, ignoreCase = true) } }
+        return PREFERRED.firstOrNull { it in usable } ?: usable.firstOrNull()
+    }
+
+    private val PREFERRED = listOf("openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant")
+    private val NOT_CHAT = listOf("whisper", "guard", "tts", "orpheus", "playai", "embed", "distil", "safeguard", "compound")
+
     private fun call(key: String, model: String, instruction: String, text: String): String {
         val body = JSONObject()
             .put("model", model)
             .put("temperature", 0.4)
-            .put("max_tokens", 1500)
+            .put("max_tokens", 2048)
+            .apply { if (model.startsWith("openai/gpt-oss")) put("reasoning_effort", "low") }
             .put("messages", JSONArray()
                 .put(JSONObject().put("role", "system").put("content", GeminiClient.SYSTEM))
                 .put(JSONObject().put("role", "user").put("content", "Instruction: $instruction\n\nText:\n$text")))
@@ -79,7 +117,11 @@ object GroqClient {
             c.outputStream.use { it.write(body.toByteArray()) }
             val code = c.responseCode
             val reply = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) throw ApiException(errorMessage(code, reply), retry = code == 429 || code >= 500)
+            if (code !in 200..299) throw ApiException(
+                errorMessage(code, reply),
+                retry = code == 429 || code >= 500,
+                unknownModel = code == 404 || (code == 400 && reply.contains("model", ignoreCase = true)),
+            )
             val out = JSONObject(reply).optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")
                 ?.optString("content").orEmpty().trim()
             if (out.isEmpty()) throw ApiException("Groq returned nothing. Try another style.")
@@ -100,7 +142,7 @@ object GroqClient {
             code == 404 || (code == 400 && detail.contains("model", ignoreCase = true)) ->
                 "Groq doesn't know that model. Check the model name in SakuriKey settings."
             code == 429 -> "Groq's free limit was reached. Try again in a minute."
-            detail.isNotEmpty() -> detail.take(120)
+            detail.isNotEmpty() -> "Groq: ${detail.take(140)}"
             else -> "Groq returned error $code."
         }
     }
