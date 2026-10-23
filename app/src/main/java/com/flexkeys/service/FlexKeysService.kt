@@ -18,6 +18,7 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import com.flexkeys.ai.AiClient
 import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.emoji.EmojiIndex
 import com.flexkeys.gif.GifItem
@@ -368,8 +369,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
             SuggestionStripView.Action.PHRASES -> togglePanel(KeyboardRootView.Panel.PHRASES)
             SuggestionStripView.Action.AI -> when {
-                !prefs.aiEnabled || prefs.geminiKey.isBlank() ->
-                    Toast.makeText(this, "Turn on AI rewrite and add your Gemini key in SakuriKey settings", Toast.LENGTH_LONG).show()
+                !prefs.aiEnabled || !AiClient.hasKey(prefs) ->
+                    Toast.makeText(this, "Turn on AI rewrite and add your API key in SakuriKey settings", Toast.LENGTH_LONG).show()
                 passwordField -> Toast.makeText(this, "AI rewrite is off in password fields", Toast.LENGTH_SHORT).show()
                 else -> {
                     root?.startAi(toolSource(wholeField = true))

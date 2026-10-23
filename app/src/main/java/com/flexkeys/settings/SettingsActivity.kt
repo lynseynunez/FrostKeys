@@ -26,7 +26,9 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import com.flexkeys.ai.AiClient
 import com.flexkeys.ai.GeminiClient
+import com.flexkeys.ai.GroqClient
 import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.gif.KlipyClient
 import com.flexkeys.layout.Layouts
@@ -670,8 +672,22 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private fun aiCard() = card("AI rewrite") {
         toggle("AI rewrite", "Fix, reword or shorten text from the keyboard", prefs::aiEnabled)
         text("Open it from the toolbar (the sparkle icon). It works on the text you select, or the whole field if nothing is selected, and is turned off in password fields.", secondary = true)
-        text("Uses Google Gemini with your own free key. Only the text you choose to rewrite is sent, and only when you tap a style. Your key stays on this phone and is never included in backups.", secondary = true)
-        buttons(Triple("Get a free key", false) {
+        text("Uses a free AI service with your own key. Groq is fast and reliable; Gemini is the alternative. Only the text you choose to rewrite is sent, and only when you tap a style. Your key stays on this phone and is never included in backups.", secondary = true)
+        segmented("Service", AiClient.providerNames, if (prefs.aiProvider == AiClient.GEMINI) 1 else 0) {
+            prefs.aiProvider = if (it == 1) AiClient.GEMINI else AiClient.GROQ
+        }
+        text("Groq", topPad = 14f)
+        buttons(Triple("Get a free Groq key", false) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://console.groq.com/keys")))
+            } catch (e: ActivityNotFoundException) {
+                toast("No browser found. Go to console.groq.com/keys")
+            }
+        })
+        inputField("Paste your Groq API key", prefs.groqKey, password = true) { prefs.groqKey = it }
+        inputField("Groq model", prefs.groqModel, password = false) { prefs.groqModel = it.ifEmpty { GroqClient.DEFAULT_MODEL } }
+        text("Gemini", topPad = 14f)
+        buttons(Triple("Get a free Gemini key", false) {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://aistudio.google.com/apikey")))
             } catch (e: ActivityNotFoundException) {
@@ -679,15 +695,14 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             }
         })
         inputField("Paste your Gemini API key", prefs.geminiKey, password = true) { prefs.geminiKey = it }
-        inputField("Model", prefs.geminiModel, password = false) { prefs.geminiModel = it.ifEmpty { GeminiClient.DEFAULT_MODEL } }
-        buttons(Triple("Test my key", false) {
-            val key = prefs.geminiKey.trim()
-            if (key.isEmpty()) {
-                toast("Paste your key first")
+        inputField("Gemini model", prefs.geminiModel, password = false) { prefs.geminiModel = it.ifEmpty { GeminiClient.DEFAULT_MODEL } }
+        buttons(Triple("Test the selected service", false) {
+            if (!AiClient.hasKey(prefs)) {
+                toast("Paste the key for the selected service first")
             } else {
                 toast("Testing…")
-                GeminiClient.rewrite(key, prefs.geminiModel, GeminiClient.Mode.FIX.instruction, "helo wrld, this is a tset") { text, error ->
-                    toast(if (text != null) "Key works: “$text”" else error ?: "That didn't work.")
+                AiClient.rewrite(prefs, GeminiClient.Mode.FIX.instruction, "helo wrld, this is a tset") { text, error ->
+                    toast(if (text != null) "It works: “$text”" else error ?: "That didn't work.")
                 }
             }
         })

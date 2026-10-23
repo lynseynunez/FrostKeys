@@ -5,7 +5,7 @@ background photo, real-time blur on Android 12+, and full control over size, spa
 Everything stays on your device. There are no analytics. The only features that use the internet are
 **GIF search** (off until you turn it on and add your own free Klipy API key), the **translator**
 (only the text you type or paste into it) and **AI rewrite** (off until you turn it on and add your own free
-Gemini key; only the text you choose to rewrite).
+Groq or Gemini key; only the text you choose to rewrite).
 
 ## Features
 
@@ -37,7 +37,7 @@ Gemini key; only the text you choose to rewrite).
 - Tap the four dots at the top left for a tools menu; use Edit there to choose which tools show in the top row, and hold and drag to reorder them
 - Kaomoji and symbols tabs in the emoji panel
 - Fancy text: 16 styles (bold, italic, script, gothic, circled, small caps, strikethrough...) with a live preview
-- AI rewrite (optional, bring your own free Gemini key): fix, friendlier, professional, shorter, longer, casual, add emoji, rephrase, or your own instruction
+- AI rewrite (optional, bring your own free Groq or Gemini key): fix, friendlier, professional, shorter, longer, casual, add emoji, rephrase, or your own instruction
 
 **Liquid glass theme**
 - Keys and the suggestion bar are frosted glass panels with soft rim light, highlights and press animations
@@ -173,7 +173,7 @@ layout, build a `LayoutDef` from `RowDef`s and `KeyDef`s (see `Layouts.symbols` 
 - When you use GIFs, requests go to `api.klipy.com` (search words, your key and a random on-device id) and
   the GIF files are downloaded from Klipy. Nothing you type anywhere else is sent.
 - When you use AI rewrite, the text you choose to rewrite and the style instruction go to
-  `generativelanguage.googleapis.com` with your own Gemini key. It is never used in password fields, and the key is
+  `api.groq.com` or `generativelanguage.googleapis.com` (your choice) with your own key. It is never used in password fields, and the key is
   never included in backups.
 - Voice typing hands audio to your phone's own speech recognizer app; SakuriKey itself never records audio.
 - No analytics, crash reporting or third-party libraries.

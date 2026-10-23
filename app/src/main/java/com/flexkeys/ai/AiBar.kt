@@ -202,8 +202,8 @@ class AiBar(
             render()
             return
         }
-        if (!prefs.aiEnabled || prefs.geminiKey.isBlank()) {
-            status = "Turn on AI rewrite and add your free Gemini key in SakuriKey settings."
+        if (!prefs.aiEnabled || !AiClient.hasKey(prefs)) {
+            status = "Turn on AI rewrite and add your free API key in SakuriKey settings."
             result = ""
             render()
             return
@@ -212,7 +212,7 @@ class AiBar(
         status = "Writing…"
         result = ""
         render()
-        GeminiClient.rewrite(prefs.geminiKey, prefs.geminiModel, instruction, source) { text, error ->
+        AiClient.rewrite(prefs, instruction, source) { text, error ->
             if (gen != generation) return@rewrite
             status = error
             result = text ?: ""

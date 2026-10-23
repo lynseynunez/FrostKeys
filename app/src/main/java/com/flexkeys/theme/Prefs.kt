@@ -95,6 +95,11 @@ class Prefs private constructor(context: Context) {
     /** The user's own free Gemini API key. Stored only on this device and never backed up. */
     var geminiKey by string(KEY_GEMINI_KEY, "")
     var geminiModel by string(KEY_GEMINI_MODEL, "gemini-flash-latest")
+    /** Which AI service rewrites text: 0 Gemini, 1 Groq (see AiClient). */
+    var aiProvider by int(KEY_AI_PROVIDER, 1)
+    /** The user's own free Groq API key. Stored only on this device and never backed up. */
+    var groqKey by string(KEY_GROQ_KEY, "")
+    var groqModel by string(KEY_GROQ_MODEL, "llama-3.3-70b-versatile")
     /** Actions shown in the top row, in order (see ToolbarItems). */
     var toolbarItems by string(KEY_TOOLBAR_ITEMS, "")
     /** The last fancy text style picked (index into FancyText.Style). */
@@ -175,6 +180,9 @@ class Prefs private constructor(context: Context) {
         const val KEY_AI_ENABLED = "ai_enabled"
         const val KEY_GEMINI_KEY = "gemini_key"
         const val KEY_GEMINI_MODEL = "gemini_model"
+        const val KEY_AI_PROVIDER = "ai_provider"
+        const val KEY_GROQ_KEY = "groq_key"
+        const val KEY_GROQ_MODEL = "groq_model"
 
         const val THEME_AUTO = 0
         const val THEME_LIGHT = 1
