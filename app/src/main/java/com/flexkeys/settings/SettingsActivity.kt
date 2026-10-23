@@ -33,6 +33,7 @@ import android.widget.TextView
 import android.widget.Toast
 import com.flexkeys.layout.Layouts
 import com.flexkeys.service.Feedback
+import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
@@ -390,8 +391,25 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     }
 
     private fun typingCard() = card("Typing") {
+        toggle("Suggestions", "Show completions and next-word predictions above the keys", prefs::suggestions)
+        toggle("Autocorrect", "Fix typos when you press space. Backspace right after undoes it.", prefs::autocorrect)
+        toggle("Learn my words", "Remember words you type to improve suggestions (on-device only)", prefs::learnWords)
         toggle("Auto-capitalization", null, prefs::autoCapitalize)
         toggle("Double-space period", "Tap space twice to insert \". \"", prefs::doubleSpacePeriod)
+        buttons("Clear learned words" to {
+            confirm("Forget every word FlexKeys has learned from your typing?") {
+                SuggestionEngine.get(this@SettingsActivity).user.clear()
+                toast("Learned words cleared")
+            }
+        })
+    }
+
+    private fun confirm(message: String, onConfirm: () -> Unit) {
+        AlertDialog.Builder(this)
+            .setMessage(message)
+            .setPositiveButton("OK") { _, _ -> onConfirm() }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun feedbackCard() = card("Sound & vibration") {

@@ -5,10 +5,12 @@ import android.graphics.Canvas
 import android.graphics.PointF
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.flexkeys.keyboard.KeyboardView
+import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.GlassBackdrop
 import com.flexkeys.theme.GlassPainter
@@ -25,14 +27,26 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     override val backdrop = GlassBackdrop().apply { setTheme(initialTheme) }
     override val painter = GlassPainter(initialTheme)
 
+    val strip = SuggestionStripView(context)
     val keyboardView = KeyboardView(context)
+
+    /** Holds the keyboard row and, on top of it, the emoji and clipboard panels. */
+    private val content = FrameLayout(context).apply { clipChildren = false; clipToPadding = false }
+    private val keyboardRow = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        clipChildren = false
+        clipToPadding = false
+    }
 
     init {
         orientation = VERTICAL
         setWillNotDraw(false)
         clipChildren = false
         clipToPadding = false
-        addView(keyboardView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        addView(strip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        addView(content, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        content.addView(keyboardRow, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        keyboardRow.addView(keyboardView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
     }
 
     fun applyTheme(newTheme: GlassTheme) {
@@ -40,6 +54,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         painter.theme = newTheme
         backdrop.setTheme(newTheme)
         keyboardView.onThemeChanged()
+        strip.requestLayout()
         invalidateTree(this)
     }
 
