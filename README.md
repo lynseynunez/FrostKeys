@@ -34,7 +34,7 @@ Gemini key; only the text you choose to rewrite).
 - Emoji suggestions while typing ("pizza" offers 🍕)
 - Clipboard history with pin, delete and clear (local only; items password managers mark as sensitive are skipped), optional auto-delete after an hour, day or week
 - Verification codes you copy from a message show above the keys for one-tap paste and are forgotten after 10 minutes
-- Tap the four dots at the top left for a tools menu; use Edit there to choose which tools show in the top row and in what order
+- Tap the four dots at the top left for a tools menu; use Edit there to choose which tools show in the top row, and hold and drag to reorder them
 - Kaomoji and symbols tabs in the emoji panel
 - Fancy text: 16 styles (bold, italic, script, gothic, circled, small caps, strikethrough...) with a live preview
 - AI rewrite (optional, bring your own free Gemini key): fix, friendlier, professional, shorter, longer, casual, add emoji, rephrase, or your own instruction

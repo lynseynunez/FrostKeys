@@ -19,6 +19,7 @@ import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassHost
 import com.flexkeys.ui.ToolBar
+import com.flexkeys.ui.ToolSource
 import com.flexkeys.ui.findGlassHost
 
 /**
@@ -28,6 +29,7 @@ import com.flexkeys.ui.findGlassHost
  */
 class AiBar(
     context: Context,
+    private val sourceProvider: () -> ToolSource,
     private val onReplace: (text: String, wholeField: Boolean) -> Unit,
     private val onClose: () -> Unit,
 ) : LinearLayout(context), ToolBar {
@@ -35,6 +37,10 @@ class AiBar(
     /** The custom instruction typed on the keys. */
     override var query = ""
         private set
+
+    /** Only while writing a custom instruction does typing on the keys go into the bar. */
+    private var instructionMode = false
+    override val capturesTyping get() = instructionMode
 
     private var source = ""
     private var wholeField = true
@@ -47,7 +53,7 @@ class AiBar(
     private var host: GlassHost? = null
 
     private val modes = GeminiClient.Mode.values()
-    private val chips = modes.map { chip(it.label) }
+    private val chips = modes.map { chip(it.label) } + chip("Custom")
     private val chipScroll = HorizontalScrollView(context)
     private val sourceView = TextView(context)
     private val instructionView = TextView(context)
@@ -76,7 +82,7 @@ class AiBar(
         header.addView(GlassButton(context, icon = Icon.ARROW_LEFT).apply { onClick = { onClose() } }, LayoutParams(dp(44f), dp(40f)))
         val row = LinearLayout(context).apply { orientation = HORIZONTAL }
         chips.forEachIndexed { i, c ->
-            c.setOnClickListener { run(i) }
+            c.setOnClickListener { if (i < modes.size) run(i) else toggleInstruction() }
             row.addView(c, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36f)).apply { marginEnd = dp(6f) })
         }
         chipScroll.isHorizontalScrollBarEnabled = false
@@ -128,6 +134,21 @@ class AiBar(
         render()
     }
 
+    /** Re-reads the field, so text typed (or selected) after opening is picked up. */
+    fun refreshSource() {
+        val s = sourceProvider()
+        source = s.text
+        wholeField = !s.isSelection
+        render()
+    }
+
+    private fun toggleInstruction() {
+        instructionMode = !instructionMode
+        if (!instructionMode) query = ""
+        selectedMode = if (instructionMode) modes.size else -1
+        render()
+    }
+
     override fun restyle() {
         val t = host?.theme ?: return
         fun pill(color: Int, radius: Float) = GradientDrawable().apply { cornerRadius = radius; setColor(color) }
@@ -143,6 +164,7 @@ class AiBar(
     override fun reset() {
         generation++
         query = ""
+        instructionMode = false
         source = ""
         result = ""
         status = null
@@ -165,10 +187,15 @@ class AiBar(
 
     private fun ready() = result.isNotEmpty() && status == null
 
-    private fun run(index: Int) = send(modes[index].instruction, index)
+    private fun run(index: Int) {
+        instructionMode = false
+        query = ""
+        send(modes[index].instruction, index)
+    }
 
     private fun send(instruction: String, modeIndex: Int) {
         selectedMode = modeIndex
+        refreshSource()
         if (source.isBlank()) {
             status = "Type something in the field first, or select the text to rewrite."
             result = ""
@@ -198,12 +225,13 @@ class AiBar(
         val secondary = t?.secondaryTextColor ?: 0x99000000.toInt()
         val primary = t?.textColor ?: 0xFF000000.toInt()
         sourceView.text = when {
-            source.isBlank() -> "Nothing to rewrite yet"
+            source.isBlank() -> "Type in the field, or select text, then pick a style"
             wholeField -> "Whole field: $source"
             else -> "Selected: $source"
         }
         sourceView.setTextColor(secondary)
-        instructionView.text = if (query.isEmpty()) "Or type your own instruction" else query
+        instructionView.visibility = if (instructionMode) VISIBLE else GONE
+        instructionView.text = if (query.isEmpty()) "Type your instruction on the keys, then return" else query
         instructionView.setTextColor(if (query.isEmpty()) secondary else primary)
         resultView.text = status ?: result.ifEmpty { "The rewrite appears here" }
         resultView.setTextColor(if (status != null || result.isEmpty()) secondary else primary)

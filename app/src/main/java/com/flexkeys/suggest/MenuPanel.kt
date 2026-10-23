@@ -40,6 +40,7 @@ class MenuPanel(
     private val grid = GridView(context)
     private val adapter = ActionAdapter()
     private var editing = false
+    private var dragging: Action? = null
 
     private fun chip() = TextView(context).apply {
         gravity = Gravity.CENTER
@@ -82,6 +83,13 @@ class MenuPanel(
                 listener.onMenuAction(action)
             }
         }
+        // In edit mode, holding a tile picks it up; dropping it on another tile moves it there.
+        grid.setOnItemLongClickListener { _, view, position, _ ->
+            if (!editing) return@setOnItemLongClickListener false
+            val a = adapter.items[position]
+            dragging = a
+            view.startDragAndDrop(android.content.ClipData.newPlainText("tool", a.name), View.DragShadowBuilder(view), null, 0)
+        }
         addView(grid, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
     }
 
@@ -95,7 +103,7 @@ class MenuPanel(
     private fun refresh() {
         val t = host?.theme
         title.setTextColor(t?.textColor ?: Color.BLACK)
-        title.text = if (editing) "Tap to show or hide in the top row" else "Tools"
+        title.text = if (editing) "Tap to show or hide. Hold and drag to reorder" else "Tools"
         resetChip.visibility = if (editing) View.VISIBLE else View.GONE
         editChip.text = if (editing) "Done" else "Edit"
         for (c in listOf(resetChip, editChip)) {
@@ -124,6 +132,7 @@ class MenuPanel(
             val action = items[position]
             val order = ToolbarItems.parse(prefs.toolbarItems).indexOf(action)
             tile.bind(action, if (editing) order + 1 else 0, editing && order < 0, host?.theme)
+            tile.action = action
             return tile
         }
     }
@@ -132,8 +141,29 @@ class MenuPanel(
     private inner class Tile(context: Context) : LinearLayout(context) {
         private val icon = IconView(context)
         private val label = TextView(context)
+        var action: Action? = null
 
         init {
+            setOnDragListener { _, e ->
+                when (e.action) {
+                    android.view.DragEvent.ACTION_DRAG_STARTED -> true
+                    android.view.DragEvent.ACTION_DROP -> {
+                        val moved = dragging
+                        val target = action
+                        if (moved != null && target != null) {
+                            prefs.toolbarItems = ToolbarItems.format(
+                                ToolbarItems.move(ToolbarItems.parse(prefs.toolbarItems), moved, target))
+                            changed()
+                        }
+                        true
+                    }
+                    android.view.DragEvent.ACTION_DRAG_ENDED -> {
+                        dragging = null
+                        true
+                    }
+                    else -> true
+                }
+            }
             orientation = VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = android.widget.AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78f))

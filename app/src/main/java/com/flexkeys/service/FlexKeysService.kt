@@ -265,6 +265,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
 
     private fun updateSuggestions() {
         val r = root ?: return
+        r.refreshTools()
         val strip = r.strip
         val ic = currentInputConnection
         suggestions = if (ic == null || r.panel != KeyboardRootView.Panel.NONE) {

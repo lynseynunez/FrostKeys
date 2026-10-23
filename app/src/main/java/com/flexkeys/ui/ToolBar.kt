@@ -6,6 +6,8 @@ package com.flexkeys.ui
  */
 interface ToolBar {
     val query: String
+    /** False when typing on the keys should go to the text field as usual. */
+    val capturesTyping: Boolean get() = true
     fun setQuery(q: String)
     /** The return key was pressed. */
     fun onEnter()

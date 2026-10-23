@@ -89,6 +89,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     private val aiBar = AiBar(
         context,
+        sourceProvider = { panelListener?.toolSource(wholeField = true) ?: ToolSource("", false) },
         onReplace = { text, whole ->
             panelListener?.onToolReplace(text, whole)
             endTool()
@@ -279,6 +280,11 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         fancyBar.start(text)
     }
 
+    /** Called after the text field changed, so AI rewrite can pick up what was typed. */
+    fun refreshTools() {
+        if (activeTool === aiBar) aiBar.refreshSource()
+    }
+
     /** Opens AI rewrite on [source]: the selection, or the whole field when nothing is selected. */
     fun startAi(source: ToolSource) {
         startTool(aiBar)
@@ -332,7 +338,11 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     /** While searching emoji, typed keys edit the query. Returns true if the key was used. */
     fun routeKeyToSearch(key: KeyDef, shifted: Boolean): Boolean {
-        activeTool?.let { return routeKeyToTool(it, key, shifted) }
+        activeTool?.let {
+            if (it.capturesTyping) return routeKeyToTool(it, key, shifted)
+            if (key.type == KeyType.EMOJI) endTool()
+            return false
+        }
         if (!emojiSearching && !gifSearching) return false
         val q = emojiSearchBar.query
         when (key.type) {
@@ -359,6 +369,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     /** Popup characters while searching emoji. */
     fun routeTextToSearch(text: String): Boolean {
         activeTool?.let {
+            if (!it.capturesTyping) return false
             it.setQuery(it.query + text)
             return true
         }
