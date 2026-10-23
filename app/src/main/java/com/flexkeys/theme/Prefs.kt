@@ -53,6 +53,13 @@ class Prefs private constructor(context: Context) {
     // ---- emoji ----
     var recentEmoji by string(KEY_RECENT_EMOJI, "")
     var skinTones by string(KEY_SKIN_TONES, "")
+
+    // ---- GIFs (the only feature that uses the internet; off until the user turns it on) ----
+    var gifsEnabled by bool(KEY_GIFS, false)
+    /** The user's own free Klipy API key. Stored only on this device. */
+    var klipyKey by string(KEY_KLIPY_KEY, "")
+    /** Random id Klipy asks for; generated on the device, not linked to anything. */
+    var klipyCustomerId by string(KEY_KLIPY_CUSTOMER, "")
     /** Comma and period keys next to the space bar, as on Gboard. */
     var punctuationKeys by bool(KEY_PUNCTUATION, true)
 
@@ -99,6 +106,9 @@ class Prefs private constructor(context: Context) {
         const val KEY_CLIPBOARD = "clipboard_history"
         const val KEY_RECENT_EMOJI = "recent_emoji"
         const val KEY_SKIN_TONES = "skin_tones"
+        const val KEY_GIFS = "gifs_enabled"
+        const val KEY_KLIPY_KEY = "klipy_key"
+        const val KEY_KLIPY_CUSTOMER = "klipy_customer_id"
         const val KEY_PUNCTUATION = "punctuation_keys"
 
         const val ONE_HANDED_OFF = 0

@@ -9,7 +9,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, ONE_HANDED, KEYBOARD, PIN, PIN_ON, TRASH, SWAP, EXPAND, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, ARROW_UP, ARROW_DOWN, EDIT,
+    MENU, HIDE, GLOBE, ARROW_UP, ARROW_DOWN, EDIT, GIF,
 }
 
 object Icons {
@@ -84,6 +84,20 @@ object Icons {
                 line(0f, -0.36f, 0f, 0.36f)
                 line(-0.16f, -0.4f, 0.16f, -0.4f)
                 line(-0.16f, 0.4f, 0.16f, 0.4f)
+            }
+            Icon.GIF -> {
+                oval.set(x(-0.46f), y(-0.28f), x(0.46f), y(0.28f))
+                canvas.drawRoundRect(oval, s * 0.1f, s * 0.1f, paint)
+                val oldStyle = paint.style
+                val oldSize = paint.textSize
+                paint.style = Paint.Style.FILL
+                paint.textSize = s * 0.3f
+                paint.textAlign = Paint.Align.CENTER
+                paint.isFakeBoldText = true
+                canvas.drawText("GIF", x(0f), y(0.1f), paint)
+                paint.isFakeBoldText = false
+                paint.textSize = oldSize
+                paint.style = oldStyle
             }
             Icon.SEARCH -> {
                 circle(-0.08f, -0.08f, 0.27f)

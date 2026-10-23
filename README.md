@@ -2,7 +2,8 @@
 
 A highly customizable Android keyboard with a **liquid glass** look: frosted keys over your own
 background photo, real-time blur on Android 12+, and full control over size, spacing, shape and color.
-Everything stays on your device: the app has **no internet permission and no analytics**.
+Everything stays on your device. There are no analytics, and the only feature that uses the internet is
+**GIF search**, which is off until you turn it on and add your own free Klipy API key.
 
 ## Features
 
@@ -21,6 +22,7 @@ Everything stays on your device: the app has **no internet permission and no ana
 - No learning in password fields or in apps that ask for incognito input
 
 **Panels**
+- GIF search powered by [Klipy](https://klipy.com) (bring your own free API key): trending, categories, search, and sending GIFs into apps that support them
 - Emoji panel with categories, recents, offline emoji search and skin tones (long-press an emoji; your choice is remembered)
 - Emoji suggestions while typing ("pizza" offers 🍕)
 - Text editing panel: cursor keys, select, select all, copy, cut, paste, start/end
@@ -126,7 +128,10 @@ layout, build a `LayoutDef` from `RowDef`s and `KeyDef`s (see `Layouts.symbols` 
 
 ## Privacy
 
-- No `INTERNET` permission; the only permission is `VIBRATE`.
+- Permissions: `VIBRATE`, and `INTERNET`, which is used only for GIF search (off by default). Without a Klipy key
+  and the GIF switch turned on, FlexKeys never makes a network request.
+- When you use GIFs, requests go to `api.klipy.com` (search words, your key and a random on-device id) and
+  the GIF files are downloaded from Klipy. Nothing you type anywhere else is sent.
 - No analytics, crash reporting or third-party libraries.
 - Learned words (`files/user_words.tsv`), clipboard history (`files/clipboard.json`) and the background
   photo (`files/background.jpg`) live in app-internal storage. Backups are disabled.

@@ -3,6 +3,7 @@ package com.flexkeys.settings
 import android.os.SystemClock
 import android.widget.TextView
 import com.flexkeys.edit.EditAction
+import com.flexkeys.gif.GifItem
 import com.flexkeys.keyboard.KeyboardState
 import com.flexkeys.keyboard.KeyboardView
 import com.flexkeys.layout.KeyDef
@@ -131,6 +132,11 @@ class PreviewController(
     override fun onEditAction(action: EditAction, selecting: Boolean) {
         if (action == EditAction.BACKSPACE) onPanelBackspace()
     }
+
+    // GIFs need a real text field to send into, so the preview does not offer them.
+    override fun onGifPicked(item: GifItem) = Unit
+    override fun onGifSearchRequested() = Unit
+    override fun onOpenSettings() = Unit
 
     override fun onSuggestionPicked(index: Int, text: String) = Unit
     override fun onSuggestionLongPressed(text: String) = Unit

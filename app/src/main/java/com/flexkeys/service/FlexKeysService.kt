@@ -1,11 +1,13 @@
 package com.flexkeys.service
 
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.icu.text.BreakIterator
 import android.inputmethodservice.InputMethodService
+import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
 import android.text.InputType
@@ -13,11 +15,15 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.edit.EditAction
 import com.flexkeys.emoji.EmojiIndex
+import com.flexkeys.gif.GifItem
+import com.flexkeys.gif.GifLoader
+import com.flexkeys.gif.GifProvider
 import com.flexkeys.keyboard.EnterAction
 import com.flexkeys.keyboard.KeyboardState
 import com.flexkeys.keyboard.KeyboardView
@@ -301,18 +307,53 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onAction(action: SuggestionStripView.Action) {
         feedback.keyPress(KeyType.CHAR)
         when (action) {
-            SuggestionStripView.Action.SETTINGS -> {
-                val intent = Intent(this, SettingsActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                requestHideSelf(0)
-                startActivity(intent)
-            }
+            SuggestionStripView.Action.SETTINGS -> openSettings()
             SuggestionStripView.Action.HIDE -> requestHideSelf(0)
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.EDIT -> togglePanel(KeyboardRootView.Panel.EDIT)
+            SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
             SuggestionStripView.Action.ONE_HANDED -> {
                 prefs.oneHanded = if (prefs.oneHanded == Prefs.ONE_HANDED_OFF) Prefs.ONE_HANDED_RIGHT else Prefs.ONE_HANDED_OFF
+            }
+        }
+    }
+
+    private fun openSettings() {
+        val intent = Intent(this, SettingsActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        requestHideSelf(0)
+        startActivity(intent)
+    }
+
+    override fun onOpenSettings() = openSettings()
+
+    override fun onGifSearchRequested() {
+        feedback.keyPress(KeyType.CHAR)
+        root?.startGifSearch()
+        updateShiftState()
+    }
+
+    /** Downloads the GIF and hands it to the app through the keyboard image API; falls back to a link. */
+    override fun onGifPicked(item: GifItem) {
+        feedback.keyPress(KeyType.CHAR)
+        val app = applicationContext
+        GifLoader.downloadForSending(app, item.sendUrl) { file ->
+            val ic = currentInputConnection
+            if (file == null || ic == null) {
+                Toast.makeText(app, "Couldn't download that GIF", Toast.LENGTH_SHORT).show()
+                return@downloadForSending
+            }
+            commitPending(ic)
+            val info = InputContentInfo(
+                GifProvider.uriFor(app, file),
+                ClipDescription(item.title ?: "GIF", arrayOf("image/gif")),
+                Uri.parse(item.sendUrl),
+            )
+            val sent = ic.commitContent(info, InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)
+            if (!sent) {
+                ic.commitText(item.sendUrl + " ", 1)
+                Toast.makeText(app, "This app can't receive GIFs, so a link was inserted", Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Haptic feedback on key presses. No network permission: everything stays on-device. -->
+    <!-- Haptic feedback on key presses. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Used only for GIF search, and only after the user turns it on and adds a Klipy key. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="false"
@@ -26,6 +28,12 @@
             android:name=".settings.LearnedWordsActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <provider
+            android:name=".gif.GifProvider"
+            android:authorities="${applicationId}.gifs"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <service
             android:name=".service.FlexKeysService"

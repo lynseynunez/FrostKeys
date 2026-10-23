@@ -27,6 +27,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.flexkeys.clipboard.ClipboardStore
+import com.flexkeys.gif.KlipyClient
 import com.flexkeys.layout.Layouts
 import com.flexkeys.service.Feedback
 import com.flexkeys.suggest.SuggestionEngine
@@ -182,6 +183,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         list.addView(layoutCard())
         list.addView(typingCard())
         list.addView(feedbackCard())
+        list.addView(gifCard())
         list.addView(clipboardCard())
         list.addView(privacyCard())
 
@@ -520,6 +522,63 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Sound volume", 0, 100, prefs::soundVolume) { "$it%" }
     }
 
+    private fun gifCard() = card("GIFs") {
+        toggle("GIF search", "Uses the internet, only when you open the GIF panel", prefs::gifsEnabled)
+        text("To use GIFs you need a free API key from Klipy:", secondary = true)
+        text("1. Open the Klipy developer page below and sign up.", secondary = true)
+        text("2. Create an app or platform, then create an API key.", secondary = true)
+        text("3. Copy the key and paste it here.", secondary = true)
+        buttons(Triple("Get a free Klipy key", true) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://klipy.com/api-overview")))
+            } catch (e: ActivityNotFoundException) {
+                toast("No browser found. Go to klipy.com/api-overview")
+            }
+        })
+        val field = EditText(context).apply {
+            hint = "Paste your Klipy API key"
+            setText(prefs.klipyKey)
+            setTextColor(palette.text)
+            setHintTextColor(palette.secondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            isSingleLine = true
+            setPadding(dp(18f), dp(12f), dp(18f), dp(12f))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(18f).toFloat()
+                setColor(palette.tonal)
+            }
+            // The real keyboard takes the preview's place while typing here.
+            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else View.VISIBLE }
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    prefs.klipyKey = s?.toString()?.trim() ?: ""
+                }
+            })
+        }
+        addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(12f) })
+        buttons(Triple("Test my key", false) {
+            val key = prefs.klipyKey.trim()
+            if (key.isEmpty()) {
+                toast("Paste your key first")
+            } else {
+                toast("Testing…")
+                var id = prefs.klipyCustomerId
+                if (id.isEmpty()) {
+                    id = java.util.UUID.randomUUID().toString()
+                    prefs.klipyCustomerId = id
+                }
+                KlipyClient.fetch(this@SettingsActivity, key, id, "", 1) { page, error ->
+                    toast(if (page != null) "Key works. ${page.items.size} GIFs loaded." else error ?: "That didn't work.")
+                }
+            }
+        })
+        text("The key stays on this phone and is only sent to Klipy when you use GIFs.", secondary = true)
+    }
+
     private fun clipboardCard() = card("Clipboard") {
         toggle("Clipboard history", "Paste recent copies from the keyboard", prefs::clipboardHistory)
         text("Items password managers mark as sensitive are never saved.", secondary = true)
@@ -533,8 +592,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun privacyCard() = card("Privacy") {
         text(
-            "FlexKeys has no internet permission and no analytics. Learned words, clipboard history " +
-                "and your photo never leave this phone.",
+            "FlexKeys has no analytics. The only thing that uses the internet is GIF search, and only " +
+                "if you turn it on. Learned words, clipboard history and your photo never leave this phone.",
             secondary = true,
         )
         buttons(Triple("Reset all settings", false) {

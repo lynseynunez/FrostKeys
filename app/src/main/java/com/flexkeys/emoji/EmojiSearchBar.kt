@@ -27,6 +27,8 @@ class EmojiSearchBar(
 
     var query = ""
         private set
+    /** GIF mode: only the query box (results appear in the GIF panel after pressing return). */
+    private var gifMode = false
     private val prefs = Prefs.get(context)
     private val queryView = TextView(context)
     private val results = LinearLayout(context)
@@ -67,6 +69,12 @@ class EmojiSearchBar(
         render()
     }
 
+    fun setGifMode(on: Boolean) {
+        gifMode = on
+        scroll.visibility = if (on) GONE else VISIBLE
+        render()
+    }
+
     private fun render() {
         val t = host?.theme
         queryView.background = GradientDrawable().apply {
@@ -74,8 +82,9 @@ class EmojiSearchBar(
             setColor(t?.keyFill ?: 0x33FFFFFF)
         }
         queryView.setTextColor(if (query.isEmpty()) t?.secondaryTextColor ?: 0x99000000.toInt() else t?.textColor ?: 0xFF000000.toInt())
-        queryView.text = if (query.isEmpty()) "Search emoji" else query
+        queryView.text = if (query.isEmpty()) (if (gifMode) "Search GIFs, then press return" else "Search emoji") else query
         results.removeAllViews()
+        if (gifMode) return
         val found = if (query.isBlank()) EmojiIndex.recents(prefs) else EmojiIndex.search(query)
         for (emoji in found) {
             results.addView(TextView(context).apply {
