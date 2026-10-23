@@ -87,16 +87,15 @@ class TranslateBar(
         inputView.ellipsize = android.text.TextUtils.TruncateAt.START
         body.addView(inputView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { topMargin = dp(6f) })
-        val resultRow = LinearLayout(context).apply { orientation = HORIZONTAL }
         resultView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-        resultView.setPadding(dp(10f), dp(8f), dp(10f), dp(8f))
+        resultView.setPadding(dp(10f), dp(6f), dp(10f), dp(6f))
         resultScroll.addView(resultView)
-        resultRow.addView(resultScroll, LayoutParams(0, dp(66f), 1f))
-        val buttons = LinearLayout(context).apply { orientation = VERTICAL }
-        buttons.addView(insertChip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(32f)))
-        buttons.addView(copyChip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(32f)).apply { topMargin = dp(2f) })
-        resultRow.addView(buttons, LayoutParams(dp(92f), ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6f) })
-        body.addView(resultRow, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        body.addView(resultScroll, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54f)).apply { topMargin = dp(4f) })
+        // Copy and Insert side by side under the result.
+        val actions = LinearLayout(context).apply { orientation = HORIZONTAL }
+        actions.addView(copyChip, LayoutParams(0, dp(34f), 1f))
+        actions.addView(insertChip, LayoutParams(0, dp(34f), 1f).apply { marginStart = dp(6f) })
+        body.addView(actions, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { topMargin = dp(4f) })
         addView(body)
 
@@ -131,10 +130,10 @@ class TranslateBar(
         val t = host?.theme ?: return
         fun pill(color: Int, radius: Float) = GradientDrawable().apply { cornerRadius = radius; setColor(color) }
         for (c in listOf(fromChip, toChip, pasteChip, copyChip)) {
-            c.background = pill(t.keyFill, dp(18f).toFloat())
+            c.background = pill(t.keyFill, dp(17f).toFloat())
             c.setTextColor(t.textColor)
         }
-        insertChip.background = pill(t.accentFill, dp(16f).toFloat())
+        insertChip.background = pill(t.accentFill, dp(17f).toFloat())
         insertChip.setTextColor(t.onAccent)
         inputView.background = pill(t.keyFill, dp(20f).toFloat())
         render()
