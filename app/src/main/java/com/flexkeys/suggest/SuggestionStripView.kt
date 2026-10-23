@@ -87,7 +87,7 @@ class SuggestionStripView(context: Context) : View(context) {
         }
 
     private var toolbarOpen = false
-    private val showingToolbar get() = toolbarOpen || suggestions.slots.isEmpty()
+    private val showingToolbar get() = toolbarOpen || menuOpen || suggestions.slots.isEmpty()
 
     private var host: GlassHost? = null
     private val offset = PointF()
