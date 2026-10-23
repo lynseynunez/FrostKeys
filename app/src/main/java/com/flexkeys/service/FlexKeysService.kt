@@ -310,6 +310,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
+            SuggestionStripView.Action.TRANSLATE -> {
+                root?.startTranslate()
+                updateShiftState()
+            }
         }
     }
 
@@ -321,6 +325,15 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     override fun onOpenSettings() = openSettings()
+
+    /** Puts the finished translation into the text field. */
+    override fun onTranslateInsert(text: String) {
+        val ic = currentInputConnection ?: return
+        commitPending(ic)
+        ic.commitText(text, 1)
+        updateShiftState()
+        updateSuggestions()
+    }
 
     override fun onGifSearchRequested() {
         feedback.keyPress(KeyType.CHAR)
@@ -696,6 +709,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT, Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP,
             Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND, Prefs.KEY_SOUND_VOLUME,
             Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SKIN_TONES,
+            Prefs.KEY_GIFS, Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER,
+            Prefs.KEY_TRANSLATOR, Prefs.KEY_TRANSLATE_FROM, Prefs.KEY_TRANSLATE_TO, Prefs.KEY_TRANSLATE_EMAIL,
         )
 
         private val PASSWORD_VARIATIONS = setOf(

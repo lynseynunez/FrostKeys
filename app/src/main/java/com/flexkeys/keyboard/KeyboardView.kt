@@ -3,7 +3,9 @@ package com.flexkeys.keyboard
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -16,8 +18,10 @@ import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
 import com.flexkeys.layout.LayoutDef
+import com.flexkeys.theme.EmblemShape
 import com.flexkeys.theme.Fonts
 import com.flexkeys.theme.GlassTheme
+import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassHost
 import com.flexkeys.ui.findGlassHost
 import kotlin.math.abs
@@ -115,6 +119,25 @@ class KeyboardView(context: Context) : View(context) {
     }
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val emblemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    private val emblemStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val emblemPath = Path().apply {
+        fillType = Path.FillType.EVEN_ODD
+        for (loop in EmblemShape.loops) {
+            moveTo(loop[0], loop[1])
+            var i = 2
+            while (i < loop.size) {
+                lineTo(loop[i], loop[i + 1])
+                i += 2
+            }
+            close()
+        }
+    }
+    private val emblemScaled = Path()
+    private val emblemMatrix = Matrix()
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -235,6 +258,17 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
+    /** The space bar emblem: the traced icon as a white outline with the same line weight as the other icons. */
+    private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, iconSize: Float, t: GlassTheme) {
+        val size = iconSize * 1.45f
+        emblemMatrix.setScale(size, size)
+        emblemMatrix.postTranslate(cx - size / 2f, cy - size / 2f)
+        emblemPath.transform(emblemMatrix, emblemScaled)
+        emblemStroke.strokeWidth = iconSize * 0.085f
+        emblemStroke.color = t.textColor
+        canvas.drawPath(emblemScaled, emblemStroke)
+    }
+
     /** Key lettering. In the glass style it is translucent with a bright edge and the gradient shining through. */
     private fun drawKeyText(canvas: Canvas, text: String, cx: Float, cy: Float, t: GlassTheme) {
         if (!t.glassKeys) {
@@ -304,9 +338,12 @@ class KeyboardView(context: Context) : View(context) {
             KeyType.ENTER -> Icons.draw(canvas, enterAction.icon, cx, cy, iconSize,
                 if (enterAction == EnterAction.NEWLINE) t.textColor else t.onAccent)
             KeyType.EMOJI -> Icons.draw(canvas, Icon.EMOJI, cx, cy, iconSize, t.textColor)
-            KeyType.SPACE -> if (t.spaceEmblem.isNotEmpty()) {
-                emblemPaint.textSize = minOf(v.height() * 0.5f, rowHeight * 0.36f) * t.fontScale.coerceIn(0.8f, 1.3f)
-                drawCentered(canvas, t.spaceEmblem, cx, cy, emblemPaint)
+            KeyType.SPACE -> when {
+                t.spaceEmblem == Prefs.SPACE_EMBLEM_ICON -> drawEmblemIcon(canvas, cx, cy, iconSize, t)
+                t.spaceEmblem.isNotEmpty() -> {
+                    emblemPaint.textSize = minOf(v.height() * 0.5f, rowHeight * 0.36f) * t.fontScale.coerceIn(0.8f, 1.3f)
+                    drawCentered(canvas, t.spaceEmblem, cx, cy, emblemPaint)
+                }
             }
             KeyType.LAYER -> if (key.def.label == "1234") {
                 // Gboard's number pad key: digits stacked in a small square.

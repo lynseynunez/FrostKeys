@@ -3,7 +3,8 @@
 A highly customizable Android keyboard with a **liquid glass** look: frosted keys over your own
 background photo, real-time blur on Android 12+, and full control over size, spacing, shape and color.
 Everything stays on your device. There are no analytics, and the only feature that uses the internet is
-**GIF search**, which is off until you turn it on and add your own free Klipy API key.
+**GIF search** (off until you turn it on and add your own free Klipy API key) and the **translator**
+(only the text you type or paste into it).
 
 ## Features
 
@@ -22,6 +23,7 @@ Everything stays on your device. There are no analytics, and the only feature th
 - No learning in password fields or in apps that ask for incognito input
 
 **Panels**
+- Translator (free MyMemory service, no key): translate what you type, or paste a message someone sent you; 30 languages
 - GIF search powered by [Klipy](https://klipy.com) (bring your own free API key): trending, categories, search, and sending GIFs into apps that support them
 - Emoji panel with categories, recents, offline emoji search and skin tones (long-press an emoji; your choice is remembered)
 - Emoji suggestions while typing ("pizza" offers 🍕)
@@ -103,12 +105,15 @@ app/src/main/java/com/flexkeys/
 ├── suggest/    WordDictionary, UserDictionary, SuggestionEngine, SuggestionStripView
 ├── emoji/      EmojiData, EmojiIndex (search, skin tones), EmojiPanel, EmojiSearchBar
 ├── clipboard/  ClipboardStore, ClipboardPanel
+├── gif/        KlipyClient, GifLoader, GifProvider, GifPanel
+├── translate/  Languages, TextChunker, MyMemoryClient, TranslateBar
 ├── ui/         KeyboardRootView (shared backdrop, panels), GlassHost, GlassButton, GlassPanelLayout
 └── settings/   SettingsActivity, PreviewController, ColorPickerView
 app/src/main/assets/words.txt    English word list with frequencies
 app/src/main/assets/emoji.tsv    emoji keywords for search and suggestions
 tools/make_words.py              regenerates words.txt
 tools/make_emoji.py              regenerates emoji.tsv
+tools/make_emblem.py             traces the space bar emblem icon into vector outlines
 ```
 
 ### Adding a layout
@@ -127,6 +132,8 @@ layout, build a `LayoutDef` from `RowDef`s and `KeyDef`s (see `Layouts.symbols` 
 
 - Permissions: `VIBRATE`, and `INTERNET`, which is used only for GIF search (off by default). Without a Klipy key
   and the GIF switch turned on, FlexKeys never makes a network request.
+- When you use the translator, the text you type or paste into it, the language pair and (optionally) your email
+  go to `api.mymemory.translated.net`. Your normal typing is never sent.
 - When you use GIFs, requests go to `api.klipy.com` (search words, your key and a random on-device id) and
   the GIF files are downloaded from Klipy. Nothing you type anywhere else is sent.
 - No analytics, crash reporting or third-party libraries.

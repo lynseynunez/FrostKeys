@@ -29,12 +29,13 @@ class SuggestionStripView(context: Context) : View(context) {
         CLIPBOARD(Icon.CLIPBOARD),
         EMOJI(Icon.EMOJI),
         GIF(Icon.GIF),
+        TRANSLATE(Icon.TRANSLATE),
         SETTINGS(Icon.SETTINGS),
         HIDE(Icon.HIDE),
     }
 
     private val toolbarActions =
-        listOf(Action.CLIPBOARD, Action.EMOJI, Action.GIF, Action.SETTINGS, Action.HIDE)
+        listOf(Action.CLIPBOARD, Action.EMOJI, Action.GIF, Action.TRANSLATE, Action.SETTINGS, Action.HIDE)
 
     interface Listener {
         fun onSuggestionPicked(index: Int, text: String)

@@ -132,6 +132,7 @@ class PreviewController(
     override fun onGifPicked(item: GifItem) = Unit
     override fun onGifSearchRequested() = Unit
     override fun onOpenSettings() = Unit
+    override fun onTranslateInsert(text: String) = Unit
 
     override fun onSuggestionPicked(index: Int, text: String) = Unit
     override fun onSuggestionLongPressed(text: String) = Unit

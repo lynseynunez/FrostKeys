@@ -11,7 +11,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, GIF,
+    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP,
 }
 
 object Icons {
@@ -75,30 +75,44 @@ object Icons {
                 poly(-0.1f, -0.26f, -0.38f, 0f, -0.1f, 0.26f, close = false)
             }
             Icon.GIF -> {
-                // A card with a cut corner and, in front of it, a solid tag with "GIF" cut out of it.
-                val layer = canvas.saveLayer(RectF(cx - s, cy - s, cx + s, cy + s), null)
-                path.reset()
-                path.moveTo(x(-0.333f), y(-0.417f))
-                path.lineTo(x(0.125f), y(-0.417f))
-                path.lineTo(x(0.333f), y(-0.21f))
-                path.lineTo(x(0.333f), y(0.417f))
-                path.lineTo(x(-0.333f), y(0.417f))
-                path.close()
-                canvas.drawPath(path, paint)
-                paint.style = Paint.Style.FILL
-                oval.set(x(-0.417f), y(-0.125f), x(0.167f), y(0.25f))
+                // A rounded tag with "GIF" written inside in rounded strokes.
+                oval.set(x(-0.45f), y(-0.31f), x(0.45f), y(0.31f))
+                canvas.drawRoundRect(oval, s * 0.17f, s * 0.17f, paint)
+                val old = paint.strokeWidth
+                paint.strokeWidth = s * 0.075f
+                val r = 0.125f
+                val gx = -0.155f
+                oval.set(x(gx - r), y(-r), x(gx + r), y(r))
+                canvas.drawArc(oval, -45f, -270f, false, paint)
+                line(gx + 0.01f, 0.01f, gx + r, 0.01f)
+                line(gx + r, 0.01f, gx + r, 0.085f)
+                line(0.045f, -r, 0.045f, r)
+                line(0.125f, -r, 0.125f, r)
+                line(0.125f, -r, 0.275f, -r)
+                line(0.125f, -0.005f, 0.245f, -0.005f)
+                paint.strokeWidth = old
+            }
+            Icon.TRANSLATE -> {
+                // Two tiles: an A and a character from another script.
+                oval.set(x(-0.46f), y(-0.44f), x(0.0f), y(0.02f))
                 canvas.drawRoundRect(oval, s * 0.07f, s * 0.07f, paint)
-                val oldTextSize = paint.textSize
-                paint.xfermode = clearMode
-                paint.textSize = s * 0.21f
+                poly(-0.35f, -0.1f, -0.23f, -0.34f, -0.11f, -0.1f, close = false)
+                line(-0.31f, -0.18f, -0.15f, -0.18f)
+                oval.set(x(0.02f), y(-0.02f), x(0.46f), y(0.44f))
+                canvas.drawRoundRect(oval, s * 0.07f, s * 0.07f, paint)
+                val oldSize = paint.textSize
+                paint.style = Paint.Style.FILL
+                paint.textSize = s * 0.28f
                 paint.textAlign = Paint.Align.CENTER
-                paint.isFakeBoldText = true
-                canvas.drawText("GIF", x(-0.125f), y(0.0625f) + s * 0.21f * 0.35f, paint)
-                paint.isFakeBoldText = false
-                paint.xfermode = null
-                paint.textSize = oldTextSize
+                canvas.drawText("文", x(0.24f), y(0.21f) + s * 0.28f * 0.35f, paint)
                 paint.style = Paint.Style.STROKE
-                canvas.restoreToCount(layer)
+                paint.textSize = oldSize
+            }
+            Icon.SWAP -> {
+                line(-0.38f, -0.16f, 0.36f, -0.16f)
+                poly(0.18f, -0.32f, 0.38f, -0.16f, 0.18f, 0f, close = false)
+                line(0.38f, 0.16f, -0.36f, 0.16f)
+                poly(-0.18f, 0f, -0.38f, 0.16f, -0.18f, 0.32f, close = false)
             }
             Icon.SEARCH -> {
                 circle(-0.08f, -0.08f, 0.27f)

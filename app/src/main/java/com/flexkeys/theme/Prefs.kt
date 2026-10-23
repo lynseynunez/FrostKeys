@@ -21,7 +21,7 @@ class Prefs private constructor(context: Context) {
     var keyStyle by int(KEY_STYLE, KEY_STYLE_GLASS)
     var fontFamily by string(KEY_FONT_FAMILY, Fonts.INTER)
     /** Emoji shown in the middle of the space bar; empty for none. */
-    var spaceEmblem by string(KEY_SPACE_EMBLEM, "🌸")
+    var spaceEmblem by string(KEY_SPACE_EMBLEM, SPACE_EMBLEM_ICON)
     var cornerRadiusDp by int(KEY_CORNER, 8)
     /** Label size in percent of the default. */
     var fontPercent by int(KEY_FONT, 100)
@@ -54,6 +54,13 @@ class Prefs private constructor(context: Context) {
     // ---- emoji ----
     var recentEmoji by string(KEY_RECENT_EMOJI, "")
     var skinTones by string(KEY_SKIN_TONES, "")
+
+    // ---- translator (sends only the text typed or pasted into the translator panel) ----
+    var translatorEnabled by bool(KEY_TRANSLATOR, true)
+    var translateFrom by string(KEY_TRANSLATE_FROM, "en")
+    var translateTo by string(KEY_TRANSLATE_TO, "es")
+    /** Optional: raises MyMemory's free daily limit. Only sent with translations. */
+    var translateEmail by string(KEY_TRANSLATE_EMAIL, "")
 
     // ---- GIFs (the only feature that uses the internet; off until the user turns it on) ----
     var gifsEnabled by bool(KEY_GIFS, false)
@@ -107,6 +114,12 @@ class Prefs private constructor(context: Context) {
         const val KEY_CLIPBOARD = "clipboard_history"
         const val KEY_RECENT_EMOJI = "recent_emoji"
         const val KEY_SKIN_TONES = "skin_tones"
+        const val KEY_TRANSLATOR = "translator_enabled"
+        const val KEY_TRANSLATE_FROM = "translate_from"
+        const val KEY_TRANSLATE_TO = "translate_to"
+        const val KEY_TRANSLATE_EMAIL = "translate_email"
+        /** Space bar emblem token for the bundled icon; other values are emoji, empty is none. */
+        const val SPACE_EMBLEM_ICON = "icon"
         const val KEY_GIFS = "gifs_enabled"
         const val KEY_KLIPY_KEY = "klipy_key"
         const val KEY_KLIPY_CUSTOMER = "klipy_customer_id"

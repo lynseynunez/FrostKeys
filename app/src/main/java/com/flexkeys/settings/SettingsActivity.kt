@@ -94,7 +94,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             }
             Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT,
             Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP, Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND,
-            Prefs.KEY_SOUND_VOLUME, Prefs.KEY_SKIN_TONES -> Unit
+            Prefs.KEY_SOUND_VOLUME, Prefs.KEY_SKIN_TONES,
+            Prefs.KEY_GIFS, Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATOR,
+            Prefs.KEY_TRANSLATE_FROM, Prefs.KEY_TRANSLATE_TO, Prefs.KEY_TRANSLATE_EMAIL -> Unit
             Prefs.KEY_ACCENT -> {
                 applyAccent()
                 applyKeyboardTheme()
@@ -183,6 +185,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         list.addView(typingCard())
         list.addView(feedbackCard())
         list.addView(gifCard())
+        list.addView(translatorCard())
         list.addView(clipboardCard())
         list.addView(privacyCard())
 
@@ -488,8 +491,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         segmented("Font", Fonts.options.map { it.second }, Fonts.options.indexOfFirst { it.first == prefs.fontFamily }.coerceAtLeast(0)) {
             prefs.fontFamily = Fonts.options[it].first
         }
-        val emblems = listOf("🌸", "❤️", "✨", "")
-        segmented("Space bar emblem", listOf("🌸", "❤️", "✨", "None"), emblems.indexOf(prefs.spaceEmblem).coerceAtLeast(0)) {
+        val emblems = listOf(Prefs.SPACE_EMBLEM_ICON, "🌸", "❤️", "")
+        segmented("Space bar emblem", listOf("Icon", "🌸", "❤️", "None"), emblems.indexOf(prefs.spaceEmblem).coerceAtLeast(0)) {
             prefs.spaceEmblem = emblems[it]
         }
         slider("Keyboard height", 60, 150, prefs::heightPercent) { "$it%" }
@@ -581,6 +584,38 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         text("The key stays on this phone and is only sent to Klipy when you use GIFs.", secondary = true)
     }
 
+    private fun translatorCard() = card("Translator") {
+        toggle("Translator", "Translate what you type, or a message you copied", prefs::translatorEnabled)
+        text("Open it from the toolbar (the four dots), then the translate icon. Type on the keys, or tap Paste to translate a message someone sent you.", secondary = true)
+        text("Uses the free MyMemory service. Only the text you type or paste into the translator is sent, never your normal typing.", secondary = true)
+        val field = EditText(context).apply {
+            hint = "Optional: your email for a higher daily limit"
+            setText(prefs.translateEmail)
+            setTextColor(palette.text)
+            setHintTextColor(palette.secondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+            isSingleLine = true
+            setPadding(dp(18f), dp(12f), dp(18f), dp(12f))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(18f).toFloat()
+                setColor(palette.tonal)
+            }
+            // The real keyboard takes the preview's place while typing here.
+            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else View.VISIBLE }
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    prefs.translateEmail = s?.toString()?.trim() ?: ""
+                }
+            })
+        }
+        addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(12f) })
+        text("Without an email the free limit is about 5,000 characters a day; with one it is higher. The email is only sent along with translations.", secondary = true)
+    }
+
     private fun clipboardCard() = card("Clipboard") {
         toggle("Clipboard history", "Paste recent copies from the keyboard", prefs::clipboardHistory)
         text("Items password managers mark as sensitive are never saved.", secondary = true)
@@ -594,8 +629,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun privacyCard() = card("Privacy") {
         text(
-            "FlexKeys has no analytics. The only thing that uses the internet is GIF search, and only " +
-                "if you turn it on. Learned words, clipboard history and your photo never leave this phone.",
+            "FlexKeys has no analytics. The only things that use the internet are GIF search and the " +
+                "translator, and only for the text you search or translate. Learned words, clipboard " +
+                "history and your photo never leave this phone.",
             secondary = true,
         )
         buttons(Triple("Reset all settings", false) {
