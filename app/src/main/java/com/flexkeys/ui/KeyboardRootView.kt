@@ -9,12 +9,15 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import com.flexkeys.clipboard.ClipboardPanel
+import com.flexkeys.emoji.EmojiPanel
 import com.flexkeys.keyboard.KeyboardView
 import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.GlassBackdrop
 import com.flexkeys.theme.GlassPainter
 import com.flexkeys.theme.GlassTheme
+import com.flexkeys.theme.Prefs
 
 /**
  * Top-level keyboard view, used both by the input method and by the live preview in the
@@ -38,6 +41,18 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         clipToPadding = false
     }
 
+    /** Receives emoji, clipboard pastes and panel navigation from the panels. */
+    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener
+
+    enum class Panel { NONE, EMOJI, CLIPBOARD }
+
+    var panelListener: PanelListener? = null
+    var panel: Panel = Panel.NONE
+        private set
+    private var panelView: View? = null
+    private val gutter = OneHandedGutter(context)
+    private var oneHandedMode = Prefs.ONE_HANDED_OFF
+
     init {
         orientation = VERTICAL
         setWillNotDraw(false)
@@ -47,6 +62,51 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         addView(content, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         content.addView(keyboardRow, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         keyboardRow.addView(keyboardView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+    }
+
+    /** Shows the emoji or clipboard panel in place of the keys, or goes back to the keys. */
+    fun showPanel(newPanel: Panel) {
+        if (newPanel == panel) return
+        keyboardView.cancelAll()
+        panelView?.let { content.removeView(it) }
+        panelView = null
+        val l = panelListener
+        if (newPanel != Panel.NONE && l != null) {
+            val view = if (newPanel == Panel.EMOJI) EmojiPanel(context, l) else ClipboardPanel(context, l)
+            content.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            panelView = view
+            panel = newPanel
+        } else {
+            panel = Panel.NONE
+        }
+        keyboardRow.visibility = if (panel == Panel.NONE) View.VISIBLE else View.INVISIBLE
+        strip.activeAction = when (panel) {
+            Panel.EMOJI -> SuggestionStripView.Action.EMOJI
+            Panel.CLIPBOARD -> SuggestionStripView.Action.CLIPBOARD
+            Panel.NONE -> null
+        }
+        invalidate()
+    }
+
+    /** [mode] is one of the Prefs.ONE_HANDED_* constants. */
+    fun setOneHanded(mode: Int) {
+        if (mode == oneHandedMode) return
+        oneHandedMode = mode
+        keyboardRow.removeAllViews()
+        val keys = LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, ONE_HANDED_WEIGHT)
+        val side = LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - ONE_HANDED_WEIGHT)
+        when (mode) {
+            Prefs.ONE_HANDED_LEFT -> {
+                keyboardRow.addView(keyboardView, keys)
+                keyboardRow.addView(gutter, side)
+            }
+            Prefs.ONE_HANDED_RIGHT -> {
+                keyboardRow.addView(gutter, side)
+                keyboardRow.addView(keyboardView, keys)
+            }
+            else -> keyboardRow.addView(keyboardView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        invalidate()
     }
 
     fun applyTheme(newTheme: GlassTheme) {
@@ -99,7 +159,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
-        if (keyboardView.isShown) {
+        if (keyboardView.isShown && panel == Panel.NONE) {
             backdropOffset(keyboardView, overlayOffset)
             canvas.save()
             canvas.translate(overlayOffset.x, overlayOffset.y)
@@ -132,6 +192,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     private companion object {
+        const val ONE_HANDED_WEIGHT = 0.8f
         val loader: ExecutorService = Executors.newSingleThreadExecutor()
     }
 }

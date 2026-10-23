@@ -52,7 +52,7 @@ class SuggestionStripView(context: Context) : View(context) {
     var activeAction: Action? = null
         set(value) {
             field = value
-            if (value != null) toolbarOpen = true
+            toolbarOpen = value != null
             invalidate()
         }
 

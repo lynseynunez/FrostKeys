@@ -31,6 +31,7 @@ import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.layout.Layouts
 import com.flexkeys.service.Feedback
 import com.flexkeys.suggest.SuggestionEngine
@@ -93,6 +94,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         when (key) {
             Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW -> previewController.refresh()
             Prefs.KEY_BG_VERSION -> preview.reloadPhoto()
+            Prefs.KEY_ONE_HANDED -> preview.setOneHanded(prefs.oneHanded)
+            Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT,
+            Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP, Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND,
+            Prefs.KEY_SOUND_VOLUME -> Unit
             Prefs.KEY_ACCENT -> {
                 applyAccent()
                 preview.applyTheme(GlassTheme.from(this, prefs))
@@ -151,6 +156,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         list.addView(layoutCard())
         list.addView(typingCard())
         list.addView(feedbackCard())
+        list.addView(clipboardCard())
         list.addView(privacyCard())
         applyAccent()
         return page
@@ -416,6 +422,17 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Vibrate on key press", null, prefs::haptics)
         toggle("Sound on key press", null, prefs::sound)
         slider("Sound volume", 0, 100, prefs::soundVolume) { "$it%" }
+    }
+
+    private fun clipboardCard() = card("Clipboard") {
+        toggle("Clipboard history", "Keep text you copy so you can paste it again from the keyboard", prefs::clipboardHistory)
+        label("Items marked sensitive by password managers are never saved.", secondary = true)
+        buttons("Clear clipboard history" to {
+            confirm("Delete all clipboard history, including pinned items?") {
+                ClipboardStore.get(this@SettingsActivity).clearAll()
+                toast("Clipboard history cleared")
+            }
+        })
     }
 
     private fun privacyCard() = card("Privacy") {

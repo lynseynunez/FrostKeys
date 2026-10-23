@@ -9,6 +9,7 @@ import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
 import com.flexkeys.service.Feedback
 import com.flexkeys.service.FlexKeysService
+import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.KeyboardRootView
 
@@ -21,13 +22,16 @@ class PreviewController(
     private val output: TextView,
     private val prefs: Prefs,
     private val feedback: Feedback,
-) : KeyboardView.Listener {
+) : KeyboardView.Listener, KeyboardRootView.PanelListener, SuggestionStripView.Listener {
 
     private val state = KeyboardState()
     private val text = StringBuilder()
 
     init {
         root.keyboardView.listener = this
+        root.panelListener = this
+        root.strip.listener = this
+        root.setOneHanded(prefs.oneHanded)
         refresh()
         render()
     }
@@ -79,7 +83,7 @@ class PreviewController(
                 refresh()
                 autoCaps()
             }
-            KeyType.EMOJI -> type("🙂")
+            KeyType.EMOJI -> root.showPanel(KeyboardRootView.Panel.EMOJI)
             KeyType.SPACER -> Unit
         }
     }
@@ -106,4 +110,28 @@ class PreviewController(
     }
 
     override fun onCursorMove(steps: Int) = Unit
+
+    // Panels and toolbar work in the preview too.
+    override fun onEmoji(emoji: String) = type(emoji)
+    override fun onPaste(text: String) = type(text)
+    override fun onPanelBackspace() = onKey(KeyDef("backspace", KeyType.BACKSPACE))
+    override fun onPanelClosed() = root.showPanel(KeyboardRootView.Panel.NONE)
+
+    override fun onSuggestionPicked(index: Int, text: String) = Unit
+    override fun onSuggestionLongPressed(text: String) = Unit
+    override fun onStripTouched() = root.keyboardView.cancelAll()
+
+    override fun onAction(action: SuggestionStripView.Action) {
+        feedback.keyPress(KeyType.CHAR)
+        val target = when (action) {
+            SuggestionStripView.Action.EMOJI -> KeyboardRootView.Panel.EMOJI
+            SuggestionStripView.Action.CLIPBOARD -> KeyboardRootView.Panel.CLIPBOARD
+            SuggestionStripView.Action.ONE_HANDED -> {
+                prefs.oneHanded = if (prefs.oneHanded == Prefs.ONE_HANDED_OFF) Prefs.ONE_HANDED_RIGHT else Prefs.ONE_HANDED_OFF
+                return
+            }
+            else -> return
+        }
+        root.showPanel(if (root.panel == target) KeyboardRootView.Panel.NONE else target)
+    }
 }

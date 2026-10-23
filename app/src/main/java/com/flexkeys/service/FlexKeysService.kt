@@ -1,5 +1,6 @@
 package com.flexkeys.service
 
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.icu.text.BreakIterator
@@ -12,6 +13,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.keyboard.EnterAction
 import com.flexkeys.keyboard.KeyboardState
 import com.flexkeys.keyboard.KeyboardView
@@ -33,7 +35,7 @@ import com.flexkeys.ui.KeyboardRootView
  * it; everything else is committed directly.
  */
 class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionStripView.Listener,
-    SharedPreferences.OnSharedPreferenceChangeListener {
+    KeyboardRootView.PanelListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     private lateinit var prefs: Prefs
     private lateinit var feedback: Feedback
@@ -56,15 +58,21 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
 
     private data class Correction(val original: String, val corrected: String, var separator: String = "")
 
+    private lateinit var clipboard: ClipboardManager
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { captureClip() }
+
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs.get(this)
         feedback = Feedback(this, prefs)
         engine = SuggestionEngine.get(this)
         prefs.sp.registerOnSharedPreferenceChangeListener(this)
+        clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.addPrimaryClipChangedListener(clipListener)
     }
 
     override fun onDestroy() {
+        clipboard.removePrimaryClipChangedListener(clipListener)
         prefs.sp.unregisterOnSharedPreferenceChangeListener(this)
         engine.user.save()
         root?.release()
@@ -76,6 +84,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         val view = KeyboardRootView(this, GlassTheme.from(this, prefs))
         view.keyboardView.listener = this
         view.strip.listener = this
+        view.panelListener = this
+        view.setOneHanded(prefs.oneHanded)
         root = view
         refreshKeyboard()
         view.reloadPhoto()
@@ -102,6 +112,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
 
         state.setLayer(if (numeric) Layer.NUMPAD else Layer.LETTERS)
+        root?.showPanel(KeyboardRootView.Panel.NONE)
         refreshKeyboard()
         updateShiftState()
         updateSuggestions()
@@ -195,9 +206,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     private fun updateSuggestions() {
-        val strip = root?.strip ?: return
+        val r = root ?: return
+        val strip = r.strip
         val ic = currentInputConnection
-        suggestions = if (!predictionOn || ic == null) {
+        suggestions = if (!predictionOn || ic == null || r.panel != KeyboardRootView.Panel.NONE) {
             Suggestions.EMPTY
         } else {
             val ctx = readContext(ic)
@@ -250,10 +262,71 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 startActivity(intent)
             }
             SuggestionStripView.Action.HIDE -> requestHideSelf(0)
-            SuggestionStripView.Action.CLIPBOARD,
-            SuggestionStripView.Action.EMOJI,
-            SuggestionStripView.Action.ONE_HANDED -> Unit
+            SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
+            SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
+            SuggestionStripView.Action.ONE_HANDED -> {
+                prefs.oneHanded = if (prefs.oneHanded == Prefs.ONE_HANDED_OFF) Prefs.ONE_HANDED_RIGHT else Prefs.ONE_HANDED_OFF
+            }
         }
+    }
+
+    private fun togglePanel(panel: KeyboardRootView.Panel) {
+        val r = root ?: return
+        r.showPanel(if (r.panel == panel) KeyboardRootView.Panel.NONE else panel)
+        if (r.panel == KeyboardRootView.Panel.NONE) updateSuggestions()
+    }
+
+    // ---- panels ------------------------------------------------------------------------------------
+
+    /** Commits the word being typed as-is before inserting text from a panel. */
+    private fun commitPending(ic: InputConnection) {
+        if (composing.isNotEmpty()) {
+            if (composingIntact(ic)) commitComposing(ic, autocorrect = false) else composing.clear()
+        }
+        lastCorrection = null
+        pickedSuggestion = false
+        lastSpaceTime = 0L
+    }
+
+    override fun onEmoji(emoji: String) {
+        val ic = currentInputConnection ?: return
+        feedback.keyPress(KeyType.CHAR)
+        commitPending(ic)
+        ic.commitText(emoji, 1)
+    }
+
+    override fun onPaste(text: String) {
+        val ic = currentInputConnection ?: return
+        feedback.keyPress(KeyType.CHAR)
+        commitPending(ic)
+        ic.commitText(text, 1)
+        updateShiftState()
+    }
+
+    override fun onPanelBackspace() {
+        feedback.keyPress(KeyType.BACKSPACE)
+        onBackspace()
+    }
+
+    override fun onPanelClosed() {
+        feedback.keyPress(KeyType.CHAR)
+        root?.showPanel(KeyboardRootView.Panel.NONE)
+        updateShiftState()
+        updateSuggestions()
+    }
+
+    private fun captureClip() {
+        if (!prefs.clipboardHistory) return
+        val clip = try {
+            clipboard.primaryClip
+        } catch (e: SecurityException) {
+            null
+        } ?: return
+        // Password managers mark copied secrets as sensitive; never store those.
+        if (clip.description?.extras?.getBoolean(EXTRA_IS_SENSITIVE) == true) return
+        if (clip.itemCount == 0) return
+        val text = clip.getItemAt(0).coerceToText(this)?.toString() ?: return
+        ClipboardStore.get(this).add(text)
     }
 
     override fun onStripTouched() {
@@ -279,7 +352,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 refreshKeyboard()
                 updateShiftState()
             }
-            KeyType.EMOJI, KeyType.SPACER -> Unit
+            KeyType.EMOJI -> root?.showPanel(KeyboardRootView.Panel.EMOJI)
+            KeyType.SPACER -> Unit
         }
         if (key.type != KeyType.SPACE) lastSpaceTime = 0L
     }
@@ -501,6 +575,13 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         when (key) {
             Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW -> refreshKeyboard()
             Prefs.KEY_BG_VERSION -> r.reloadPhoto()
+            Prefs.KEY_ONE_HANDED -> r.setOneHanded(prefs.oneHanded)
+            null -> { // All settings were reset.
+                r.applyTheme(GlassTheme.from(this, prefs))
+                r.setOneHanded(prefs.oneHanded)
+                r.reloadPhoto()
+                refreshKeyboard()
+            }
             in BEHAVIOR_KEYS -> Unit // Read when next used.
             else -> r.applyTheme(GlassTheme.from(this, prefs))
         }
@@ -509,6 +590,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     companion object {
         private const val DOUBLE_SPACE_MS = 600L
         private const val MAX_RESTART = 32
+        /** ClipDescription.EXTRA_IS_SENSITIVE, also set by some apps before Android 13. */
+        private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
         private val WORD_AT_END = Regex("[\\p{L}\\p{N}'’]+$")
         private val CORRECTING_PUNCTUATION = setOf(".", ",", "!", "?", ":", ";", ")")
