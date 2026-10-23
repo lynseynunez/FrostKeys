@@ -32,6 +32,12 @@ object Layouts {
         "%" to "‰", "*" to "★†‡", "#" to "№", "=" to "≠≈∞", "." to "…",
     )
 
+    /** Gboard's symbol on each letter position: shown in the key's corner and reachable by long-press. */
+    private val topSymbols = listOf("%", "\\", "|", "=", "[", "]", "<", ">", "{", "}")
+    private val middleSymbols = listOf("@", "#", "$", "_", "&", "-", "+", "(", ")")
+    private val lowerSymbols = listOf("*", "\"", "'", ":", ";", "!", "?")
+
+    // Note: these lists must stay above letterLayouts, which uses them while the object initializes.
     /** Shared by every letter layout: digits 1-0 as long-press on the top row. */
     private const val DIGITS = "1234567890"
 
@@ -73,11 +79,6 @@ object Layouts {
     }
 
     // ---- builders -------------------------------------------------------------------------
-
-    /** Gboard's symbol on each letter position: shown in the key's corner and reachable by long-press. */
-    private val topSymbols = listOf("%", "\\", "|", "=", "[", "]", "<", ">", "{", "}")
-    private val middleSymbols = listOf("@", "#", "$", "_", "&", "-", "+", "(", ")")
-    private val lowerSymbols = listOf("*", "\"", "'", ":", ";", "!", "?")
 
     /** [digit] (top row without a number row) and [symbol] come first in the long-press list, then accents. */
     private fun letterKey(c: Char, digit: String?, symbol: String?): KeyDef {
