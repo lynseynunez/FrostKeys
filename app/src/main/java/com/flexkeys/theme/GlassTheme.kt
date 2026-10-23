@@ -21,7 +21,14 @@ class GlassTheme(
     val fontScale: Float,
     val heightScale: Float,
     val density: Float,
+    /** 0..1, strength of the blue/purple/pink gradient across the glass. */
+    val gradientStrength: Float = 0f,
 ) {
+    /** Iridescent glow colors, top-left to bottom-right: blue, purple, pink. */
+    val gradientColors: IntArray = intArrayOf(0xFF4D7CFF.toInt(), 0xFF9B5CFF.toInt(), 0xFFFF5DB1.toInt())
+    val sheetGradientAlpha: Float = gradientStrength * (if (dark) 0.50f else 0.38f)
+    val keyGradientAlpha: Float = gradientStrength * (if (dark) 0.26f else 0.22f)
+
     val textColor: Int = if (dark) 0xFFF4F6FB.toInt() else 0xFF15171C.toInt()
     val secondaryTextColor: Int = withAlpha(textColor, if (dark) 0.62f else 0.55f)
 
@@ -84,6 +91,7 @@ class GlassTheme(
                 fontScale = prefs.fontPercent.coerceIn(60, 160) / 100f,
                 heightScale = prefs.heightPercent.coerceIn(60, 150) / 100f,
                 density = dm.density,
+                gradientStrength = prefs.gradientStrength.coerceIn(0, 100) / 100f,
             )
         }
 

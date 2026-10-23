@@ -2,6 +2,8 @@ package com.flexkeys.ui
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Shader
 import android.os.Build
 import android.view.WindowInsets
 import android.graphics.Paint
@@ -76,6 +78,17 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         private set
     private var panelView: View? = null
     private val gutter = OneHandedGutter(context)
+
+    private var gradient: Shader? = null
+
+    private fun rebuildGradient() {
+        gradient = if (width <= 0 || height <= 0 || theme.gradientStrength <= 0f) null else {
+            LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), theme.gradientColors,
+                floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+        }
+    }
+
+    override fun glassGradient(): Shader? = gradient
 
     private val sheetPath = Path()
     private val sheetRect = RectF()
@@ -236,6 +249,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         theme = newTheme
         painter.theme = newTheme
         backdrop.setTheme(newTheme)
+        rebuildGradient()
         keyboardView.onThemeChanged()
         strip.requestLayout()
         invalidateTree(this)
@@ -271,6 +285,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         backdrop.setSize(w, h)
+        rebuildGradient()
         invalidateTree(this)
     }
 
@@ -286,6 +301,12 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         sheetPaint.style = Paint.Style.FILL
         sheetPaint.color = theme.sheetTint
         canvas.drawRect(sheetRect, sheetPaint)
+        gradient?.let {
+            sheetPaint.shader = it
+            sheetPaint.alpha = (theme.sheetGradientAlpha * 255f).toInt().coerceIn(0, 255)
+            canvas.drawRect(sheetRect, sheetPaint)
+            sheetPaint.shader = null
+        }
         canvas.restore()
     }
 

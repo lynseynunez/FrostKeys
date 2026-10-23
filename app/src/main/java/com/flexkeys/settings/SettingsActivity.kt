@@ -471,6 +471,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Photo opacity", 0, 100, prefs::backgroundOpacity) { "$it%" }
         slider("Glass opacity", 0, 100, prefs::glassOpacity) { "$it%" }
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }
+        slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             text("Live blur needs Android 12. This phone uses a lighter frosted look.", secondary = true)
         }

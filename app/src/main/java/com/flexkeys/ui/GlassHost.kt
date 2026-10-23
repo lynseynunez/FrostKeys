@@ -1,6 +1,7 @@
 package com.flexkeys.ui
 
 import android.graphics.PointF
+import android.graphics.Shader
 import android.view.View
 import com.flexkeys.theme.GlassBackdrop
 import com.flexkeys.theme.GlassPainter
@@ -17,6 +18,9 @@ interface GlassHost {
 
     /** Writes the position of [view]'s top-left corner within the backdrop into [out]. */
     fun backdropOffset(view: View, out: PointF)
+
+    /** The blue/purple/pink gradient across the whole keyboard, in backdrop coordinates, or null. */
+    fun glassGradient(): Shader?
 
     /** Requests a redraw of the overlay layer (popups and key previews). */
     fun invalidateOverlay()

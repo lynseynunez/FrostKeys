@@ -189,7 +189,8 @@ class KeyboardView(context: Context) : View(context) {
         for (key in keys) {
             val p = pressProgress(key, now)
             if ((key.pressed && p < 1f) || (!key.pressed && p > 0f)) animating = true
-            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, fillFor(key, t), p)
+            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, fillFor(key, t), p,
+                gradient = h.glassGradient(), gradientAlpha = t.keyGradientAlpha)
             canvas.save()
             if (p > 0f) {
                 val s = 1f - 0.05f * p

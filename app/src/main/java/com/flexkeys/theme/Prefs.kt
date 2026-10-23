@@ -34,6 +34,8 @@ class Prefs private constructor(context: Context) {
     var backgroundOpacity by int(KEY_BG_OPACITY, 100)
     var glassOpacity by int(KEY_GLASS_OPACITY, 35)
     var blurStrength by int(KEY_BLUR, 50)
+    /** Strength of the blue/purple/pink glow across the glass; 0 turns it off. */
+    var gradientStrength by int(KEY_GRADIENT, 60)
     /** Bumped every time the background photo changes so views know to reload it. */
     var backgroundVersion by long(KEY_BG_VERSION, 0L)
 
@@ -80,6 +82,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_BG_OPACITY = "bg_opacity"
         const val KEY_GLASS_OPACITY = "glass_opacity"
         const val KEY_BLUR = "blur"
+        const val KEY_GRADIENT = "gradient"
         const val KEY_BG_VERSION = "bg_version"
         const val KEY_SUGGESTIONS = "suggestions"
         const val KEY_AUTOCORRECT = "autocorrect"
