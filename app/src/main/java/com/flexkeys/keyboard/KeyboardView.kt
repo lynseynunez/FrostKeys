@@ -16,6 +16,7 @@ import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
 import com.flexkeys.layout.LayoutDef
+import com.flexkeys.theme.Fonts
 import com.flexkeys.theme.GlassTheme
 import com.flexkeys.ui.GlassHost
 import com.flexkeys.ui.findGlassHost
@@ -184,13 +185,18 @@ class KeyboardView(context: Context) : View(context) {
         val h = host ?: return
         val t = h.theme
         h.backdropOffset(this, offset)
+        applyFonts(t)
         val now = SystemClock.uptimeMillis()
         var animating = false
         for (key in keys) {
             val p = pressProgress(key, now)
             if ((key.pressed && p < 1f) || (!key.pressed && p > 0f)) animating = true
-            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, fillFor(key, t), p,
-                gradient = h.glassGradient(), gradientAlpha = t.keyGradientAlpha)
+            if (t.glassKeys) {
+                drawGlassKeyBackground(canvas, key, t, h, p)
+            } else {
+                h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, fillFor(key, t), p,
+                    gradient = h.glassGradient(), gradientAlpha = t.keyGradientAlpha)
+            }
             canvas.save()
             if (p > 0f) {
                 val s = 1f - 0.05f * p
@@ -200,6 +206,64 @@ class KeyboardView(context: Context) : View(context) {
             canvas.restore()
         }
         if (animating) postInvalidateOnAnimation()
+    }
+
+    private var fontKey: String? = null
+
+    private fun applyFonts(t: GlassTheme) {
+        if (fontKey == t.fontId) return
+        fontKey = t.fontId
+        Fonts.apply(textPaint, context, t.fontId, 430)
+        Fonts.apply(hintPaint, context, t.fontId, 500)
+    }
+
+    /**
+     * Transparent style: no tile behind most keys. Only keys that carry state get one (active shift,
+     * an action return key, the space bar's faint outline); a pressed key lights up softly.
+     */
+    private fun drawGlassKeyBackground(canvas: Canvas, key: Key, t: GlassTheme, h: GlassHost, p: Float) {
+        val tile = when (key.def.type) {
+            KeyType.ENTER -> if (enterAction == EnterAction.NEWLINE) 0 else t.accentFill
+            KeyType.SHIFT -> if (shiftActive) t.activeFill else 0
+            KeyType.SPACE -> GlassTheme.withAlpha(t.keyFill, (t.keyFill ushr 24) / 255f * 0.55f)
+            else -> 0
+        }
+        if (tile != 0) {
+            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, tile, p)
+        } else if (p > 0f) {
+            fillPaint.color = GlassTheme.withAlpha(t.pressedOverlay, (t.pressedOverlay ushr 24) / 255f * p)
+            canvas.drawRoundRect(key.visual, t.cornerRadiusPx, t.cornerRadiusPx, fillPaint)
+        }
+    }
+
+    /** Key lettering. In the glass style it is translucent with a bright edge and the gradient shining through. */
+    private fun drawKeyText(canvas: Canvas, text: String, cx: Float, cy: Float, t: GlassTheme) {
+        if (!t.glassKeys) {
+            drawCentered(canvas, text, cx, cy, textPaint)
+            return
+        }
+        val fm = textPaint.fontMetrics
+        val baseline = cy - (fm.ascent + fm.descent) / 2f
+        textPaint.setShadowLayer(t.dp(3f), 0f, t.dp(1.5f), t.glassTextShadow)
+        textPaint.color = t.glassTextFill
+        canvas.drawText(text, cx, baseline, textPaint)
+        textPaint.clearShadowLayer()
+        val gradient = host?.glassGradient()
+        if (gradient != null && t.glassTextGradientAlpha > 0f) {
+            // Draw in backdrop coordinates so this letter shows its own slice of the gradient.
+            canvas.save()
+            canvas.translate(-offset.x, -offset.y)
+            textPaint.shader = gradient
+            textPaint.alpha = (t.glassTextGradientAlpha * 255f).toInt().coerceIn(0, 255)
+            canvas.drawText(text, cx + offset.x, baseline + offset.y, textPaint)
+            textPaint.shader = null
+            canvas.restore()
+        }
+        textPaint.style = Paint.Style.STROKE
+        textPaint.strokeWidth = t.dp(0.7f)
+        textPaint.color = t.glassTextRim
+        canvas.drawText(text, cx, baseline, textPaint)
+        textPaint.style = Paint.Style.FILL
     }
 
     private fun pressProgress(key: Key, now: Long): Float = when {
@@ -251,8 +315,8 @@ class KeyboardView(context: Context) : View(context) {
                 textPaint.textSize = rowHeight * 0.2f * t.fontScale
                 textPaint.color = t.textColor
                 val gap = textPaint.textSize * 0.55f
-                drawCentered(canvas, "1 2", cx, cy - gap, textPaint)
-                drawCentered(canvas, "3 4", cx, cy + gap, textPaint)
+                drawKeyText(canvas, "1 2", cx, cy - gap, t)
+                drawKeyText(canvas, "3 4", cx, cy + gap, t)
             } else {
                 drawLabel(canvas, key, t, v, cx, cy)
             }
@@ -267,7 +331,7 @@ class KeyboardView(context: Context) : View(context) {
         textPaint.textSize = rowHeight * (if (single) 0.41f else 0.28f) * t.fontScale
         textPaint.color = t.textColor
         fitText(label, v.width() * 0.85f, textPaint)
-        drawCentered(canvas, label, cx, cy, textPaint)
+        drawKeyText(canvas, label, cx, cy, t)
         val hint = key.def.hint
         if (hint != null) {
             hintPaint.textSize = rowHeight * 0.19f * t.fontScale

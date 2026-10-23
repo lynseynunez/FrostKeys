@@ -31,6 +31,7 @@ import com.flexkeys.layout.Layouts
 import com.flexkeys.service.Feedback
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.theme.BackgroundImageStore
+import com.flexkeys.theme.Fonts
 import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.KeyboardRootView
@@ -481,6 +482,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         val layouts = Layouts.letterLayouts
         segmented("Layout", layouts.map { it.name }, layouts.indexOfFirst { it.id == prefs.layoutId }.coerceAtLeast(0)) {
             prefs.layoutId = layouts[it].id
+        }
+        segmented("Key style", listOf("Glass letters", "Tiles"), prefs.keyStyle) { prefs.keyStyle = it }
+        segmented("Font", Fonts.options.map { it.second }, Fonts.options.indexOfFirst { it.first == prefs.fontFamily }.coerceAtLeast(0)) {
+            prefs.fontFamily = Fonts.options[it].first
         }
         segmented("One-handed", listOf("Off", "Left", "Right"), prefs.oneHanded) { prefs.oneHanded = it }
         slider("Keyboard height", 60, 150, prefs::heightPercent) { "$it%" }

@@ -15,6 +15,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.keyboard.Icons
+import com.flexkeys.theme.Fonts
 import com.flexkeys.ui.GlassHost
 import com.flexkeys.ui.findGlassHost
 
@@ -147,7 +148,7 @@ class SuggestionStripView(context: Context) : View(context) {
                 canvas.drawRoundRect(pill, pill.height() / 2f, pill.height() / 2f, fillPaint)
             }
             drawPressed(canvas, i, tmp)
-            textPaint.typeface = if (highlighted || (suggestions.highlighted < 0 && i == 1)) bold else regular
+            Fonts.apply(textPaint, context, t.fontId, if (highlighted || (suggestions.highlighted < 0 && i == 1)) 620 else 440)
             textPaint.textSize = barRect.height() * 0.40f * t.fontScale.coerceIn(0.8f, 1.3f)
             textPaint.color = if (highlighted || i == 1) t.textColor else t.secondaryTextColor
             val label = if (i == suggestions.typedIndex && suggestions.correction != null) "“$word”" else word

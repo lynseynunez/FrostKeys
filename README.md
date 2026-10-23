@@ -34,6 +34,9 @@ Everything stays on your device: the app has **no internet permission and no ana
 - Sliders for photo opacity, glass opacity and blur strength with a live preview
 - Auto/light/dark tint and an accent color picker
 - Adjustable keyboard height, key spacing, corner radius and font size; haptics and key sound toggles
+- Two key styles: bare translucent "glass letters" (default) or a glass tile behind each key
+- A blue/purple/pink gradient glow across the glass, with its own slider
+- Modern fonts (Inter, Manrope) or your system font
 - One-tap theme presets (Frost, Midnight, Aurora, Sunset, Clear, Graphite)
 - Optional Gboard-style comma and period keys beside the space bar
 - Manage learned words: search, add and remove them
@@ -136,5 +139,7 @@ The bundled word list is derived from [FrequencyWords](https://github.com/hermit
 (OpenSubtitles 2018) by Hermit Dave, licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). It was filtered and extended with
 contractions by `tools/make_words.py`.
+The bundled fonts [Inter](https://github.com/rsms/inter) and [Manrope](https://github.com/googlefonts/manrope)
+are licensed under the SIL Open Font License 1.1 (see `app/src/main/assets/fonts`).
 Emoji keywords and skin tone data come from [gemoji](https://github.com/github/gemoji)
 (MIT License, Copyright (c) 2019 GitHub, Inc.), converted by `tools/make_emoji.py`.

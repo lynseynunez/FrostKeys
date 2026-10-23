@@ -23,7 +23,15 @@ class GlassTheme(
     val density: Float,
     /** 0..1, strength of the blue/purple/pink gradient across the glass. */
     val gradientStrength: Float = 0f,
+    /** True for the transparent style: bare glass letters instead of a tile behind each key. */
+    val glassKeys: Boolean = false,
+    val fontId: String = Fonts.INTER,
 ) {
+    // Glass lettering: translucent fill, a bright thin edge, a soft shadow and the gradient shining through.
+    val glassTextFill: Int = if (dark) withAlpha(Color.WHITE, 0.80f) else withAlpha(0xFF15171C.toInt(), 0.80f)
+    val glassTextRim: Int = withAlpha(Color.WHITE, if (dark) 0.50f else 0.75f)
+    val glassTextShadow: Int = withAlpha(Color.BLACK, if (dark) 0.40f else 0.18f)
+    val glassTextGradientAlpha: Float = gradientStrength * (if (dark) 0.60f else 0.45f)
     /** Iridescent glow colors, top-left to bottom-right: blue, purple, pink. */
     val gradientColors: IntArray = intArrayOf(0xFF4D7CFF.toInt(), 0xFF9B5CFF.toInt(), 0xFFFF5DB1.toInt())
     val sheetGradientAlpha: Float = gradientStrength * (if (dark) 0.50f else 0.38f)
@@ -92,6 +100,8 @@ class GlassTheme(
                 heightScale = prefs.heightPercent.coerceIn(60, 150) / 100f,
                 density = dm.density,
                 gradientStrength = prefs.gradientStrength.coerceIn(0, 100) / 100f,
+                glassKeys = prefs.keyStyle == Prefs.KEY_STYLE_GLASS,
+                fontId = prefs.fontFamily,
             )
         }
 
