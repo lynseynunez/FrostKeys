@@ -37,21 +37,26 @@ object GeminiClient {
     private val pool = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
-    /** Calls [onDone] on the main thread with the rewritten text or an error message. */
+    /** Calls [onDone] on the main thread, exactly once, with the rewritten text or an error message. */
     fun rewrite(key: String, model: String, instruction: String, text: String, onDone: (String?, String?) -> Unit) {
+        val finished = java.util.concurrent.atomic.AtomicBoolean(false)
+        fun finish(result: String?, error: String?) {
+            if (finished.compareAndSet(false, true)) main.post { onDone(result, error) }
+        }
+        // Whatever goes wrong below, the caller always hears back.
+        main.postDelayed({ finish(null, "Gemini took too long to answer. Try again.") }, TIMEOUT_MS)
         pool.execute {
-            var result: String? = null
-            var error: String? = null
             try {
-                result = call(key.trim(), model.trim().ifEmpty { DEFAULT_MODEL }, instruction, text.take(MAX_CHARS))
+                finish(call(key.trim(), model.trim().ifEmpty { DEFAULT_MODEL }, instruction, text.take(MAX_CHARS)), null)
             } catch (e: ApiException) {
-                error = e.message
+                finish(null, e.message)
             } catch (e: IOException) {
-                error = "Couldn't reach Gemini. Check your connection."
+                finish(null, "Couldn't reach Gemini. Check your connection.")
             } catch (e: JSONException) {
-                error = "Unexpected reply from Gemini."
+                finish(null, "Unexpected reply from Gemini.")
+            } catch (e: Exception) {
+                finish(null, "Couldn't send that request (${e.javaClass.simpleName}). Check the key and model name in settings.")
             }
-            main.post { onDone(result, error) }
         }
     }
 
@@ -68,7 +73,7 @@ object GeminiClient {
         try {
             c.requestMethod = "POST"
             c.connectTimeout = 10_000
-            c.readTimeout = 30_000
+            c.readTimeout = 25_000
             c.doOutput = true
             c.setRequestProperty("Content-Type", "application/json")
             c.setRequestProperty("x-goog-api-key", key)
@@ -105,6 +110,8 @@ object GeminiClient {
             else -> "Gemini returned error $code."
         }
     }
+
+    private const val TIMEOUT_MS = 40_000L
 
     const val DEFAULT_MODEL = "gemini-flash-latest"
 }
