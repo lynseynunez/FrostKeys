@@ -245,21 +245,33 @@ class KeyboardView(context: Context) : View(context) {
                 hintPaint.color = t.secondaryTextColor
                 canvas.drawText(spaceLabel, v.right - t.dp(8f), v.bottom - t.dp(6f), hintPaint)
             }
-            KeyType.CHAR, KeyType.LAYER -> {
-                val label = labelFor(key.def)
-                val single = label.codePointCount(0, label.length) == 1
-                textPaint.textSize = rowHeight * (if (single) 0.46f else 0.30f) * t.fontScale
+            KeyType.LAYER -> if (key.def.label == "1234") {
+                // Gboard's number pad key: digits stacked in a small square.
+                textPaint.textSize = rowHeight * 0.2f * t.fontScale
                 textPaint.color = t.textColor
-                fitText(label, v.width() * 0.85f, textPaint)
-                drawCentered(canvas, label, cx, cy, textPaint)
-                val hint = key.def.hint
-                if (hint != null) {
-                    hintPaint.textSize = rowHeight * 0.19f * t.fontScale
-                    hintPaint.color = t.secondaryTextColor
-                    canvas.drawText(hint, v.right - t.dp(5f), v.top + t.dp(3f) + hintPaint.textSize, hintPaint)
-                }
+                val gap = textPaint.textSize * 0.55f
+                drawCentered(canvas, "1 2", cx, cy - gap, textPaint)
+                drawCentered(canvas, "3 4", cx, cy + gap, textPaint)
+            } else {
+                drawLabel(canvas, key, t, v, cx, cy)
             }
+            KeyType.CHAR -> drawLabel(canvas, key, t, v, cx, cy)
             KeyType.SPACER -> Unit
+        }
+    }
+
+    private fun drawLabel(canvas: Canvas, key: Key, t: GlassTheme, v: RectF, cx: Float, cy: Float) {
+        val label = labelFor(key.def)
+        val single = label.codePointCount(0, label.length) == 1
+        textPaint.textSize = rowHeight * (if (single) 0.46f else 0.30f) * t.fontScale
+        textPaint.color = t.textColor
+        fitText(label, v.width() * 0.85f, textPaint)
+        drawCentered(canvas, label, cx, cy, textPaint)
+        val hint = key.def.hint
+        if (hint != null) {
+            hintPaint.textSize = rowHeight * 0.19f * t.fontScale
+            hintPaint.color = t.secondaryTextColor
+            canvas.drawText(hint, v.right - t.dp(5f), v.top + t.dp(3f) + hintPaint.textSize, hintPaint)
         }
     }
 

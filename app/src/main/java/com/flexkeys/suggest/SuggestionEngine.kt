@@ -85,7 +85,9 @@ class SuggestionEngine private constructor(context: Context) {
         }
 
         // Completions, including the typed word itself.
+        var hasCompletions = false
         dictionary.forEachWithPrefix(lower) { word, freq ->
+            if (word.length > lower.length) hasCompletions = true
             val extra = word.length - lower.length
             add(word, score(word, freq, prev) - if (extra > 0) COMPLETION_PENALTY + 0.12 * extra else 0.0, COMPLETION_COST)
         }
@@ -98,10 +100,28 @@ class SuggestionEngine private constructor(context: Context) {
         val correctable = allowCorrection && lower.length >= 2 && lower.all { it.isLetter() || it == '\'' } &&
             !hasInnerCapital(typed)
         if (correctable) {
+            var bestEdit = Double.NEGATIVE_INFINITY
             forEachEdit(lower) { edit, cost ->
                 val freq = dictionary.frequency(edit)
                 if (freq > 0 || user.count(edit) >= LEARNED_THRESHOLD) {
-                    add(dictionary.displayForm(edit) ?: edit, score(edit, freq, prev) - EDIT_WEIGHT * cost, cost)
+                    val s = score(edit, freq, prev) - EDIT_WEIGHT * cost
+                    if (s > bestEdit) bestEdit = s
+                    add(dictionary.displayForm(edit) ?: edit, s, cost)
+                }
+            }
+            // Two slips in one word ("tgungs" -> "things"). Only when one edit found nothing good
+            // and the word isn't the start of a real word, to keep typing fast.
+            if (bestEdit < CORRECTION_THRESHOLD && !hasCompletions && lower.length >= 4) {
+                forEachEdit(lower) { first, cost1 ->
+                    forEachLikelySlip(first) { edit, cost2 ->
+                        if (edit != lower) {
+                            val freq = dictionary.frequency(edit)
+                            if (freq > 0) {
+                                val cost = cost1 + cost2
+                                add(dictionary.displayForm(edit) ?: edit, score(edit, freq, prev) - EDIT_WEIGHT * cost - 0.5, cost)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -193,6 +213,16 @@ class SuggestionEngine private constructor(context: Context) {
                 }
                 block(w.substring(0, i) + c + w.substring(i), cost)
             }
+        }
+    }
+
+    /** The cheapest, most common slips only: a neighboring key, swapped letters, a doubled letter. */
+    private inline fun forEachLikelySlip(w: String, block: (String, Double) -> Unit) {
+        val n = w.length
+        for (i in 0 until n) {
+            NEIGHBORS[w[i]]?.forEach { c -> block(w.substring(0, i) + c + w.substring(i + 1), 0.6) }
+            if (i < n - 1 && w[i] != w[i + 1]) block(w.substring(0, i) + w[i + 1] + w[i] + w.substring(i + 2), 0.7)
+            if (i > 0 && w[i] == w[i - 1]) block(w.removeRange(i, i + 1), 0.5)
         }
     }
 

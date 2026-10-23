@@ -274,10 +274,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         invalidateTree(this)
     }
 
-    /**
-     * The whole keyboard is one sheet of frosted glass with rounded top corners: the blurred
-     * backdrop, a light tint and a thin bright rim along the top edge.
-     */
+    /** The whole keyboard is one sheet of frosted glass with rounded top corners. */
     override fun onDraw(canvas: Canvas) {
         val radius = theme.dp(SHEET_RADIUS_DP)
         sheetRect.set(0f, 0f, width.toFloat(), height + radius)
@@ -290,18 +287,6 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         sheetPaint.color = theme.sheetTint
         canvas.drawRect(sheetRect, sheetPaint)
         canvas.restore()
-        // A thin bright rim along the rounded top edge only, so the sides meet the screen edge.
-        val stroke = theme.dp(1f)
-        val h = stroke / 2f
-        sheetPath.reset()
-        sheetPath.moveTo(h, radius)
-        sheetPath.arcTo(RectF(h, h, 2 * radius, 2 * radius), 180f, 90f)
-        sheetPath.lineTo(width - radius, h)
-        sheetPath.arcTo(RectF(width - 2 * radius, h, width - h, 2 * radius), 270f, 90f)
-        sheetPaint.style = Paint.Style.STROKE
-        sheetPaint.strokeWidth = stroke
-        sheetPaint.color = theme.sheetRim
-        canvas.drawPath(sheetPath, sheetPaint)
     }
 
     private val overlayOffset = PointF()

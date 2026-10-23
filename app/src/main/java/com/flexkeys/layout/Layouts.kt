@@ -47,8 +47,9 @@ object Layouts {
     fun forLayer(layer: Layer, lettersId: String, numberRow: Boolean, punctuation: Boolean = false): LayoutDef {
         val base = when (layer) {
             Layer.LETTERS -> letterLayout(lettersId).let { if (numberRow) withNumberRow(it) else it }
-            Layer.SYMBOLS -> symbols
-            Layer.SYMBOLS_EXTRA -> symbolsExtra
+            // The symbol pages always have Gboard's own bottom row.
+            Layer.SYMBOLS -> return symbols
+            Layer.SYMBOLS_EXTRA -> return symbolsExtra
             Layer.NUMPAD -> return numpad
         }
         return if (punctuation) withPunctuation(base) else base
@@ -123,31 +124,45 @@ object Layouts {
         return layout.copy(rows = listOf(digits) + rows)
     }
 
+    /** Gboard's symbol bottom row: ABC, a side key, the number pad key, space, a side key, return. */
+    private fun symbolBottomRow(left: String, right: String) = RowDef(
+        listOf(
+            KeyDef("ABC", KeyType.LAYER, 1.5f, target = Layer.LETTERS),
+            charKey(left),
+            KeyDef("1234", KeyType.LAYER, 1f, target = Layer.NUMPAD),
+            KeyDef(" ", KeyType.SPACE, 4f),
+            charKey(right),
+            KeyDef("enter", KeyType.ENTER, 1.5f),
+        )
+    )
+
+    /** Same arrangement as Gboard's symbols page. */
     val symbols = LayoutDef(
         "symbols", "Symbols",
         listOf(
             RowDef("1234567890".map { charKey(it.toString()) }),
-            RowDef(listOf("-", "/", ":", ";", "(", ")", "$", "&", "@", "+").map { charKey(it) }),
+            RowDef(listOf("@", "#", "$", "_", "&", "-", "+", "(", ")", "/").map { charKey(it) }),
             RowDef(
-                listOf(KeyDef("#+=", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS_EXTRA)) +
-                    listOf(".", ",", "?", "!", "'", "\"", "*").map { charKey(it) } +
+                listOf(KeyDef("=\\<", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS_EXTRA)) +
+                    listOf("*", "\"", "'", ":", ";", "!", "?").map { charKey(it) } +
                     backspace(1.5f)
             ),
-            bottomRow("ABC", Layer.LETTERS),
+            symbolBottomRow(",", "."),
         )
     )
 
+    /** Gboard's second symbols page (the =\< key). */
     val symbolsExtra = LayoutDef(
         "symbols_extra", "More symbols",
         listOf(
-            RowDef(listOf("~", "`", "|", "•", "√", "π", "÷", "×", "¶", "∆").map { charKey(it) }),
-            RowDef(listOf("_", "\\", "#", "€", "£", "¥", "^", "=", "{", "}").map { charKey(it) }),
+            RowDef(listOf("~", "`", "|", "•", "√", "π", "÷", "×", "§", "∆").map { charKey(it) }),
+            RowDef(listOf("£", "¢", "€", "¥", "^", "°", "=", "{", "}", "\\").map { charKey(it) }),
             RowDef(
-                listOf(KeyDef("123", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS)) +
+                listOf(KeyDef("?123", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS)) +
                     listOf("%", "©", "®", "™", "✓", "[", "]").map { charKey(it) } +
                     backspace(1.5f)
             ),
-            bottomRow("ABC", Layer.LETTERS),
+            symbolBottomRow("<", ">"),
         )
     )
 
@@ -155,13 +170,13 @@ object Layouts {
     val numpad = LayoutDef(
         "numpad", "Numbers",
         listOf(
-            RowDef(listOf(charKey("1", 2.5f), charKey("2", 2.5f), charKey("3", 2.5f), charKey("-", 2.5f))),
-            RowDef(listOf(charKey("4", 2.5f), charKey("5", 2.5f), charKey("6", 2.5f), charKey(",", 2.5f))),
+            RowDef(listOf(charKey("1", 2.5f), charKey("2", 2.5f), charKey("3", 2.5f), KeyDef("-", width = 2.5f, popup = listOf("+", "(", ")", "/", ",", "*", "#")))),
+            RowDef(listOf(charKey("4", 2.5f), charKey("5", 2.5f), charKey("6", 2.5f), KeyDef(" ", KeyType.SPACE, 2.5f))),
             RowDef(listOf(charKey("7", 2.5f), charKey("8", 2.5f), charKey("9", 2.5f), backspace(2.5f))),
             RowDef(
                 listOf(
-                    KeyDef("*#", KeyType.LAYER, 2.5f, target = Layer.SYMBOLS),
-                    KeyDef("0", width = 2.5f, popup = listOf("+")),
+                    KeyDef("ABC", KeyType.LAYER, 2.5f, target = Layer.LETTERS),
+                    KeyDef("0", width = 2.5f, popup = listOf("+", "*", "#")),
                     KeyDef(".", width = 2.5f, popup = listOf("+", "(", ")", "/", "#", "*")),
                     KeyDef("enter", KeyType.ENTER, 2.5f),
                 )
