@@ -94,7 +94,7 @@ class KeyboardView(context: Context) : View(context) {
         }
 
     var showKeyPreview = true
-    var spaceLabel = "FlexKeys"
+    var spaceLabel = "EN"
 
     private var host: GlassHost? = null
     private val keys = ArrayList<Key>()
@@ -162,7 +162,7 @@ class KeyboardView(context: Context) : View(context) {
         val vPad = t.dp(VERTICAL_PAD_DP)
         val unit = (width - 2 * hPad) / LayoutDef.UNITS
         val insetX = t.keySpacingPx / 2f
-        val insetY = t.keySpacingPx / 2f + t.dp(2.5f)
+        val insetY = t.keySpacingPx / 2f + t.dp(3.5f)
         def.rows.forEachIndexed { r, row ->
             var x = hPad + (LayoutDef.UNITS - row.units) / 2f * unit
             val top = vPad + r * rowHeight
@@ -189,7 +189,7 @@ class KeyboardView(context: Context) : View(context) {
         for (key in keys) {
             val p = pressProgress(key, now)
             if ((key.pressed && p < 1f) || (!key.pressed && p > 0f)) animating = true
-            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, h.backdrop, offset.x, offset.y, fillFor(key, t), p)
+            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, fillFor(key, t), p)
             canvas.save()
             if (p > 0f) {
                 val s = 1f - 0.05f * p
@@ -207,10 +207,13 @@ class KeyboardView(context: Context) : View(context) {
         else -> 0f
     }
 
+    private val shiftActive get() = shiftState != ShiftState.OFF && layer == Layer.LETTERS
+
     private fun fillFor(key: Key, t: GlassTheme): Int = when (key.def.type) {
+        // Return is plain glass for new lines and accent-colored for actions like Search or Send.
+        KeyType.ENTER -> if (enterAction == EnterAction.NEWLINE) t.specialKeyFill else t.accentFill
+        KeyType.SHIFT -> if (shiftActive) t.activeFill else t.specialKeyFill
         KeyType.CHAR, KeyType.SPACE -> t.keyFill
-        KeyType.ENTER -> t.accentFill
-        KeyType.SHIFT -> if (shiftState == ShiftState.LOCKED && layer == Layer.LETTERS) t.accentFill else t.specialKeyFill
         else -> t.specialKeyFill
     }
 
@@ -230,21 +233,22 @@ class KeyboardView(context: Context) : View(context) {
                     shiftState == ShiftState.ONCE -> Icon.SHIFT_ON
                     else -> Icon.SHIFT
                 }
-                val color = if (shiftState == ShiftState.LOCKED && layer == Layer.LETTERS) t.onAccent else t.textColor
-                Icons.draw(canvas, icon, cx, cy, iconSize, color)
+                Icons.draw(canvas, icon, cx, cy, iconSize, if (shiftActive) t.onActive else t.textColor)
             }
             KeyType.BACKSPACE -> Icons.draw(canvas, Icon.BACKSPACE, cx, cy, iconSize, t.textColor)
-            KeyType.ENTER -> Icons.draw(canvas, enterAction.icon, cx, cy, iconSize, t.onAccent)
+            KeyType.ENTER -> Icons.draw(canvas, enterAction.icon, cx, cy, iconSize,
+                if (enterAction == EnterAction.NEWLINE) t.textColor else t.onAccent)
             KeyType.EMOJI -> Icons.draw(canvas, Icon.EMOJI, cx, cy, iconSize, t.textColor)
             KeyType.SPACE -> {
-                textPaint.textSize = rowHeight * 0.22f * t.fontScale
-                textPaint.color = t.secondaryTextColor
-                drawCentered(canvas, spaceLabel, cx, cy, textPaint)
+                // A quiet language tag in the corner, as on iOS.
+                hintPaint.textSize = rowHeight * 0.17f * t.fontScale
+                hintPaint.color = t.secondaryTextColor
+                canvas.drawText(spaceLabel, v.right - t.dp(8f), v.bottom - t.dp(6f), hintPaint)
             }
             KeyType.CHAR, KeyType.LAYER -> {
                 val label = labelFor(key.def)
                 val single = label.codePointCount(0, label.length) == 1
-                textPaint.textSize = rowHeight * (if (single) 0.42f else 0.27f) * t.fontScale
+                textPaint.textSize = rowHeight * (if (single) 0.46f else 0.30f) * t.fontScale
                 textPaint.color = t.textColor
                 fitText(label, v.width() * 0.85f, textPaint)
                 drawCentered(canvas, label, cx, cy, textPaint)

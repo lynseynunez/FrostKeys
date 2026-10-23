@@ -2,7 +2,6 @@ package com.flexkeys.ui
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.PointF
 import android.graphics.RectF
 import android.widget.LinearLayout
 
@@ -11,7 +10,6 @@ open class GlassPanelLayout(context: Context) : LinearLayout(context) {
 
     protected var host: GlassHost? = null
         private set
-    private val offset = PointF()
     private val rect = RectF()
 
     init {
@@ -31,10 +29,10 @@ open class GlassPanelLayout(context: Context) : LinearLayout(context) {
     protected open fun onHostAttached() = Unit
 
     override fun onDraw(canvas: Canvas) {
+        // Panels sit on the keyboard's frosted sheet; only a faint tile marks their area.
         val h = host ?: return
-        h.backdropOffset(this, offset)
         val inset = h.theme.dp(4f)
         rect.set(inset, inset, width - inset, height - inset)
-        h.painter.draw(canvas, rect, h.theme.cornerRadiusPx + inset, h.backdrop, offset.x, offset.y, h.theme.panelFill)
+        h.painter.draw(canvas, rect, h.theme.cornerRadiusPx + inset, null, 0f, 0f, h.theme.sheetTint, rim = false)
     }
 }

@@ -9,7 +9,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, ONE_HANDED, KEYBOARD, PIN, PIN_ON, TRASH, SWAP, EXPAND, CLOCK, CLOSE,
-    MENU, HIDE,
+    MENU, HIDE, GLOBE,
 }
 
 object Icons {
@@ -157,6 +157,14 @@ object Icons {
             }
             Icon.MENU -> filled {
                 for (dx in listOf(-0.17f, 0.17f)) for (dy in listOf(-0.17f, 0.17f)) circle(dx, dy, 0.07f)
+            }
+            Icon.GLOBE -> {
+                circle(0f, 0f, 0.42f)
+                oval.set(x(-0.18f), y(-0.42f), x(0.18f), y(0.42f))
+                canvas.drawOval(oval, paint)
+                line(-0.42f, 0f, 0.42f, 0f)
+                line(-0.36f, -0.21f, 0.36f, -0.21f)
+                line(-0.36f, 0.21f, 0.36f, 0.21f)
             }
             Icon.HIDE -> poly(-0.3f, -0.1f, 0f, 0.18f, 0.3f, -0.1f, close = false)
             Icon.CLOSE -> {

@@ -25,22 +25,27 @@ class GlassTheme(
     val textColor: Int = if (dark) 0xFFF4F6FB.toInt() else 0xFF15171C.toInt()
     val secondaryTextColor: Int = withAlpha(textColor, if (dark) 0.62f else 0.55f)
 
-    private val fillAlpha = 0.16f + 0.74f * glassOpacity
-    val keyFill: Int = if (dark) withAlpha(0xFF3C3F4C.toInt(), fillAlpha) else withAlpha(Color.WHITE, fillAlpha)
-    val specialKeyFill: Int =
-        if (dark) withAlpha(0xFF262833.toInt(), (fillAlpha + 0.1f).coerceAtMost(1f))
-        else withAlpha(0xFFD3DAE8.toInt(), (fillAlpha + 0.1f).coerceAtMost(1f))
-    val panelFill: Int = if (dark) withAlpha(0xFF23252F.toInt(), fillAlpha * 0.8f) else withAlpha(Color.WHITE, fillAlpha * 0.75f)
-    val pressedOverlay: Int = if (dark) withAlpha(Color.WHITE, 0.16f) else withAlpha(Color.WHITE, 0.55f)
+    // Keys are flat translucent tiles on one frosted sheet, in the style of iOS 26 "Liquid Glass".
+    val keyFill: Int =
+        if (dark) withAlpha(Color.WHITE, 0.07f + 0.36f * glassOpacity) else withAlpha(Color.WHITE, 0.28f + 0.6f * glassOpacity)
+    val specialKeyFill: Int = keyFill
+    val panelFill: Int = keyFill
+    val pressedOverlay: Int = if (dark) withAlpha(Color.WHITE, 0.22f) else withAlpha(Color.WHITE, 0.6f)
+    /** Tint over the blurred backdrop for the whole keyboard sheet. */
+    val sheetTint: Int = if (dark) withAlpha(Color.BLACK, 0.18f + 0.3f * glassOpacity) else withAlpha(Color.WHITE, 0.12f + 0.3f * glassOpacity)
+    /** Shift when active: a solid white key, like iOS. */
+    val activeFill: Int = withAlpha(Color.WHITE, 0.95f)
+    val onActive: Int = 0xFF15171C.toInt()
 
     val accentFill: Int = withAlpha(accent, 0.62f + 0.33f * glassOpacity)
     val accentSoft: Int = withAlpha(accent, 0.30f)
     val onAccent: Int = if (luminance(accent) > 0.6f) 0xFF15171C.toInt() else Color.WHITE
 
-    val borderTop: Int = withAlpha(Color.WHITE, if (dark) 0.34f else 0.90f)
-    val borderBottom: Int = withAlpha(Color.WHITE, if (dark) 0.06f else 0.28f)
-    val highlight: Int = withAlpha(Color.WHITE, if (dark) 0.14f else 0.42f)
-    val shadow: Int = withAlpha(Color.BLACK, if (dark) 0.30f else 0.08f)
+    val borderTop: Int = withAlpha(Color.WHITE, if (dark) 0.16f else 0.55f)
+    val borderBottom: Int = withAlpha(Color.WHITE, if (dark) 0.02f else 0.12f)
+    val highlight: Int = withAlpha(Color.WHITE, if (dark) 0.06f else 0.18f)
+    val shadow: Int = withAlpha(Color.BLACK, if (dark) 0.10f else 0.04f)
+    val sheetRim: Int = withAlpha(Color.WHITE, if (dark) 0.22f else 0.7f)
     val divider: Int = withAlpha(textColor, 0.14f)
 
     val baseTop: Int = if (dark) 0xFF1A1B22.toInt() else 0xFFE9ECF4.toInt()

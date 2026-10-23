@@ -69,14 +69,13 @@ object Layouts {
     private fun shift(width: Float) = KeyDef("shift", KeyType.SHIFT, width)
     private fun backspace(width: Float) = KeyDef("backspace", KeyType.BACKSPACE, width)
 
+    /** iOS-style bottom row: layer switch, emoji, a wide space bar and a wide return key. */
     private fun bottomRow(switchLabel: String, switchTarget: Layer) = RowDef(
         listOf(
-            KeyDef(switchLabel, KeyType.LAYER, 1.5f, target = switchTarget),
-            KeyDef("emoji", KeyType.EMOJI, 1f),
-            KeyDef(",", popup = listOf(";", ":", "'", "\"", "-", "!", "?"), hint = null),
-            KeyDef(" ", KeyType.SPACE, 4f),
-            KeyDef(".", popup = listOf("…", "?", "!", ",", "'", "\"", "-", ":", ";", "@", "#"), hint = null),
-            KeyDef("enter", KeyType.ENTER, 1.5f),
+            KeyDef(switchLabel, KeyType.LAYER, 1.3f, target = switchTarget),
+            KeyDef("emoji", KeyType.EMOJI, 1.2f),
+            KeyDef(" ", KeyType.SPACE, 5f),
+            KeyDef("enter", KeyType.ENTER, 2.5f),
         )
     )
 
@@ -92,7 +91,7 @@ object Layouts {
         }
         return LayoutDef(
             id, name,
-            listOf(RowDef(top), RowDef(middle), RowDef(bottomLetters), bottomRow("?123", Layer.SYMBOLS))
+            listOf(RowDef(top), RowDef(middle), RowDef(bottomLetters), bottomRow("123", Layer.SYMBOLS))
         )
     }
 
@@ -108,10 +107,10 @@ object Layouts {
         "symbols", "Symbols",
         listOf(
             RowDef("1234567890".map { charKey(it.toString()) }),
-            RowDef(listOf("@", "#", "$", "_", "&", "-", "+", "(", ")", "/").map { charKey(it) }),
+            RowDef(listOf("-", "/", ":", ";", "(", ")", "$", "&", "@", "+").map { charKey(it) }),
             RowDef(
-                listOf(KeyDef("=\\<", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS_EXTRA)) +
-                    listOf("*", "\"", "'", ":", ";", "!", "?").map { charKey(it) } +
+                listOf(KeyDef("#+=", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS_EXTRA)) +
+                    listOf(".", ",", "?", "!", "'", "\"", "*").map { charKey(it) } +
                     backspace(1.5f)
             ),
             bottomRow("ABC", Layer.LETTERS),
@@ -122,9 +121,9 @@ object Layouts {
         "symbols_extra", "More symbols",
         listOf(
             RowDef(listOf("~", "`", "|", "•", "√", "π", "÷", "×", "¶", "∆").map { charKey(it) }),
-            RowDef(listOf("£", "€", "¥", "¢", "^", "°", "=", "{", "}", "\\").map { charKey(it) }),
+            RowDef(listOf("_", "\\", "#", "€", "£", "¥", "^", "=", "{", "}").map { charKey(it) }),
             RowDef(
-                listOf(KeyDef("?123", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS)) +
+                listOf(KeyDef("123", KeyType.LAYER, 1.5f, target = Layer.SYMBOLS)) +
                     listOf("%", "©", "®", "™", "✓", "[", "]").map { charKey(it) } +
                     backspace(1.5f)
             ),

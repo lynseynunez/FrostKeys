@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.icu.text.BreakIterator
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.SystemClock
 import android.text.InputType
 import android.view.KeyEvent
@@ -262,6 +263,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 startActivity(intent)
             }
             SuggestionStripView.Action.HIDE -> requestHideSelf(0)
+            SuggestionStripView.Action.SWITCH_KEYBOARD -> {
+                val switched = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && switchToNextInputMethod(false)
+                if (!switched) (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
+            }
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.ONE_HANDED -> {

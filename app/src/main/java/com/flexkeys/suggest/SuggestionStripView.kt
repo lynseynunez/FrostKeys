@@ -30,7 +30,11 @@ class SuggestionStripView(context: Context) : View(context) {
         ONE_HANDED(Icon.ONE_HANDED),
         SETTINGS(Icon.SETTINGS),
         HIDE(Icon.HIDE),
+        /** From the bottom bar's globe button; not shown in the toolbar. */
+        SWITCH_KEYBOARD(Icon.GLOBE),
     }
+
+    private val toolbarActions = listOf(Action.CLIPBOARD, Action.EMOJI, Action.ONE_HANDED, Action.SETTINGS, Action.HIDE)
 
     interface Listener {
         fun onSuggestionPicked(index: Int, text: String)
@@ -99,8 +103,8 @@ class SuggestionStripView(context: Context) : View(context) {
         val h = host ?: return
         val t = h.theme
         h.backdropOffset(this, offset)
-        barRect.set(dp(5f), dp(5f), width - dp(5f), height - dp(3f))
-        h.painter.draw(canvas, barRect, barRect.height() / 2f, h.backdrop, offset.x, offset.y, t.panelFill)
+        // The strip sits directly on the keyboard's glass sheet, like iOS.
+        barRect.set(dp(5f), dp(4f), width - dp(5f), height - dp(2f))
 
         val iconSize = barRect.height() * 0.5f
         // Menu button on the left.
@@ -112,7 +116,7 @@ class SuggestionStripView(context: Context) : View(context) {
         val contentLeft = barRect.left + menuWidth
         val contentWidth = barRect.right - contentLeft - dp(6f)
         if (showingToolbar) {
-            val actions = Action.values()
+            val actions = toolbarActions
             val slot = contentWidth / actions.size
             actions.forEachIndexed { i, action ->
                 tmp.set(contentLeft + i * slot, barRect.top, contentLeft + (i + 1) * slot, barRect.bottom)
@@ -145,7 +149,7 @@ class SuggestionStripView(context: Context) : View(context) {
             drawPressed(canvas, i, tmp)
             textPaint.typeface = if (highlighted || (suggestions.highlighted < 0 && i == 1)) bold else regular
             textPaint.textSize = barRect.height() * 0.40f * t.fontScale.coerceIn(0.8f, 1.3f)
-            textPaint.color = t.textColor
+            textPaint.color = if (highlighted || i == 1) t.textColor else t.secondaryTextColor
             val label = if (i == suggestions.typedIndex && suggestions.correction != null) "“$word”" else word
             val shown = TextUtils.ellipsize(label, textPaint, tmp.width() - dp(10f), TextUtils.TruncateAt.END).toString()
             val fm = textPaint.fontMetrics
@@ -167,7 +171,7 @@ class SuggestionStripView(context: Context) : View(context) {
         val contentLeft = left + menuWidth
         val contentWidth = width - dp(5f) - contentLeft - dp(6f)
         return if (showingToolbar) {
-            val n = Action.values().size
+            val n = toolbarActions.size
             TOOLBAR + ((x - contentLeft) / (contentWidth / n)).toInt().coerceIn(0, n - 1)
         } else {
             ((x - contentLeft) / (contentWidth / 3)).toInt().coerceIn(0, 2)
@@ -207,7 +211,7 @@ class SuggestionStripView(context: Context) : View(context) {
                 invalidate()
             }
             target >= TOOLBAR -> {
-                val action = Action.values()[target - TOOLBAR]
+                val action = toolbarActions[target - TOOLBAR]
                 listener?.onAction(action)
             }
             !showingToolbar -> suggestions.slots.getOrNull(target)?.let { listener?.onSuggestionPicked(target, it) }

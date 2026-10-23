@@ -2,6 +2,9 @@ package com.flexkeys.ui
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.PointF
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +14,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
 import com.flexkeys.emoji.EmojiPanel
+import com.flexkeys.keyboard.Icon
 import com.flexkeys.keyboard.KeyboardView
 import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.theme.BackgroundImageStore
@@ -51,6 +55,25 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         private set
     private var panelView: View? = null
     private val gutter = OneHandedGutter(context)
+
+    /** Globe (switch keyboard) on the left and clipboard on the right, below the keys. */
+    private val bottomBar = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        val size = (44 * resources.displayMetrics.density).toInt()
+        val pad = (10 * resources.displayMetrics.density).toInt()
+        setPadding(pad, 0, pad, pad / 2)
+        addView(GlassButton(context, icon = Icon.GLOBE).apply {
+            onClick = { strip.listener?.onAction(SuggestionStripView.Action.SWITCH_KEYBOARD) }
+        }, LayoutParams(size, size))
+        addView(View(context), LayoutParams(0, size, 1f))
+        addView(GlassButton(context, icon = Icon.CLIPBOARD).apply {
+            onClick = { strip.listener?.onAction(SuggestionStripView.Action.CLIPBOARD) }
+        }, LayoutParams(size, size))
+    }
+
+    private val sheetPath = Path()
+    private val sheetRect = RectF()
+    private val sheetPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var oneHandedMode = Prefs.ONE_HANDED_OFF
 
     init {
@@ -60,6 +83,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         clipToPadding = false
         addView(strip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(content, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        addView(bottomBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         content.addView(keyboardRow, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         keyboardRow.addView(keyboardView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
     }
@@ -151,8 +175,28 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         invalidateTree(this)
     }
 
+    /**
+     * The whole keyboard is one sheet of frosted glass with rounded top corners: the blurred
+     * backdrop, a light tint and a thin bright rim along the top edge.
+     */
     override fun onDraw(canvas: Canvas) {
-        backdrop.drawBase(canvas)
+        val radius = theme.dp(SHEET_RADIUS_DP)
+        sheetRect.set(0f, 0f, width.toFloat(), height + radius)
+        sheetPath.reset()
+        sheetPath.addRoundRect(sheetRect, radius, radius, Path.Direction.CW)
+        canvas.save()
+        canvas.clipPath(sheetPath)
+        backdrop.drawBlurred(canvas, 0f, 0f)
+        sheetPaint.style = Paint.Style.FILL
+        sheetPaint.color = theme.sheetTint
+        canvas.drawRect(sheetRect, sheetPaint)
+        canvas.restore()
+        val stroke = theme.dp(1f)
+        sheetPaint.style = Paint.Style.STROKE
+        sheetPaint.strokeWidth = stroke
+        sheetPaint.color = theme.sheetRim
+        sheetRect.inset(stroke / 2f, stroke / 2f)
+        canvas.drawRoundRect(sheetRect, radius, radius, sheetPaint)
     }
 
     private val overlayOffset = PointF()
@@ -193,6 +237,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     private companion object {
         const val ONE_HANDED_WEIGHT = 0.8f
+        const val SHEET_RADIUS_DP = 26f
         val loader: ExecutorService = Executors.newSingleThreadExecutor()
     }
 }

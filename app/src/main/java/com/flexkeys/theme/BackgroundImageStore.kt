@@ -38,7 +38,9 @@ object BackgroundImageStore {
         val resolver = context.contentResolver
         return try {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return false
+            // With inJustDecodeBounds the decoder always returns null; only the sizes are filled in.
+            val stream = resolver.openInputStream(uri) ?: return false
+            stream.use { BitmapFactory.decodeStream(it, null, bounds) }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return false
 
             val options = BitmapFactory.Options().apply {
