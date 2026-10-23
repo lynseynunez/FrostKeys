@@ -253,13 +253,14 @@ class KeyboardView(context: Context) : View(context) {
             glow(w * 0.52f, h * 1.05f, w * 0.40f, purple),
             glow(w * 0.88f, h * 0.85f, w * 0.40f, magenta),
         )
-        cardEdge = LinearGradient(0f, 0f, w, h, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.42f else 0.85f),
-            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.07f else 0.25f), Shader.TileMode.CLAMP)
+        // A hairline edge only: no raised rim, so it reads as a pane of glass and not a button.
+        cardEdge = LinearGradient(0f, 0f, w, h, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.24f else 0.60f),
+            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.04f else 0.16f), Shader.TileMode.CLAMP)
     }
 
     /**
      * The space bar: dark translucent glass with soft blue, purple and magenta glows showing through
-     * and a faint light edge, like a frosted card. The glow strength follows the gradient setting.
+     * over the blurred background and only a hairline edge, like a frosted card. The glow strength follows the gradient setting.
      */
     private fun drawSpaceCard(canvas: Canvas, key: Key, t: GlassTheme, pressed: Float) {
         val v = key.visual
@@ -278,9 +279,11 @@ class KeyboardView(context: Context) : View(context) {
 
         canvas.save()
         canvas.clipPath(cardPath)
+        // Frosted: the blurred background shows through the pane.
+        host?.backdrop?.drawBlurred(canvas, offset.x + v.left, offset.y + v.top)
         cardPaint.style = Paint.Style.FILL
         cardPaint.shader = null
-        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF0A0A14.toInt(), 0.50f) else GlassTheme.withAlpha(Color.WHITE, 0.45f)
+        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF0A0A14.toInt(), 0.36f) else GlassTheme.withAlpha(Color.WHITE, 0.32f)
         canvas.drawRect(0f, 0f, w, h, cardPaint)
         val strength = t.gradientStrength.coerceAtLeast(0.35f)
         val glowAlpha = ((if (t.dark) 0.85f else 0.55f) * strength * 255f).toInt().coerceIn(0, 255)
@@ -297,7 +300,7 @@ class KeyboardView(context: Context) : View(context) {
         canvas.restore()
 
         // Faint light edge, brighter at the top left.
-        val stroke = t.dp(1f)
+        val stroke = t.dp(0.75f)
         cardPaint.style = Paint.Style.STROKE
         cardPaint.strokeWidth = stroke
         cardPaint.shader = cardEdge
