@@ -27,7 +27,7 @@ object GeminiClient {
         REPHRASE("Rephrase", "Rephrase it using different words with the same meaning."),
     }
 
-    private class ApiException(message: String) : IOException(message)
+    private class ApiException(message: String, val busy: Boolean = false) : IOException(message)
 
     private const val SYSTEM = "You rewrite the user's text as instructed. Reply with only the rewritten text: " +
         "no quotes, no notes, no explanation. Keep the original language unless told otherwise. " +
@@ -47,7 +47,7 @@ object GeminiClient {
         main.postDelayed({ finish(null, "Gemini took too long to answer. Try again.") }, TIMEOUT_MS)
         pool.execute {
             try {
-                finish(call(key.trim(), model.trim().ifEmpty { DEFAULT_MODEL }, instruction, text.take(MAX_CHARS)), null)
+                finish(callWithFallback(key.trim(), model.trim().ifEmpty { DEFAULT_MODEL }, instruction, text.take(MAX_CHARS)), null)
             } catch (e: ApiException) {
                 finish(null, e.message)
             } catch (e: IOException) {
@@ -58,6 +58,20 @@ object GeminiClient {
                 finish(null, "Couldn't send that request (${e.javaClass.simpleName}). Check the key and model name in settings.")
             }
         }
+    }
+
+    /** If the chosen model is overloaded, quietly tries the next one. */
+    private fun callWithFallback(key: String, model: String, instruction: String, text: String): String {
+        var busy: ApiException? = null
+        for (m in listOf(model, "gemini-2.5-flash", "gemini-2.5-flash-lite").distinct()) {
+            try {
+                return call(key, m, instruction, text)
+            } catch (e: ApiException) {
+                if (!e.busy) throw e
+                busy = e
+            }
+        }
+        throw busy ?: ApiException("Gemini is busy. Try again in a moment.")
     }
 
     private fun call(key: String, model: String, instruction: String, text: String): String {
@@ -80,7 +94,7 @@ object GeminiClient {
             c.outputStream.use { it.write(body.toByteArray()) }
             val code = c.responseCode
             val reply = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) throw ApiException(errorMessage(code, reply))
+            if (code !in 200..299) throw ApiException(errorMessage(code, reply), busy = code == 503)
             val json = JSONObject(reply)
             val block = json.optJSONObject("promptFeedback")?.optString("blockReason").orEmpty()
             if (block.isNotEmpty()) throw ApiException("Gemini declined to rewrite that text.")
@@ -102,6 +116,7 @@ object GeminiClient {
             ""
         }
         return when {
+            code == 503 -> "Gemini is busy right now. Try again in a moment."
             code == 429 -> "Gemini's free limit was reached. Try again in a minute."
             code == 400 && detail.contains("API key", ignoreCase = true) -> "That Gemini key isn't valid. Check it in SakuriKey settings."
             code == 401 || code == 403 -> "Gemini didn't accept the key. Check it in SakuriKey settings."
@@ -111,7 +126,7 @@ object GeminiClient {
         }
     }
 
-    private const val TIMEOUT_MS = 40_000L
+    private const val TIMEOUT_MS = 70_000L
 
     const val DEFAULT_MODEL = "gemini-flash-latest"
 }
