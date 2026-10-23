@@ -2,6 +2,8 @@ package com.flexkeys.ui
 
 import android.content.Context
 import android.graphics.Canvas
+import android.os.Build
+import android.view.WindowInsets
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -17,7 +19,6 @@ import com.flexkeys.edit.EditPanel
 import com.flexkeys.emoji.EmojiIndex
 import com.flexkeys.emoji.EmojiPanel
 import com.flexkeys.emoji.EmojiSearchBar
-import com.flexkeys.keyboard.Icon
 import com.flexkeys.keyboard.KeyboardView
 import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
@@ -43,7 +44,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     val keyboardView = KeyboardView(context)
 
     /** Holds the keyboard row and, on top of it, the emoji and clipboard panels. */
-    private val content = FrameLayout(context).apply { clipChildren = false; clipToPadding = false }
+    private val content = PanelFrame(context).apply { clipChildren = false; clipToPadding = false }
     private val keyboardRow = LinearLayout(context).apply {
         orientation = HORIZONTAL
         clipChildren = false
@@ -67,26 +68,14 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     var emojiSearching = false
         private set
 
+    /** Set by the input method, whose glass continues behind the navigation bar. */
+    var extendBehindNavigationBar = false
+
     var panelListener: PanelListener? = null
     var panel: Panel = Panel.NONE
         private set
     private var panelView: View? = null
     private val gutter = OneHandedGutter(context)
-
-    /** Globe (switch keyboard) on the left and clipboard on the right, below the keys. */
-    private val bottomBar = LinearLayout(context).apply {
-        orientation = HORIZONTAL
-        val size = (44 * resources.displayMetrics.density).toInt()
-        val pad = (10 * resources.displayMetrics.density).toInt()
-        setPadding(pad, 0, pad, pad / 2)
-        addView(GlassButton(context, icon = Icon.GLOBE).apply {
-            onClick = { strip.listener?.onAction(SuggestionStripView.Action.SWITCH_KEYBOARD) }
-        }, LayoutParams(size, size))
-        addView(View(context), LayoutParams(0, size, 1f))
-        addView(GlassButton(context, icon = Icon.CLIPBOARD).apply {
-            onClick = { strip.listener?.onAction(SuggestionStripView.Action.CLIPBOARD) }
-        }, LayoutParams(size, size))
-    }
 
     private val sheetPath = Path()
     private val sheetRect = RectF()
@@ -102,9 +91,44 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         emojiSearchBar.visibility = View.GONE
         addView(strip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(content, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        addView(bottomBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         content.addView(keyboardRow, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         keyboardRow.addView(keyboardView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        // In the input method the glass extends behind the navigation bar; keep the keys above it.
+        setOnApplyWindowInsetsListener { _, insets ->
+            if (!extendBehindNavigationBar) return@setOnApplyWindowInsetsListener insets
+            val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                insets.getInsets(WindowInsets.Type.navigationBars()).bottom
+            } else {
+                @Suppress("DEPRECATION")
+                insets.systemWindowInsetBottom
+            }
+            setPadding(0, 0, 0, bottom)
+            insets
+        }
+    }
+
+    /**
+     * Sizes every panel to exactly the height of the keys, so the emoji grid or clipboard list
+     * never makes the keyboard taller.
+     */
+    private class PanelFrame(context: Context) : FrameLayout(context) {
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val keys = getChildAt(0)
+            if (keys == null) {
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+                return
+            }
+            measureChild(keys, widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            val width = MeasureSpec.getSize(widthMeasureSpec)
+            val height = keys.measuredHeight
+            for (i in 1 until childCount) {
+                getChildAt(i).measure(
+                    MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY),
+                )
+            }
+            setMeasuredDimension(width, height)
+        }
     }
 
     /** Shows the emoji or clipboard panel in place of the keys, or goes back to the keys. */
@@ -266,12 +290,18 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         sheetPaint.color = theme.sheetTint
         canvas.drawRect(sheetRect, sheetPaint)
         canvas.restore()
+        // A thin bright rim along the rounded top edge only, so the sides meet the screen edge.
         val stroke = theme.dp(1f)
+        val h = stroke / 2f
+        sheetPath.reset()
+        sheetPath.moveTo(h, radius)
+        sheetPath.arcTo(RectF(h, h, 2 * radius, 2 * radius), 180f, 90f)
+        sheetPath.lineTo(width - radius, h)
+        sheetPath.arcTo(RectF(width - 2 * radius, h, width - h, 2 * radius), 270f, 90f)
         sheetPaint.style = Paint.Style.STROKE
         sheetPaint.strokeWidth = stroke
         sheetPaint.color = theme.sheetRim
-        sheetRect.inset(stroke / 2f, stroke / 2f)
-        canvas.drawRoundRect(sheetRect, radius, radius, sheetPaint)
+        canvas.drawPath(sheetPath, sheetPaint)
     }
 
     private val overlayOffset = PointF()

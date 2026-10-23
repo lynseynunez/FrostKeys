@@ -3,6 +3,7 @@ package com.flexkeys.service
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.icu.text.BreakIterator
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -89,14 +90,34 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         view.keyboardView.listener = this
         view.strip.listener = this
         view.panelListener = this
+        view.extendBehindNavigationBar = true
         view.setOneHanded(prefs.oneHanded)
         root = view
         refreshKeyboard()
         view.reloadPhoto()
+        drawBehindNavigationBar()
         return view
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
+
+    /**
+     * Lets the keyboard's glass continue under the navigation bar, as Gboard does. The root view
+     * pads itself by the navigation bar height so keys stay above the system buttons.
+     */
+    private fun drawBehindNavigationBar() {
+        val w = window?.window ?: return
+        w.navigationBarColor = Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) w.isNavigationBarContrastEnforced = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            w.setDecorFitsSystemWindows(false)
+        } else {
+            @Suppress("DEPRECATION")
+            w.decorView.systemUiVisibility = w.decorView.systemUiVisibility or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        }
+        root?.requestApplyInsets()
+    }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
@@ -287,10 +308,6 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 startActivity(intent)
             }
             SuggestionStripView.Action.HIDE -> requestHideSelf(0)
-            SuggestionStripView.Action.SWITCH_KEYBOARD -> {
-                val switched = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && switchToNextInputMethod(false)
-                if (!switched) (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
-            }
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.EDIT -> togglePanel(KeyboardRootView.Panel.EDIT)

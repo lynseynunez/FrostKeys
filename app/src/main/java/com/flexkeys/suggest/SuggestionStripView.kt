@@ -31,8 +31,6 @@ class SuggestionStripView(context: Context) : View(context) {
         ONE_HANDED(Icon.ONE_HANDED),
         SETTINGS(Icon.SETTINGS),
         HIDE(Icon.HIDE),
-        /** From the bottom bar's globe button; not shown in the toolbar. */
-        SWITCH_KEYBOARD(Icon.GLOBE),
     }
 
     private val toolbarActions =
