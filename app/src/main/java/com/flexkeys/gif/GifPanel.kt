@@ -98,7 +98,7 @@ class GifPanel(
         status.visibility = View.GONE
         body.addView(status, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         settingsButton.apply {
-            text = "Open FlexKeys settings"
+            text = "Open SakuriKey settings"
             gravity = Gravity.CENTER
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(dp(18f), dp(10f), dp(18f), dp(10f))
@@ -191,12 +191,12 @@ class GifPanel(
 
     private fun load(reset: Boolean) {
         if (!prefs.gifsEnabled) {
-            showStatus("GIF search is turned off.\nTurn it on in FlexKeys settings.", needsSettings = true)
+            showStatus("GIF search is turned off.\nTurn it on in SakuriKey settings.", needsSettings = true)
             return
         }
         val key = prefs.klipyKey.trim()
         if (key.isEmpty()) {
-            showStatus("Add your free Klipy API key\nin FlexKeys settings to use GIFs.", needsSettings = true)
+            showStatus("Add your free Klipy API key\nin SakuriKey settings to use GIFs.", needsSettings = true)
             return
         }
         if (reset) {

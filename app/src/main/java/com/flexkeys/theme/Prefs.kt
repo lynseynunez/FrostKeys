@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Typed access to every FlexKeys setting. Backed by a single SharedPreferences file so
+ * Typed access to every SakuriKey setting. Backed by a single SharedPreferences file so
  * the settings app and the keyboard service see each other's changes immediately.
  */
 class Prefs private constructor(context: Context) {

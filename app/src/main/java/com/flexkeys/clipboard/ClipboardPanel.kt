@@ -86,7 +86,7 @@ class ClipboardPanel(context: Context, private val listener: Listener) : GlassPa
         empty.text = if (prefs.clipboardHistory) {
             "Text you copy shows up here.\nPin items to keep them."
         } else {
-            "Clipboard history is off.\nTurn it on in FlexKeys settings."
+            "Clipboard history is off.\nTurn it on in SakuriKey settings."
         }
         empty.visibility = if (adapter.items.isEmpty()) View.VISIBLE else View.GONE
     }

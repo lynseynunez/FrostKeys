@@ -1,4 +1,4 @@
-# FlexKeys
+# SakuriKey
 
 A highly customizable Android keyboard with a **liquid glass** look: frosted keys over your own
 background photo, real-time blur on Android 12+, and full control over size, spacing, shape and color.
@@ -49,7 +49,7 @@ Every push builds a debug APK on GitHub Actions.
 
 1. Open the repository on GitHub and go to the **Actions** tab.
 2. Click the latest successful **Build debug APK** run (green check), ideally one on `main`.
-3. Scroll to **Artifacts** and download **FlexKeys-debug-apk**. GitHub delivers it as a `.zip`.
+3. Scroll to **Artifacts** and download **SakuriKey-debug-apk**. GitHub delivers it as a `.zip`.
 4. Unzip it to get `app-debug.apk`. You need to be signed in to GitHub to download artifacts.
 5. Copy the APK to your phone (or download it there directly) and open it.
 6. When Android asks, allow your browser or file manager to **install unknown apps**, then tap **Install**.
@@ -62,12 +62,12 @@ so updates install in place.
 
 ## Set it up
 
-Open **FlexKeys** from your app drawer. The first card walks you through it:
+Open **SakuriKey** from your app drawer. The first card walks you through it:
 
-1. **Enable FlexKeys**: opens the system keyboard list, where you turn FlexKeys on.
-   Android shows a standard warning that keyboards can see what you type. FlexKeys can't send it
+1. **Enable SakuriKey**: opens the system keyboard list, where you turn SakuriKey on.
+   Android shows a standard warning that keyboards can see what you type. SakuriKey can't send it
    anywhere, because it has no network access.
-2. **Switch to FlexKeys**: opens the keyboard picker. Choose FlexKeys.
+2. **Switch to SakuriKey**: opens the keyboard picker. Choose SakuriKey.
 3. **Try it**: type in the test field.
 
 The live preview at the top of the settings screen updates as you move any slider, and you can type on it.
@@ -132,7 +132,7 @@ layout, build a `LayoutDef` from `RowDef`s and `KeyDef`s (see `Layouts.symbols` 
 ## Privacy
 
 - Permissions: `VIBRATE`, and `INTERNET`, which is used only for GIF search (off by default). Without a Klipy key
-  and the GIF switch turned on, FlexKeys never makes a network request.
+  and the GIF switch turned on, SakuriKey never makes a network request.
 - When you use the translator, the text you type or paste into it, the language pair and (optionally) your email
   go to `api.mymemory.translated.net`. Your normal typing is never sent.
 - When you use GIFs, requests go to `api.klipy.com` (search words, your key and a random on-device id) and
@@ -144,7 +144,7 @@ layout, build a `LayoutDef` from `RowDef`s and `KeyDef`s (see `Layouts.symbols` 
 
 ## License
 
-FlexKeys is licensed under the GNU GPL v3 (see `LICENSE`).
+SakuriKey is licensed under the GNU GPL v3 (see `LICENSE`).
 The bundled word list is derived from [FrequencyWords](https://github.com/hermitdave/FrequencyWords)
 (OpenSubtitles 2018) by Hermit Dave, licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). It was filtered and extended with

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FlexKeys</string>
-    <string name="ime_name">FlexKeys</string>
+    <string name="app_name">SakuriKey</string>
+    <string name="ime_name">SakuriKey</string>
     <string name="subtype_en_us">English (US)</string>
 </resources>

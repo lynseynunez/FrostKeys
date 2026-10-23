@@ -36,7 +36,7 @@ object MyMemoryClient {
             try {
                 result = run(text.take(MAX_CHARS), from, to, email.trim())
             } catch (e: QuotaException) {
-                error = "The free daily limit is used up. Add your email in FlexKeys settings for a higher limit, or try again tomorrow."
+                error = "The free daily limit is used up. Add your email in SakuriKey settings for a higher limit, or try again tomorrow."
             } catch (e: ApiException) {
                 error = e.message
             } catch (e: IOException) {

@@ -221,7 +221,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         orientation = LinearLayout.VERTICAL
         setPadding(dp(6f), dp(12f), dp(6f), dp(6f))
         addView(TextView(context).apply {
-            text = "FlexKeys"
+            text = "SakuriKey"
             setTextColor(palette.text)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 34f)
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
@@ -373,25 +373,25 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         setupCard.tag = state
         setupCard.removeAllViews()
         setupCard.addView(TextView(this).apply {
-            text = if (enabled && selected) "✓  FlexKeys is ready" else "Get started"
+            text = if (enabled && selected) "✓  SakuriKey is ready" else "Get started"
             setTextColor(palette.text)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         })
         when {
             !enabled -> {
-                setupCard.text("Step 1 of 2: turn on FlexKeys in your keyboard list.", secondary = true)
-                setupCard.buttons(Triple("Enable FlexKeys", true) { openImeSettings() })
+                setupCard.text("Step 1 of 2: turn on SakuriKey in your keyboard list.", secondary = true)
+                setupCard.buttons(Triple("Enable SakuriKey", true) { openImeSettings() })
             }
             !selected -> {
-                setupCard.text("Step 2 of 2: switch to FlexKeys.", secondary = true)
+                setupCard.text("Step 2 of 2: switch to SakuriKey.", secondary = true)
                 setupCard.buttons(Triple("Switch keyboard", true) { showImePicker() })
             }
             else -> setupCard.text("Try it here, or tweak the look with the live preview below.", secondary = true)
         }
         if (enabled) {
             val field = EditText(this).apply {
-                hint = "Type here with FlexKeys"
+                hint = "Type here with SakuriKey"
                 setTextColor(palette.text)
                 setHintTextColor(palette.secondary)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
@@ -518,7 +518,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             startActivity(Intent(this@SettingsActivity, LearnedWordsActivity::class.java))
         })
         buttons(Triple("Clear learned words", false) {
-            confirm("Forget every word FlexKeys has learned from your typing?") {
+            confirm("Forget every word SakuriKey has learned from your typing?") {
                 SuggestionEngine.get(this@SettingsActivity).user.clear()
                 toast("Learned words cleared")
             }
@@ -633,7 +633,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun privacyCard() = card("Privacy") {
         text(
-            "FlexKeys has no analytics. The only things that use the internet are GIF search and the " +
+            "SakuriKey has no analytics. The only things that use the internet are GIF search and the " +
                 "translator, and only for the text you search or translate. Learned words, clipboard " +
                 "history and your photo never leave this phone.",
             secondary = true,

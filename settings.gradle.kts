@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FlexKeys"
+rootProject.name = "SakuriKey"
 include(":app")

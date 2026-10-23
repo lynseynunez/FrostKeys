@@ -181,7 +181,7 @@ class TranslateBar(
         }
         if (!prefs.translatorEnabled) {
             result = ""
-            status = "The translator is turned off in FlexKeys settings."
+            status = "The translator is turned off in SakuriKey settings."
             render()
             return
         }

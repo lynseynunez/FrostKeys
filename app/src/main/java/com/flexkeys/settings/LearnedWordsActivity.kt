@@ -28,7 +28,7 @@ import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
 
-/** View, search, add and remove the words FlexKeys has learned. */
+/** View, search, add and remove the words SakuriKey has learned. */
 class LearnedWordsActivity : Activity() {
 
     private lateinit var palette: SettingsPalette

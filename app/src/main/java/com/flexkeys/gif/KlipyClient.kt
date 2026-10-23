@@ -57,7 +57,7 @@ object KlipyClient {
                 page0 = load(apiKey, customerId, locale, query, page)
             } catch (e: HttpError) {
                 error = when (e.code) {
-                    401, 403 -> "Klipy rejected the API key. Check it in FlexKeys settings."
+                    401, 403 -> "Klipy rejected the API key. Check it in SakuriKey settings."
                     429 -> "Klipy rate limit reached. Try again in a moment."
                     else -> "Klipy error ${e.code}"
                 }
