@@ -39,6 +39,7 @@ import com.flexkeys.suggest.Suggestions
 import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.KeyboardRootView
+import com.flexkeys.ui.ToolSource
 import com.flexkeys.voice.VoiceBridge
 import com.flexkeys.voice.VoiceInputActivity
 
@@ -355,6 +356,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
             SuggestionStripView.Action.PHRASES -> togglePanel(KeyboardRootView.Panel.PHRASES)
+            SuggestionStripView.Action.FANCY -> {
+                root?.startFancy(toolSource(wholeField = false).text)
+                updateShiftState()
+            }
             SuggestionStripView.Action.MIC -> {
                 requestHideSelf(0)
                 startActivity(Intent(this, VoiceInputActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -384,6 +389,30 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onTranslateInsert(text: String) {
         val ic = currentInputConnection ?: return
         commitPending(ic)
+        ic.commitText(text, 1)
+        updateShiftState()
+        updateSuggestions()
+    }
+
+    override fun toolSource(wholeField: Boolean): ToolSource {
+        val ic = currentInputConnection ?: return ToolSource("", false)
+        val selected = ic.getSelectedText(0)?.toString().orEmpty()
+        if (selected.isNotEmpty() || !wholeField) return ToolSource(selected, selected.isNotEmpty())
+        val before = ic.getTextBeforeCursor(TOOL_TEXT_LIMIT, 0)?.toString().orEmpty()
+        val after = ic.getTextAfterCursor(TOOL_TEXT_LIMIT, 0)?.toString().orEmpty()
+        return ToolSource(before + after, false)
+    }
+
+    override fun onToolInsert(text: String) = onTranslateInsert(text)
+
+    override fun onToolReplace(text: String, wholeField: Boolean) {
+        val ic = currentInputConnection ?: return
+        commitPending(ic)
+        if (wholeField) {
+            val before = ic.getTextBeforeCursor(TOOL_TEXT_LIMIT, 0)?.length ?: 0
+            val after = ic.getTextAfterCursor(TOOL_TEXT_LIMIT, 0)?.length ?: 0
+            ic.deleteSurroundingText(before, after)
+        }
         ic.commitText(text, 1)
         updateShiftState()
         updateSuggestions()
@@ -786,6 +815,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     companion object {
         /** How much text before the cursor a backspace swipe can select back through. */
         private const val SWIPE_CONTEXT = 500
+        /** Most text a tool (AI rewrite) reads from the field. */
+        private const val TOOL_TEXT_LIMIT = 4000
 
         private const val DOUBLE_SPACE_MS = 600L
         private const val MAX_RESTART = 32

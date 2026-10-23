@@ -43,8 +43,10 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     /** Shown over the grid while picking a skin tone. */
     private val toneRow = LinearLayout(context)
     private var tones: Map<String, String> = EmojiIndex.chosenTones(prefs)
-    /** Tab 0 is "recent"; the rest map onto [EmojiData.categories]. */
+    /** Tab 0 is "recent", then [EmojiData.categories], then text faces and symbols. */
     private var selectedTab = 0
+    private val kaomojiTab get() = EmojiData.categories.size + 1
+    private val symbolsTab get() = EmojiData.categories.size + 2
 
     init {
         EmojiIndex.load(context)
@@ -109,7 +111,8 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     private fun display(base: String): String = EmojiIndex.displayFor(prefs, base, tones)
 
     private fun pick(emoji: String) {
-        EmojiIndex.addRecent(prefs, emoji)
+        // Text faces are too wide for the recents grid, so they aren't kept there.
+        if (selectedTab != kaomojiTab) EmojiIndex.addRecent(prefs, emoji)
         listener.onEmoji(emoji)
     }
 
@@ -135,7 +138,13 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     private fun selectTab(index: Int) {
         selectedTab = index
         toneRow.visibility = View.GONE
-        adapter.items = if (index == 0) EmojiIndex.recents(prefs) else supported(index - 1)
+        adapter.items = when (index) {
+            0 -> EmojiIndex.recents(prefs)
+            kaomojiTab -> EmojiData.kaomoji
+            symbolsTab -> supportedSymbols
+            else -> supported(index - 1)
+        }
+        grid.columnWidth = if (index == kaomojiTab) dp(116f) else dp(44f)
         adapter.notifyDataSetChanged()
         grid.setSelection(0)
         tabs.invalidate()
@@ -149,10 +158,11 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
             val tv = (convertView as? EmojiCell) ?: EmojiCell(context).apply {
                 gravity = Gravity.CENTER
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
                 layoutParams = AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46f))
                 includeFontPadding = false
             }
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, when (selectedTab) { kaomojiTab -> 14f; symbolsTab -> 22f; else -> 26f })
+            tv.maxLines = 1
             tv.text = display(items[position])
             tv.setTextColor(host?.theme?.textColor ?: Color.BLACK)
             // A small corner mark shows which emoji have skin tones (long-press them).
@@ -189,7 +199,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     /** The row of category icons. */
     private inner class CategoryTabs(context: Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
-        private val count get() = EmojiData.categories.size + 1
+        private val count get() = EmojiData.categories.size + 3
 
         override fun onDraw(canvas: Canvas) {
             val t = host?.theme ?: return
@@ -203,6 +213,13 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
                 }
                 if (i == 0) {
                     Icons.draw(canvas, Icon.CLOCK, cx, cy, minOf(w, height.toFloat()) * 0.5f, t.textColor)
+                } else if (i > EmojiData.categories.size) {
+                    paint.color = t.textColor
+                    paint.alpha = if (i == selectedTab) 255 else 150
+                    paint.textSize = minOf(w * 0.62f, height * 0.45f)
+                    val fm = paint.fontMetrics
+                    canvas.drawText(if (i == kaomojiTab) "ツ" else "★", cx, cy - (fm.ascent + fm.descent) / 2f, paint)
+                    paint.alpha = 255
                 } else {
                     paint.color = Color.BLACK
                     paint.alpha = if (i == selectedTab) 255 else 150
@@ -226,6 +243,12 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
 
     companion object {
         private val supportedCache = HashMap<Int, List<String>>()
+
+        /** Symbols the device font can draw. */
+        private val supportedSymbols: List<String> by lazy {
+            val paint = Paint()
+            EmojiData.symbols.filter { paint.hasGlyph(it) }
+        }
 
         /** Emoji in category [index] that the device font can actually draw. */
         fun supported(index: Int): List<String> = supportedCache.getOrPut(index) {

@@ -17,6 +17,7 @@ import com.flexkeys.keyboard.Icon
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassHost
+import com.flexkeys.ui.ToolBar
 import com.flexkeys.ui.findGlassHost
 
 /** Receives the finished translation to put into the text field. */
@@ -32,9 +33,9 @@ class TranslateBar(
     context: Context,
     private val onInsert: (String) -> Unit,
     private val onClose: () -> Unit,
-) : LinearLayout(context) {
+) : LinearLayout(context), ToolBar {
 
-    var query = ""
+    override var query = ""
         private set
     private var result = ""
     /** "Translating…" or an error, shown in place of the result. */
@@ -126,7 +127,7 @@ class TranslateBar(
     }
 
     /** Colors follow the glass theme; call after the theme changed. */
-    fun restyle() {
+    override fun restyle() {
         val t = host?.theme ?: return
         fun pill(color: Int, radius: Float) = GradientDrawable().apply { cornerRadius = radius; setColor(color) }
         for (c in listOf(fromChip, toChip, pasteChip, copyChip)) {
@@ -141,7 +142,7 @@ class TranslateBar(
     }
 
     /** Clears everything for a fresh start. */
-    fun reset() {
+    override fun reset() {
         handler.removeCallbacks(debounce)
         generation++
         query = ""
@@ -151,7 +152,7 @@ class TranslateBar(
         render()
     }
 
-    fun setQuery(q: String) {
+    override fun setQuery(q: String) {
         query = q.take(2000)
         handler.removeCallbacks(debounce)
         if (query.isBlank()) {
@@ -166,7 +167,7 @@ class TranslateBar(
     }
 
     /** Return key: insert the translation if there is one, otherwise translate now. */
-    fun onEnter() {
+    override fun onEnter() {
         if (result.isNotEmpty() && status == null) onInsert(result) else translateNow()
     }
 

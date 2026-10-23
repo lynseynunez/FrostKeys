@@ -19,6 +19,7 @@ import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
 import com.flexkeys.phrases.PhrasesPanel
 import com.flexkeys.gif.GifPanel
+import com.flexkeys.fancy.FancyBar
 import com.flexkeys.translate.TranslateBar
 import com.flexkeys.translate.TranslateListener
 import com.flexkeys.emoji.EmojiIndex
@@ -57,7 +58,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     /** Receives emoji, clipboard pastes and panel navigation from the panels. */
-    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, PhrasesPanel.Listener, GifPanel.Listener, TranslateListener
+    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, PhrasesPanel.Listener, GifPanel.Listener, TranslateListener, ToolListener
 
     enum class Panel { NONE, EMOJI, CLIPBOARD, GIF, PHRASES }
 
@@ -75,8 +76,18 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         },
         onClose = { endTranslate() },
     )
-    var translating = false
-        private set
+    private val fancyBar = FancyBar(
+        context,
+        onInsert = { text ->
+            panelListener?.onToolInsert(text)
+            endTool()
+        },
+        onClose = { endTool() },
+    )
+
+    /** The tool bar (translator, fancy text...) currently replacing the suggestion strip, if any. */
+    private var activeTool: ToolBar? = null
+    val translating get() = activeTool != null
 
     /** Replaces the suggestion strip while searching emoji. */
     private val emojiSearchBar = EmojiSearchBar(
@@ -120,6 +131,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         clipToPadding = false
         addView(translateBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         translateBar.visibility = View.GONE
+        addView(fancyBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        fancyBar.visibility = View.GONE
         addView(emojiSearchBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         emojiSearchBar.visibility = View.GONE
         addView(strip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -238,32 +251,45 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     /** Opens the translator: type on the keys (or paste a copied message) to translate. */
-    fun startTranslate() {
-        if (translating) return
+    fun startTranslate() = startTool(translateBar)
+
+    fun endTranslate() {
+        if (activeTool === translateBar) endTool()
+    }
+
+    /** Opens fancy text, starting from [text] (the user's selection, possibly empty). */
+    fun startFancy(text: String) {
+        startTool(fancyBar)
+        fancyBar.start(text)
+    }
+
+    private fun startTool(bar: ToolBar) {
+        if (activeTool === bar) return
+        if (activeTool != null) endTool()
         cancelEmojiSearch()
         showPanel(Panel.NONE)
-        translating = true
-        translateBar.reset()
-        translateBar.visibility = View.VISIBLE
+        activeTool = bar
+        bar.reset()
+        (bar as View).visibility = View.VISIBLE
         strip.visibility = View.GONE
     }
 
-    fun endTranslate() {
-        if (!translating) return
-        translating = false
-        translateBar.reset()
-        translateBar.visibility = View.GONE
+    fun endTool() {
+        val bar = activeTool ?: return
+        activeTool = null
+        bar.reset()
+        (bar as View).visibility = View.GONE
         strip.visibility = View.VISIBLE
     }
 
-    private fun routeKeyToTranslate(key: KeyDef, shifted: Boolean): Boolean {
-        val q = translateBar.query
+    private fun routeKeyToTool(bar: ToolBar, key: KeyDef, shifted: Boolean): Boolean {
+        val q = bar.query
         when (key.type) {
-            KeyType.CHAR -> translateBar.setQuery(q + if (key.isLetter && shifted) key.output.uppercase() else key.output)
-            KeyType.SPACE -> translateBar.setQuery("$q ")
-            KeyType.BACKSPACE -> if (q.isNotEmpty()) translateBar.setQuery(q.dropLast(1))
-            KeyType.ENTER -> translateBar.onEnter()
-            KeyType.EMOJI -> endTranslate()
+            KeyType.CHAR -> bar.setQuery(q + if (key.isLetter && shifted) key.output.uppercase() else key.output)
+            KeyType.SPACE -> bar.setQuery("$q ")
+            KeyType.BACKSPACE -> if (q.isNotEmpty()) bar.setQuery(q.dropLast(1))
+            KeyType.ENTER -> bar.onEnter()
+            KeyType.EMOJI -> endTool()
             else -> return false
         }
         return true
@@ -271,7 +297,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     /** Leaves any emoji or GIF search without opening a panel (e.g. a new text field). */
     fun cancelEmojiSearch() {
-        if (translating) endTranslate()
+        endTool()
         if (gifSearching) {
             gifSearching = false
             emojiSearchBar.setGifMode(false)
@@ -284,7 +310,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     /** While searching emoji, typed keys edit the query. Returns true if the key was used. */
     fun routeKeyToSearch(key: KeyDef, shifted: Boolean): Boolean {
-        if (translating) return routeKeyToTranslate(key, shifted)
+        activeTool?.let { return routeKeyToTool(it, key, shifted) }
         if (!emojiSearching && !gifSearching) return false
         val q = emojiSearchBar.query
         when (key.type) {
@@ -310,8 +336,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     /** Popup characters while searching emoji. */
     fun routeTextToSearch(text: String): Boolean {
-        if (translating) {
-            translateBar.setQuery(translateBar.query + text)
+        activeTool?.let {
+            it.setQuery(it.query + text)
             return true
         }
         if (!emojiSearching && !gifSearching) return false
@@ -325,6 +351,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         backdrop.setTheme(newTheme)
         rebuildGradient()
         translateBar.restyle()
+        fancyBar.restyle()
         keyboardView.onThemeChanged()
         strip.requestLayout()
         invalidateTree(this)

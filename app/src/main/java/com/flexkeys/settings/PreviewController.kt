@@ -7,6 +7,7 @@ import com.flexkeys.keyboard.KeyboardState
 import com.flexkeys.keyboard.KeyboardView
 import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
+import com.flexkeys.ui.ToolSource
 import com.flexkeys.phrases.CustomKeys
 import com.flexkeys.layout.Layer
 import com.flexkeys.service.Feedback
@@ -136,6 +137,9 @@ class PreviewController(
     override fun onOpenSettings() = Unit
     override fun onTranslateInsert(text: String) = Unit
     override fun onEditPhrases() = Unit
+    override fun toolSource(wholeField: Boolean) = ToolSource("", false)
+    override fun onToolInsert(text: String) = Unit
+    override fun onToolReplace(text: String, wholeField: Boolean) = Unit
 
     override fun onSuggestionPicked(index: Int, text: String) = Unit
     override fun onSuggestionLongPressed(text: String) = Unit
