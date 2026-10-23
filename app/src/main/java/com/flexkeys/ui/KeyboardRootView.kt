@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
 import com.flexkeys.phrases.PhrasesPanel
+import com.flexkeys.suggest.MenuPanel
 import com.flexkeys.gif.GifPanel
 import com.flexkeys.ai.AiBar
 import com.flexkeys.fancy.FancyBar
@@ -59,9 +60,9 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     /** Receives emoji, clipboard pastes and panel navigation from the panels. */
-    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, PhrasesPanel.Listener, GifPanel.Listener, TranslateListener, ToolListener
+    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, MenuPanel.Listener, PhrasesPanel.Listener, GifPanel.Listener, TranslateListener, ToolListener
 
-    enum class Panel { NONE, EMOJI, CLIPBOARD, GIF, PHRASES }
+    enum class Panel { NONE, EMOJI, CLIPBOARD, GIF, PHRASES, MENU }
 
     /** The GIF search being shown or typed (kept while the GIF panel is closed and reopened). */
     private var gifQuery = ""
@@ -209,6 +210,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
                 Panel.EMOJI -> EmojiPanel(context, l)
                 Panel.GIF -> GifPanel(context, l, gifQuery)
                 Panel.PHRASES -> PhrasesPanel(context, l)
+                Panel.MENU -> MenuPanel(context, l) { strip.invalidate() }
                 else -> ClipboardPanel(context, l)
             }
             content.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -223,8 +225,10 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             Panel.CLIPBOARD -> SuggestionStripView.Action.CLIPBOARD
             Panel.GIF -> SuggestionStripView.Action.GIF
             Panel.PHRASES -> SuggestionStripView.Action.PHRASES
+            Panel.MENU -> null
             Panel.NONE -> null
         }
+        strip.menuOpen = panel == Panel.MENU
         invalidate()
     }
 

@@ -145,6 +145,16 @@ class PreviewController(
     override fun onSuggestionLongPressed(text: String) = Unit
     override fun onStripTouched() = root.keyboardView.cancelAll()
 
+    override fun onMenuTapped() {
+        feedback.keyPress(KeyType.CHAR)
+        root.showPanel(if (root.panel == KeyboardRootView.Panel.MENU) KeyboardRootView.Panel.NONE else KeyboardRootView.Panel.MENU)
+    }
+
+    override fun onMenuAction(action: SuggestionStripView.Action) {
+        root.showPanel(KeyboardRootView.Panel.NONE)
+        onAction(action)
+    }
+
     override fun onAction(action: SuggestionStripView.Action) {
         feedback.keyPress(KeyType.CHAR)
         val target = when (action) {

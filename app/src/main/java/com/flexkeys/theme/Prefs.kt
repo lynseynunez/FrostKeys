@@ -95,6 +95,8 @@ class Prefs private constructor(context: Context) {
     /** The user's own free Gemini API key. Stored only on this device and never backed up. */
     var geminiKey by string(KEY_GEMINI_KEY, "")
     var geminiModel by string(KEY_GEMINI_MODEL, "gemini-flash-latest")
+    /** Actions shown in the top row, in order (see ToolbarItems). */
+    var toolbarItems by string(KEY_TOOLBAR_ITEMS, "")
     /** The last fancy text style picked (index into FancyText.Style). */
     var fancyStyle by int(KEY_FANCY_STYLE, 0)
     /** Extra long-press characters per key, one "a:äå" line per key (see CustomKeys). */
@@ -169,6 +171,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_PUNCTUATION = "punctuation_keys"
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
+        const val KEY_TOOLBAR_ITEMS = "toolbar_items"
         const val KEY_AI_ENABLED = "ai_enabled"
         const val KEY_GEMINI_KEY = "gemini_key"
         const val KEY_GEMINI_MODEL = "gemini_model"

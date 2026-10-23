@@ -347,6 +347,16 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         }
     }
 
+    override fun onMenuTapped() {
+        feedback.keyPress(KeyType.CHAR)
+        togglePanel(KeyboardRootView.Panel.MENU)
+    }
+
+    override fun onMenuAction(action: SuggestionStripView.Action) {
+        root?.showPanel(KeyboardRootView.Panel.NONE)
+        onAction(action)
+    }
+
     override fun onAction(action: SuggestionStripView.Action) {
         feedback.keyPress(KeyType.CHAR)
         when (action) {

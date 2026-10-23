@@ -16,6 +16,7 @@ import android.view.View
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.keyboard.Icons
 import com.flexkeys.theme.Fonts
+import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassHost
 import com.flexkeys.ui.findGlassHost
 
@@ -25,27 +26,40 @@ import com.flexkeys.ui.findGlassHost
  */
 class SuggestionStripView(context: Context) : View(context) {
 
-    enum class Action(val icon: Icon) {
-        CLIPBOARD(Icon.CLIPBOARD),
-        EMOJI(Icon.EMOJI),
-        GIF(Icon.GIF),
-        TRANSLATE(Icon.TRANSLATE),
-        MIC(Icon.MIC),
-        PHRASES(Icon.PHRASES),
-        FANCY(Icon.FANCY),
-        AI(Icon.AI),
-        SETTINGS(Icon.SETTINGS),
-        HIDE(Icon.HIDE),
+    enum class Action(val icon: Icon, val label: String) {
+        CLIPBOARD(Icon.CLIPBOARD, "Clipboard"),
+        EMOJI(Icon.EMOJI, "Emoji"),
+        GIF(Icon.GIF, "GIFs"),
+        TRANSLATE(Icon.TRANSLATE, "Translate"),
+        MIC(Icon.MIC, "Voice"),
+        PHRASES(Icon.PHRASES, "Phrases"),
+        FANCY(Icon.FANCY, "Fancy text"),
+        AI(Icon.AI, "AI rewrite"),
+        SETTINGS(Icon.SETTINGS, "Settings"),
+        HIDE(Icon.HIDE, "Hide"),
     }
 
-    private val toolbarActions =
-        listOf(Action.CLIPBOARD, Action.EMOJI, Action.GIF, Action.TRANSLATE, Action.AI, Action.FANCY, Action.PHRASES, Action.MIC, Action.SETTINGS, Action.HIDE)
+    private val prefs = Prefs.get(context)
+    private var cachedItems = ""
+    private var cachedActions = ToolbarItems.defaults
+    /** The actions in the top row, as chosen in the menu. */
+    private val toolbarActions: List<Action>
+        get() {
+            val saved = prefs.toolbarItems
+            if (saved != cachedItems) {
+                cachedItems = saved
+                cachedActions = ToolbarItems.parse(saved)
+            }
+            return cachedActions
+        }
 
     interface Listener {
         fun onSuggestionPicked(index: Int, text: String)
         fun onSuggestionLongPressed(text: String)
         fun onAction(action: Action)
         fun onStripTouched()
+        /** The four-dot button was tapped: open or close the tools menu. */
+        fun onMenuTapped()
     }
 
     var listener: Listener? = null
@@ -62,6 +76,13 @@ class SuggestionStripView(context: Context) : View(context) {
         set(value) {
             field = value
             toolbarOpen = value != null
+            invalidate()
+        }
+
+    /** True while the tools menu is open: the button becomes a back arrow. */
+    var menuOpen = false
+        set(value) {
+            field = value
             invalidate()
         }
 
@@ -115,7 +136,7 @@ class SuggestionStripView(context: Context) : View(context) {
         // Menu button on the left.
         tmp.set(barRect.left, barRect.top, barRect.left + menuWidth, barRect.bottom)
         drawPressed(canvas, MENU, tmp)
-        Icons.draw(canvas, if (showingToolbar && suggestions.slots.isNotEmpty()) Icon.CLOSE else Icon.MENU,
+        Icons.draw(canvas, if (menuOpen) Icon.ARROW_LEFT else Icon.MENU,
             tmp.centerX(), tmp.centerY(), iconSize * 0.9f, t.secondaryTextColor)
 
         val contentLeft = barRect.left + menuWidth
@@ -211,10 +232,7 @@ class SuggestionStripView(context: Context) : View(context) {
 
     private fun fire(target: Int) {
         when {
-            target == MENU -> {
-                toolbarOpen = !toolbarOpen
-                invalidate()
-            }
+            target == MENU -> listener?.onMenuTapped()
             target >= TOOLBAR -> {
                 val action = toolbarActions[target - TOOLBAR]
                 listener?.onAction(action)
