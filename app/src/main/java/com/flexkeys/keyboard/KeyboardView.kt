@@ -119,9 +119,8 @@ class KeyboardView(context: Context) : View(context) {
     }
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val emblemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
-    private val emblemStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
+    private val emblemFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL_AND_STROKE
         strokeJoin = Paint.Join.ROUND
     }
     private val emblemPath = Path().apply {
@@ -258,15 +257,36 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    /** The space bar emblem: the traced icon as a white outline with the same line weight as the other icons. */
-    private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, iconSize: Float, t: GlassTheme) {
-        val size = iconSize * 1.45f
+    /**
+     * The space bar emblem, styled like the lettering so it sits quietly among the keys: about the
+     * height of the letters, the same weight of line, and the same translucent glass fill with the
+     * gradient shining through.
+     */
+    private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, t: GlassTheme) {
+        val fontScale = t.fontScale.coerceIn(0.8f, 1.3f)
+        val size = rowHeight * 0.38f * fontScale
         emblemMatrix.setScale(size, size)
         emblemMatrix.postTranslate(cx - size / 2f, cy - size / 2f)
         emblemPath.transform(emblemMatrix, emblemScaled)
-        emblemStroke.strokeWidth = iconSize * 0.085f
-        emblemStroke.color = t.textColor
-        canvas.drawPath(emblemScaled, emblemStroke)
+
+        // The artwork's own lines are about 6% of its size; top them up to the weight of the letters' strokes.
+        val letterStem = rowHeight * 0.41f * fontScale * 0.085f
+        emblemFill.strokeWidth = (letterStem - size * 0.06f).coerceAtLeast(0f)
+        val base = if (t.glassKeys) t.glassTextFill else t.textColor
+        emblemFill.color = GlassTheme.withAlpha(base, (base ushr 24) / 255f * 0.78f)
+        canvas.drawPath(emblemScaled, emblemFill)
+
+        val gradient = host?.glassGradient()
+        if (t.glassKeys && gradient != null && t.glassTextGradientAlpha > 0f) {
+            canvas.save()
+            canvas.translate(-offset.x, -offset.y)
+            emblemScaled.offset(offset.x, offset.y)
+            emblemFill.shader = gradient
+            emblemFill.alpha = (t.glassTextGradientAlpha * 0.8f * 255f).toInt().coerceIn(0, 255)
+            canvas.drawPath(emblemScaled, emblemFill)
+            emblemFill.shader = null
+            canvas.restore()
+        }
     }
 
     /** Key lettering. In the glass style it is translucent with a bright edge and the gradient shining through. */
@@ -339,7 +359,7 @@ class KeyboardView(context: Context) : View(context) {
                 if (enterAction == EnterAction.NEWLINE) t.textColor else t.onAccent)
             KeyType.EMOJI -> Icons.draw(canvas, Icon.EMOJI, cx, cy, iconSize, t.textColor)
             KeyType.SPACE -> when {
-                t.spaceEmblem == Prefs.SPACE_EMBLEM_ICON -> drawEmblemIcon(canvas, cx, cy, iconSize, t)
+                t.spaceEmblem == Prefs.SPACE_EMBLEM_ICON -> drawEmblemIcon(canvas, cx, cy, t)
                 t.spaceEmblem.isNotEmpty() -> {
                     emblemPaint.textSize = minOf(v.height() * 0.5f, rowHeight * 0.36f) * t.fontScale.coerceIn(0.8f, 1.3f)
                     drawCentered(canvas, t.spaceEmblem, cx, cy, emblemPaint)

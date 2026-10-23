@@ -1,16 +1,19 @@
-# Traces a small white-on-transparent icon into smooth vector outlines (Kotlin source):
+# Traces a small icon drawn on a transparent background (the alpha channel is the shape) into smooth vector outlines (Kotlin source):
 #   python3 tools/make_emblem.py icon.png app/src/main/java/com/flexkeys/theme/EmblemShape.kt
 # The alpha channel is upscaled and contoured with marching squares, then simplified.
 import sys
 import numpy as np
 from PIL import Image
 
-SCALE = 8
 THRESHOLD = 0.5
-TOLERANCE = 0.10  # in source pixels
+SCALE = 8      # set from the source size in load()
+TOLERANCE = 0.10  # in source pixels, set from the source size in load()
 
 def load(path):
+    global SCALE, TOLERANCE
     img = Image.open(path).convert("RGBA")
+    SCALE = max(2, 384 // img.width)
+    TOLERANCE = img.width * 0.0042
     a = img.getchannel("A").resize((img.width * SCALE, img.height * SCALE), Image.BICUBIC)
     f = np.asarray(a, dtype=np.float64) / 255.0
     return np.pad(f, 1), img.width, img.height  # zero border closes every contour
