@@ -217,7 +217,7 @@ class KeyboardView(context: Context) : View(context) {
         for (key in keys) {
             val p = pressProgress(key, now)
             if ((key.pressed && p < 1f) || (!key.pressed && p > 0f)) animating = true
-            val glow = if (p > 0f) t.pressColor(key.visual.centerX() / width.coerceAtLeast(1)) else 0
+            val glow = if (p > 0f) t.pressColor(key.visual.centerX() / width.coerceAtLeast(1), key.pressedAt) else 0
             if (key.def.type == KeyType.SPACE) {
                 drawSpaceCard(canvas, key, t, p, glow)
             } else if (t.glassKeys) {
@@ -227,10 +227,7 @@ class KeyboardView(context: Context) : View(context) {
                     gradient = h.glassGradient(), gradientAlpha = t.keyGradientAlpha, pressColor = glow)
             }
             canvas.save()
-            if (p > 0f) {
-                val s = 1f - 0.05f * p
-                canvas.scale(s, s, key.visual.centerX(), key.visual.centerY())
-            }
+            if (KeyMotion.apply(canvas, prefs.keyMotion, key.visual, key.pressed, key.pressedAt, key.releasedAt, p, now, width)) animating = true
             drawKeyContent(canvas, key, t)
             canvas.restore()
         }

@@ -92,7 +92,11 @@ class GlassTheme(
     fun dp(value: Float): Float = value * density
 
     /** The glow a pressed key gets. [x] is the key's horizontal position across the keyboard, 0..1. */
-    fun pressColor(x: Float): Int = when (pressStyle) {
+    fun pressColor(x: Float, seed: Long = 0L): Int = when (pressStyle) {
+        4 -> {
+            val hsv = floatArrayOf(((seed * 47L) % 360L).toFloat(), 0.55f, 1f)
+            withAlpha(Color.HSVToColor(hsv), 0.6f)
+        }
         1 -> withAlpha(accent, 0.55f)
         2 -> {
             val f = x.coerceIn(0f, 1f)

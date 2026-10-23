@@ -39,8 +39,16 @@ private fun animate(from: Float, to: Float, update: (Float) -> Unit): ValueAnima
 
 /** Rounded pill button. Primary buttons use the accent color, others a soft tonal fill. */
 @SuppressLint("ViewConstructor")
-class PillButton(context: Context, private val label: String, private val primary: Boolean, var palette: SettingsPalette) :
+class PillButton(context: Context, label: String, private val primary: Boolean, var palette: SettingsPalette) :
     View(context) {
+
+    var label: String = label
+        set(value) {
+            field = value
+            contentDescription = value
+            requestLayout()
+            invalidate()
+        }
 
     var onClick: (() -> Unit)? = null
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)

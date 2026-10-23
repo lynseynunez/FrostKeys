@@ -54,7 +54,8 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Appearance tool: drag sliders for glass, photo, blur and glow right above the keys and watch the keyboard change live
 - Key press color: pressed keys glow white, in your accent, along the blue-purple-pink gradient, or in your photo's color
 - Hold the clipboard button to paste your latest copy without opening the panel
-- Optional typing animations: sparkles, ripples, or warp-speed streaks when you type fast (off by default)
+- Optional typing animations (off by default, with a strength slider): sparkles, ripple, warp-speed streaks when you type fast, glow bloom, ink splash, firecracker and paint splatter
+- Key motion: sink, pop, bounce, tilt or float up when a key is pressed
 - One-tap theme presets (Frost, Midnight, Aurora, Sunset, Clear, Graphite)
 - Optional Gboard-style comma and period keys beside the space bar
 - Manage learned words: search, add and remove them

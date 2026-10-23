@@ -1,6 +1,9 @@
 package com.flexkeys.keyboard
 
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.graphics.Paint
 import android.graphics.Path
 import kotlin.math.PI
@@ -21,6 +24,10 @@ class TypingEffects(private val density: Float) {
         const val SPARKLES = 1
         const val RIPPLE = 2
         const val WARP = 3
+        const val BLOOM = 4
+        const val INK = 5
+        const val FIRECRACKER = 6
+        const val PAINT = 7
 
         private const val MAX_PARTICLES = 70
         private const val RIPPLE_MS = 480L
@@ -29,11 +36,36 @@ class TypingEffects(private val density: Float) {
         private const val WARP_LINES = 30
     }
 
-    private class Spark(val x: Float, val y: Float, val vx: Float, val vy: Float, val born: Long, val life: Long, val size: Float, val tinted: Boolean)
+    private class Spark(
+        val x: Float, val y: Float, val vx: Float, val vy: Float, val born: Long, val life: Long, val size: Float,
+        val tinted: Boolean, val color: Int = 0, val trail: Boolean = false,
+    )
+    /** A soft colored glow that spreads out from a key and fades. */
+    private class Bloom(val x: Float, val y: Float, val born: Long, val life: Long, val reach: Float, val shader: RadialGradient)
+    /** A paint dot that appears where it lands and fades. */
+    private class Dot(val x: Float, val y: Float, val born: Long, val life: Long, val radius: Float, val color: Int)
     private class Ring(val x: Float, val y: Float, val born: Long, val reach: Float)
 
     private val sparks = ArrayList<Spark>()
     private val rings = ArrayList<Ring>()
+    private val blooms = ArrayList<Bloom>()
+    private val dots = ArrayList<Dot>()
+    private val hsv = FloatArray(3)
+
+    /** A bright, soft color with a random hue. */
+    private fun vivid(hue: Float = Random.nextFloat() * 360f, sat: Float = 0.55f): Int {
+        hsv[0] = hue
+        hsv[1] = sat
+        hsv[2] = 1f
+        return Color.HSVToColor(hsv)
+    }
+
+    private fun bloom(x: Float, y: Float, reach: Float, life: Long, color: Int, now: Long) {
+        if (blooms.size >= 10) blooms.removeAt(0)
+        val shader = RadialGradient(0f, 0f, 1f, intArrayOf(color or 0xFF000000.toInt(), (color and 0x00FFFFFF) or 0x66000000, color and 0x00FFFFFF),
+            floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP)
+        blooms.add(Bloom(x, y, now, life, reach, shader))
+    }
     private val presses = ArrayDeque<Long>()
     private var warpLevel = 0f
     private var lastFrame = 0L
@@ -49,7 +81,7 @@ class TypingEffects(private val density: Float) {
     private val fade get() = 0.3f + 0.7f * strength
 
     /** True while something is still animating, so the caller should keep redrawing. */
-    val active: Boolean get() = sparks.isNotEmpty() || rings.isNotEmpty() || warpLevel > 0.01f
+    val active: Boolean get() = sparks.isNotEmpty() || rings.isNotEmpty() || blooms.isNotEmpty() || dots.isNotEmpty() || warpLevel > 0.01f
 
     fun onPress(style: Int, x: Float, y: Float, reach: Float, now: Long) {
         when (style) {
@@ -65,6 +97,36 @@ class TypingEffects(private val density: Float) {
             RIPPLE -> {
                 if (rings.size >= 8) rings.removeAt(0)
                 rings.add(Ring(x, y, now, reach))
+            }
+            BLOOM -> bloom(x, y, reach * 1.9f * (0.6f + 0.4f * strength), 800L, vivid(), now)
+            INK -> {
+                val hue = Random.nextFloat() * 360f
+                for (i in 0 until 3) {
+                    val a = Random.nextFloat() * 2f * PI.toFloat()
+                    val d = reach * (0.2f + Random.nextFloat() * 0.6f)
+                    bloom(x + cos(a) * d, y + sin(a) * d, reach * (1.0f + Random.nextFloat() * 0.6f) * (0.6f + 0.4f * strength),
+                        900L + Random.nextLong(300L), vivid(hue + i * 55f), now)
+                }
+            }
+            FIRECRACKER -> {
+                val hue = Random.nextFloat() * 360f
+                repeat(4 + (8f * strength).roundToInt()) {
+                    if (sparks.size >= MAX_PARTICLES) sparks.removeAt(0)
+                    val angle = Random.nextFloat() * 2f * PI.toFloat()
+                    val speed = (110f + Random.nextFloat() * 130f) * density * (0.6f + 0.4f * strength)
+                    sparks.add(Spark(x, y, cos(angle) * speed, sin(angle) * speed, now, 450L + Random.nextLong(350L),
+                        2.2f * density, false, vivid(hue + Random.nextFloat() * 70f, 0.7f), trail = true))
+                }
+            }
+            PAINT -> {
+                val hue = Random.nextFloat() * 360f
+                repeat(3 + (6f * strength).roundToInt()) {
+                    if (dots.size >= 40) dots.removeAt(0)
+                    val a = Random.nextFloat() * 2f * PI.toFloat()
+                    val d = reach * 1.5f * Random.nextFloat()
+                    dots.add(Dot(x + cos(a) * d, y + sin(a) * d, now, 900L,
+                        (2.5f + Random.nextFloat() * 6f) * density * (0.6f + 0.4f * strength), vivid(hue + Random.nextFloat() * 50f, 0.65f)))
+                }
             }
             WARP -> {
                 presses.addLast(now)
@@ -85,9 +147,47 @@ class TypingEffects(private val density: Float) {
             val px = s.x + s.vx * sec
             val py = s.y + s.vy * sec + 60f * density * sec * sec
             paint.style = Paint.Style.FILL
-            val base = if (s.tinted) accent or 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
-            paint.color = (base and 0x00FFFFFF) or (((1f - t) * 230f * fade).toInt().coerceIn(0, 255) shl 24)
-            drawStar(canvas, px, py, s.size * (1f - 0.4f * t))
+            val base = when {
+                s.color != 0 -> s.color
+                s.tinted -> accent or 0xFF000000.toInt()
+                else -> 0xFFFFFFFF.toInt()
+            }
+            val alpha = (((1f - t) * 230f * fade).toInt().coerceIn(0, 255) shl 24)
+            paint.color = (base and 0x00FFFFFF) or alpha
+            if (s.trail) {
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = s.size
+                paint.strokeCap = Paint.Cap.ROUND
+                canvas.drawLine(px, py, px - s.vx * 0.06f, py - (s.vy + 120f * density * sec) * 0.06f, paint)
+                paint.strokeCap = Paint.Cap.BUTT
+            } else {
+                drawStar(canvas, px, py, s.size * (1f - 0.4f * t))
+            }
+        }
+
+        blooms.removeAll { now - it.born > it.life }
+        paint.style = Paint.Style.FILL
+        for (b in blooms) {
+            val t = (now - b.born).toFloat() / b.life
+            val r = b.reach * (0.35f + 0.65f * (1f - (1f - t) * (1f - t)))
+            canvas.save()
+            canvas.translate(b.x, b.y)
+            canvas.scale(r, r)
+            paint.shader = b.shader
+            paint.alpha = ((1f - t) * 255f * (0.35f + 0.65f * strength)).toInt().coerceIn(0, 255)
+            canvas.drawCircle(0f, 0f, 1f, paint)
+            paint.shader = null
+            canvas.restore()
+        }
+
+        dots.removeAll { now - it.born > it.life }
+        paint.style = Paint.Style.FILL
+        for (d in dots) {
+            val t = (now - d.born).toFloat() / d.life
+            val grow = if (t < 0.12f) t / 0.12f else 1f
+            paint.color = (d.color and 0x00FFFFFF) or (((1f - t) * 220f * fade).toInt().coerceIn(0, 255) shl 24)
+            canvas.drawCircle(d.x, d.y, d.radius * grow, paint)
+            canvas.drawCircle(d.x + d.radius * 1.5f, d.y - d.radius * 0.8f, d.radius * 0.35f * grow, paint)
         }
 
         rings.removeAll { now - it.born > RIPPLE_MS }

@@ -333,6 +333,28 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             .apply { topMargin = dp(6f) })
     }
 
+    /** A row showing the current choice; tapping it opens a list of every option. */
+    private fun LinearLayout.picker(title: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+        text(title, topPad = 12f)
+        var current = selected.coerceIn(0, options.size - 1)
+        val button = PillButton(context, options[current], false, palette)
+        accentViews.add(button)
+        button.onClick = {
+            AlertDialog.Builder(this@SettingsActivity)
+                .setTitle(title)
+                .setSingleChoiceItems(options.toTypedArray(), current) { dialog, which ->
+                    current = which
+                    button.label = options[which]
+                    onSelect(which)
+                    dialog.dismiss()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+        addView(button, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(6f) })
+    }
+
     private fun LinearLayout.buttons(vararg actions: Triple<String, Boolean, () -> Unit>) {
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -494,8 +516,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Glass opacity", 0, 100, prefs::glassOpacity) { "$it%" }
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
-        segmented("Key press color", listOf("White", "Accent", "Gradient", "Photo"), prefs.pressStyle) { prefs.pressStyle = it }
-        segmented("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed"), prefs.typingEffect) { prefs.typingEffect = it }
+        picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
+        picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }
+        picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter"), prefs.typingEffect) { prefs.typingEffect = it }
         slider("Animation strength", 0, 100, prefs::effectStrength) { "$it%" }
         text("Warp speed shows streaks when you type fast.", secondary = true)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
