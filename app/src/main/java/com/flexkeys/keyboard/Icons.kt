@@ -93,20 +93,31 @@ object Icons {
                 paint.strokeWidth = old
             }
             Icon.TRANSLATE -> {
-                // Two tiles: an A and a character from another script.
-                oval.set(x(-0.46f), y(-0.44f), x(0.0f), y(0.02f))
-                canvas.drawRoundRect(oval, s * 0.07f, s * 0.07f, paint)
-                poly(-0.35f, -0.1f, -0.23f, -0.34f, -0.11f, -0.1f, close = false)
-                line(-0.31f, -0.18f, -0.15f, -0.18f)
-                oval.set(x(0.02f), y(-0.02f), x(0.46f), y(0.44f))
+                // An outlined tile with a character from another script, behind a solid tile with an A cut out of it.
+                val layer = canvas.saveLayer(RectF(cx - s, cy - s, cx + s, cy + s), null)
+                oval.set(x(-0.46f), y(-0.44f), x(0.08f), y(0.10f))
                 canvas.drawRoundRect(oval, s * 0.07f, s * 0.07f, paint)
                 val oldSize = paint.textSize
                 paint.style = Paint.Style.FILL
-                paint.textSize = s * 0.28f
                 paint.textAlign = Paint.Align.CENTER
-                canvas.drawText("文", x(0.24f), y(0.21f) + s * 0.28f * 0.35f, paint)
-                paint.style = Paint.Style.STROKE
+                paint.textSize = s * 0.30f
+                canvas.drawText("文", x(-0.20f), y(-0.19f) + s * 0.30f * 0.35f, paint)
+                // A thin gap around the front tile so the two tiles read as separate.
+                paint.xfermode = clearMode
+                oval.set(x(-0.095f), y(-0.135f), x(0.495f), y(0.475f))
+                canvas.drawRoundRect(oval, s * 0.1f, s * 0.1f, paint)
+                paint.xfermode = null
+                oval.set(x(-0.06f), y(-0.10f), x(0.46f), y(0.44f))
+                canvas.drawRoundRect(oval, s * 0.08f, s * 0.08f, paint)
+                paint.xfermode = clearMode
+                paint.isFakeBoldText = true
+                paint.textSize = s * 0.34f
+                canvas.drawText("A", x(0.20f), y(0.17f) + s * 0.34f * 0.36f, paint)
+                paint.isFakeBoldText = false
+                paint.xfermode = null
                 paint.textSize = oldSize
+                paint.style = Paint.Style.STROKE
+                canvas.restoreToCount(layer)
             }
             Icon.SWAP -> {
                 line(-0.38f, -0.16f, 0.36f, -0.16f)
