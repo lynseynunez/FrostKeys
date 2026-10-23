@@ -17,7 +17,6 @@ import android.widget.LinearLayout
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
-import com.flexkeys.edit.EditPanel
 import com.flexkeys.gif.GifPanel
 import com.flexkeys.emoji.EmojiIndex
 import com.flexkeys.emoji.EmojiPanel
@@ -55,9 +54,9 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     /** Receives emoji, clipboard pastes and panel navigation from the panels. */
-    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, EditPanel.Listener, GifPanel.Listener
+    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, GifPanel.Listener
 
-    enum class Panel { NONE, EMOJI, CLIPBOARD, EDIT, GIF }
+    enum class Panel { NONE, EMOJI, CLIPBOARD, GIF }
 
     /** The GIF search being shown or typed (kept while the GIF panel is closed and reopened). */
     private var gifQuery = ""
@@ -83,7 +82,6 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     var panel: Panel = Panel.NONE
         private set
     private var panelView: View? = null
-    private val gutter = OneHandedGutter(context)
 
     private var gradient: Shader? = null
 
@@ -99,7 +97,6 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     private val sheetPath = Path()
     private val sheetRect = RectF()
     private val sheetPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var oneHandedMode = Prefs.ONE_HANDED_OFF
 
     init {
         orientation = VERTICAL
@@ -160,7 +157,6 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         if (newPanel != Panel.NONE && l != null) {
             val view = when (newPanel) {
                 Panel.EMOJI -> EmojiPanel(context, l)
-                Panel.EDIT -> EditPanel(context, l)
                 Panel.GIF -> GifPanel(context, l, gifQuery)
                 else -> ClipboardPanel(context, l)
             }
@@ -174,7 +170,6 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         strip.activeAction = when (panel) {
             Panel.EMOJI -> SuggestionStripView.Action.EMOJI
             Panel.CLIPBOARD -> SuggestionStripView.Action.CLIPBOARD
-            Panel.EDIT -> SuggestionStripView.Action.EDIT
             Panel.GIF -> SuggestionStripView.Action.GIF
             Panel.NONE -> null
         }
@@ -257,27 +252,6 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         if (!emojiSearching && !gifSearching) return false
         emojiSearchBar.setQuery(emojiSearchBar.query + text)
         return true
-    }
-
-    /** [mode] is one of the Prefs.ONE_HANDED_* constants. */
-    fun setOneHanded(mode: Int) {
-        if (mode == oneHandedMode) return
-        oneHandedMode = mode
-        keyboardRow.removeAllViews()
-        val keys = LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, ONE_HANDED_WEIGHT)
-        val side = LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - ONE_HANDED_WEIGHT)
-        when (mode) {
-            Prefs.ONE_HANDED_LEFT -> {
-                keyboardRow.addView(keyboardView, keys)
-                keyboardRow.addView(gutter, side)
-            }
-            Prefs.ONE_HANDED_RIGHT -> {
-                keyboardRow.addView(gutter, side)
-                keyboardRow.addView(keyboardView, keys)
-            }
-            else -> keyboardRow.addView(keyboardView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        }
-        invalidate()
     }
 
     fun applyTheme(newTheme: GlassTheme) {
@@ -382,7 +356,6 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     private companion object {
-        const val ONE_HANDED_WEIGHT = 0.8f
         const val SHEET_RADIUS_DP = 26f
         val loader: ExecutorService = Executors.newSingleThreadExecutor()
     }

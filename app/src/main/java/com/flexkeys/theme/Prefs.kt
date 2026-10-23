@@ -25,7 +25,6 @@ class Prefs private constructor(context: Context) {
     var cornerRadiusDp by int(KEY_CORNER, 8)
     /** Label size in percent of the default. */
     var fontPercent by int(KEY_FONT, 100)
-    var oneHanded by int(KEY_ONE_HANDED, ONE_HANDED_OFF)
 
     // ---- feedback ----
     var haptics by bool(KEY_HAPTICS, true)
@@ -84,7 +83,6 @@ class Prefs private constructor(context: Context) {
         const val KEY_SPACING = "key_spacing"
         const val KEY_CORNER = "corner_radius"
         const val KEY_FONT = "font_percent"
-        const val KEY_ONE_HANDED = "one_handed"
         const val KEY_HAPTICS = "haptics"
         const val KEY_SOUND = "sound"
         const val KEY_SOUND_VOLUME = "sound_volume"
@@ -113,10 +111,6 @@ class Prefs private constructor(context: Context) {
         const val KEY_KLIPY_KEY = "klipy_key"
         const val KEY_KLIPY_CUSTOMER = "klipy_customer_id"
         const val KEY_PUNCTUATION = "punctuation_keys"
-
-        const val ONE_HANDED_OFF = 0
-        const val ONE_HANDED_LEFT = 1
-        const val ONE_HANDED_RIGHT = 2
 
         const val THEME_AUTO = 0
         const val THEME_LIGHT = 1

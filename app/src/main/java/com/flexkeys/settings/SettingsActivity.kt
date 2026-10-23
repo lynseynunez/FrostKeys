@@ -92,7 +92,6 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 preview.reloadPhoto()
                 loadPagePhoto()
             }
-            Prefs.KEY_ONE_HANDED -> preview.setOneHanded(prefs.oneHanded)
             Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT,
             Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP, Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND,
             Prefs.KEY_SOUND_VOLUME, Prefs.KEY_SKIN_TONES -> Unit
@@ -493,7 +492,6 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         segmented("Space bar emblem", listOf("🌸", "❤️", "✨", "None"), emblems.indexOf(prefs.spaceEmblem).coerceAtLeast(0)) {
             prefs.spaceEmblem = emblems[it]
         }
-        segmented("One-handed", listOf("Off", "Left", "Right"), prefs.oneHanded) { prefs.oneHanded = it }
         slider("Keyboard height", 60, 150, prefs::heightPercent) { "$it%" }
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
         slider("Corner radius", 0, 30, prefs::cornerRadiusDp) { "$it dp" }

@@ -2,7 +2,6 @@ package com.flexkeys.settings
 
 import android.os.SystemClock
 import android.widget.TextView
-import com.flexkeys.edit.EditAction
 import com.flexkeys.gif.GifItem
 import com.flexkeys.keyboard.KeyboardState
 import com.flexkeys.keyboard.KeyboardView
@@ -33,7 +32,6 @@ class PreviewController(
         root.keyboardView.listener = this
         root.panelListener = this
         root.strip.listener = this
-        root.setOneHanded(prefs.oneHanded)
         refresh()
         render()
     }
@@ -129,9 +127,6 @@ class PreviewController(
     override fun onPanelBackspace() = onKey(KeyDef("backspace", KeyType.BACKSPACE))
     override fun onPanelClosed() = root.showPanel(KeyboardRootView.Panel.NONE)
     override fun onEmojiSearch() = root.setEmojiSearch(true)
-    override fun onEditAction(action: EditAction, selecting: Boolean) {
-        if (action == EditAction.BACKSPACE) onPanelBackspace()
-    }
 
     // GIFs need a real text field to send into, so the preview does not offer them.
     override fun onGifPicked(item: GifItem) = Unit
@@ -147,11 +142,6 @@ class PreviewController(
         val target = when (action) {
             SuggestionStripView.Action.EMOJI -> KeyboardRootView.Panel.EMOJI
             SuggestionStripView.Action.CLIPBOARD -> KeyboardRootView.Panel.CLIPBOARD
-            SuggestionStripView.Action.EDIT -> KeyboardRootView.Panel.EDIT
-            SuggestionStripView.Action.ONE_HANDED -> {
-                prefs.oneHanded = if (prefs.oneHanded == Prefs.ONE_HANDED_OFF) Prefs.ONE_HANDED_RIGHT else Prefs.ONE_HANDED_OFF
-                return
-            }
             else -> return
         }
         root.showPanel(if (root.panel == target) KeyboardRootView.Panel.NONE else target)

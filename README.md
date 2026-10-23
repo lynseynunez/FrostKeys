@@ -25,9 +25,7 @@ Everything stays on your device. There are no analytics, and the only feature th
 - GIF search powered by [Klipy](https://klipy.com) (bring your own free API key): trending, categories, search, and sending GIFs into apps that support them
 - Emoji panel with categories, recents, offline emoji search and skin tones (long-press an emoji; your choice is remembered)
 - Emoji suggestions while typing ("pizza" offers 🍕)
-- Text editing panel: cursor keys, select, select all, copy, cut, paste, start/end
 - Clipboard history with pin, delete and clear (local only; items password managers mark as sensitive are skipped)
-- One-handed mode, left or right
 
 **Liquid glass theme**
 - Keys and the suggestion bar are frosted glass panels with soft rim light, highlights and press animations
@@ -104,9 +102,8 @@ app/src/main/java/com/flexkeys/
 ├── theme/      Prefs, GlassTheme, GlassPainter, GlassBackdrop (blur), BoxBlur, BackgroundImageStore
 ├── suggest/    WordDictionary, UserDictionary, SuggestionEngine, SuggestionStripView
 ├── emoji/      EmojiData, EmojiIndex (search, skin tones), EmojiPanel, EmojiSearchBar
-├── edit/       EditPanel (cursor and clipboard tools)
 ├── clipboard/  ClipboardStore, ClipboardPanel
-├── ui/         KeyboardRootView (shared backdrop, panels, one-handed), GlassHost, GlassButton, GlassPanelLayout
+├── ui/         KeyboardRootView (shared backdrop, panels), GlassHost, GlassButton, GlassPanelLayout
 └── settings/   SettingsActivity, PreviewController, ColorPickerView
 app/src/main/assets/words.txt    English word list with frequencies
 app/src/main/assets/emoji.tsv    emoji keywords for search and suggestions

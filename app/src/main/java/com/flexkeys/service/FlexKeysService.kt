@@ -19,7 +19,6 @@ import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import com.flexkeys.clipboard.ClipboardStore
-import com.flexkeys.edit.EditAction
 import com.flexkeys.emoji.EmojiIndex
 import com.flexkeys.gif.GifItem
 import com.flexkeys.gif.GifLoader
@@ -97,7 +96,6 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         view.strip.listener = this
         view.panelListener = this
         view.extendBehindNavigationBar = true
-        view.setOneHanded(prefs.oneHanded)
         root = view
         refreshKeyboard()
         view.reloadPhoto()
@@ -311,11 +309,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.HIDE -> requestHideSelf(0)
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
-            SuggestionStripView.Action.EDIT -> togglePanel(KeyboardRootView.Panel.EDIT)
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
-            SuggestionStripView.Action.ONE_HANDED -> {
-                prefs.oneHanded = if (prefs.oneHanded == Prefs.ONE_HANDED_OFF) Prefs.ONE_HANDED_RIGHT else Prefs.ONE_HANDED_OFF
-            }
         }
     }
 
@@ -395,36 +389,6 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         feedback.keyPress(KeyType.CHAR)
         root?.setEmojiSearch(true)
         updateShiftState()
-    }
-
-    override fun onEditAction(action: EditAction, selecting: Boolean) {
-        val ic = currentInputConnection ?: return
-        feedback.keyPress(if (action == EditAction.BACKSPACE) KeyType.BACKSPACE else KeyType.CHAR)
-        if (action != EditAction.BACKSPACE && composing.isNotEmpty()) {
-            ic.finishComposingText()
-            composing.clear()
-        }
-        when (action) {
-            EditAction.LEFT -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_LEFT, selecting)
-            EditAction.RIGHT -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_RIGHT, selecting)
-            EditAction.UP -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_UP, selecting)
-            EditAction.DOWN -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_DOWN, selecting)
-            EditAction.HOME -> sendCursorKey(ic, KeyEvent.KEYCODE_MOVE_HOME, selecting)
-            EditAction.END -> sendCursorKey(ic, KeyEvent.KEYCODE_MOVE_END, selecting)
-            EditAction.SELECT_ALL -> ic.performContextMenuAction(android.R.id.selectAll)
-            EditAction.COPY -> ic.performContextMenuAction(android.R.id.copy)
-            EditAction.CUT -> ic.performContextMenuAction(android.R.id.cut)
-            EditAction.PASTE -> ic.performContextMenuAction(android.R.id.paste)
-            EditAction.BACKSPACE -> onBackspace()
-        }
-    }
-
-    /** Sends a cursor key; with [select] held as shift so the selection grows. */
-    private fun sendCursorKey(ic: InputConnection, code: Int, select: Boolean) {
-        val now = SystemClock.uptimeMillis()
-        val meta = if (select) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0, meta))
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0, meta))
     }
 
     override fun onPanelBackspace() {
@@ -707,10 +671,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         when (key) {
             Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION -> refreshKeyboard()
             Prefs.KEY_BG_VERSION -> r.reloadPhoto()
-            Prefs.KEY_ONE_HANDED -> r.setOneHanded(prefs.oneHanded)
             null -> { // All settings were reset.
                 r.applyTheme(GlassTheme.from(this, prefs))
-                r.setOneHanded(prefs.oneHanded)
                 r.reloadPhoto()
                 refreshKeyboard()
             }

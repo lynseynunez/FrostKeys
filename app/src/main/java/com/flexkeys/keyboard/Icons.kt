@@ -3,17 +3,20 @@ package com.flexkeys.keyboard
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 
 /** Simple stroked icons drawn with paths so they look identical on every device font. */
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
-    EMOJI, CLIPBOARD, SETTINGS, ONE_HANDED, KEYBOARD, PIN, PIN_ON, TRASH, SWAP, EXPAND, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, ARROW_UP, ARROW_DOWN, EDIT, GIF,
+    EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
+    MENU, HIDE, GLOBE, GIF,
 }
 
 object Icons {
 
+    private val clearMode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
     private val path = Path()
     private val oval = RectF()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -71,33 +74,31 @@ object Icons {
                 line(0.38f, 0f, -0.36f, 0f)
                 poly(-0.1f, -0.26f, -0.38f, 0f, -0.1f, 0.26f, close = false)
             }
-            Icon.ARROW_UP -> {
-                line(0f, 0.38f, 0f, -0.36f)
-                poly(-0.26f, -0.1f, 0f, -0.38f, 0.26f, -0.1f, close = false)
-            }
-            Icon.ARROW_DOWN -> {
-                line(0f, -0.38f, 0f, 0.36f)
-                poly(-0.26f, 0.1f, 0f, 0.38f, 0.26f, 0.1f, close = false)
-            }
-            Icon.EDIT -> {
-                // Text cursor (I-beam).
-                line(0f, -0.36f, 0f, 0.36f)
-                line(-0.16f, -0.4f, 0.16f, -0.4f)
-                line(-0.16f, 0.4f, 0.16f, 0.4f)
-            }
             Icon.GIF -> {
-                oval.set(x(-0.46f), y(-0.28f), x(0.46f), y(0.28f))
-                canvas.drawRoundRect(oval, s * 0.1f, s * 0.1f, paint)
-                val oldStyle = paint.style
-                val oldSize = paint.textSize
+                // A card with a cut corner and, in front of it, a solid tag with "GIF" cut out of it.
+                val layer = canvas.saveLayer(RectF(cx - s, cy - s, cx + s, cy + s), null)
+                path.reset()
+                path.moveTo(x(-0.333f), y(-0.417f))
+                path.lineTo(x(0.125f), y(-0.417f))
+                path.lineTo(x(0.333f), y(-0.21f))
+                path.lineTo(x(0.333f), y(0.417f))
+                path.lineTo(x(-0.333f), y(0.417f))
+                path.close()
+                canvas.drawPath(path, paint)
                 paint.style = Paint.Style.FILL
-                paint.textSize = s * 0.3f
+                oval.set(x(-0.417f), y(-0.125f), x(0.167f), y(0.25f))
+                canvas.drawRoundRect(oval, s * 0.07f, s * 0.07f, paint)
+                val oldTextSize = paint.textSize
+                paint.xfermode = clearMode
+                paint.textSize = s * 0.21f
                 paint.textAlign = Paint.Align.CENTER
                 paint.isFakeBoldText = true
-                canvas.drawText("GIF", x(0f), y(0.1f), paint)
+                canvas.drawText("GIF", x(-0.125f), y(0.0625f) + s * 0.21f * 0.35f, paint)
                 paint.isFakeBoldText = false
-                paint.textSize = oldSize
-                paint.style = oldStyle
+                paint.xfermode = null
+                paint.textSize = oldTextSize
+                paint.style = Paint.Style.STROKE
+                canvas.restoreToCount(layer)
             }
             Icon.SEARCH -> {
                 circle(-0.08f, -0.08f, 0.27f)
@@ -127,23 +128,24 @@ object Icons {
                 line(-0.14f, 0.28f, 0.04f, 0.28f)
             }
             Icon.SETTINGS -> {
-                circle(0f, 0f, 0.14f)
-                circle(0f, 0f, 0.3f)
+                // Three meshing gears.
                 val old = paint.strokeWidth
-                paint.strokeWidth = s * 0.12f
-                for (k in 0 until 8) {
-                    val a = Math.toRadians(k * 45.0)
-                    val c = Math.cos(a).toFloat()
-                    val sn = Math.sin(a).toFloat()
-                    line(c * 0.33f, sn * 0.33f, c * 0.43f, sn * 0.43f)
+                fun gear(gx: Float, gy: Float) {
+                    val r = 0.2f
+                    paint.strokeWidth = r * 0.46f * s
+                    circle(gx, gy, r * 0.62f)
+                    paint.strokeWidth = r * 0.3f * s
+                    for (k in 0 until 8) {
+                        val a = Math.toRadians(k * 45.0)
+                        val c = Math.cos(a).toFloat()
+                        val sn = Math.sin(a).toFloat()
+                        line(gx + c * r * 0.8f, gy + sn * r * 0.8f, gx + c * r, gy + sn * r)
+                    }
                 }
+                gear(0.21f, -0.21f)
+                gear(-0.21f, -0.12f)
+                gear(0.08f, 0.21f)
                 paint.strokeWidth = old
-            }
-            Icon.ONE_HANDED -> {
-                oval.set(x(-0.1f), y(-0.42f), x(0.36f), y(0.42f))
-                canvas.drawRoundRect(oval, s * 0.07f, s * 0.07f, paint)
-                line(-0.02f, 0f, -0.44f, 0f)
-                poly(-0.28f, -0.14f, -0.44f, 0f, -0.28f, 0.14f, close = false)
             }
             Icon.KEYBOARD -> {
                 oval.set(x(-0.46f), y(-0.3f), x(0.46f), y(0.3f))
@@ -167,17 +169,6 @@ object Icons {
                 poly(-0.27f, -0.28f, -0.21f, 0.42f, 0.21f, 0.42f, 0.27f, -0.28f, close = false)
                 line(-0.07f, -0.1f, -0.07f, 0.26f)
                 line(0.07f, -0.1f, 0.07f, 0.26f)
-            }
-            Icon.SWAP -> {
-                line(-0.38f, -0.16f, 0.36f, -0.16f)
-                poly(0.18f, -0.32f, 0.38f, -0.16f, 0.18f, 0f, close = false)
-                line(0.38f, 0.16f, -0.36f, 0.16f)
-                poly(-0.18f, 0f, -0.38f, 0.16f, -0.18f, 0.32f, close = false)
-            }
-            Icon.EXPAND -> {
-                line(-0.4f, 0f, 0.4f, 0f)
-                poly(-0.22f, -0.18f, -0.42f, 0f, -0.22f, 0.18f, close = false)
-                poly(0.22f, -0.18f, 0.42f, 0f, 0.22f, 0.18f, close = false)
             }
             Icon.CLOCK -> {
                 circle(0f, 0f, 0.4f)
