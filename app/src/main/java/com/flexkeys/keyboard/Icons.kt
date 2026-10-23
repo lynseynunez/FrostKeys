@@ -11,7 +11,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI, SLIDERS,
+    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI, SLIDERS, STICKER,
 }
 
 object Icons {
@@ -118,6 +118,25 @@ object Icons {
                 paint.textSize = oldSize
                 paint.style = Paint.Style.STROKE
                 canvas.restoreToCount(layer)
+            }
+            Icon.STICKER -> {
+                // A square sticker with a peeling corner and a smile.
+                path.reset()
+                path.moveTo(x(-0.40f), y(-0.40f))
+                path.lineTo(x(0.40f), y(-0.40f))
+                path.lineTo(x(0.40f), y(0.14f))
+                path.lineTo(x(0.14f), y(0.40f))
+                path.lineTo(x(-0.40f), y(0.40f))
+                path.close()
+                canvas.drawPath(path, paint)
+                poly(0.40f, 0.14f, 0.14f, 0.14f, 0.14f, 0.40f, close = false)
+                val old = paint.style
+                paint.style = Paint.Style.FILL
+                circle(-0.14f, -0.12f, 0.05f)
+                circle(0.10f, -0.12f, 0.05f)
+                paint.style = old
+                oval.set(x(-0.20f), y(-0.10f), x(0.16f), y(0.18f))
+                canvas.drawArc(oval, 20f, 140f, false, paint)
             }
             Icon.SLIDERS -> {
                 // Three horizontal tracks with a knob each.

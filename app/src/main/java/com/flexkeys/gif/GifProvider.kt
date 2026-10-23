@@ -40,7 +40,12 @@ class GifProvider : ContentProvider() {
         return cursor
     }
 
-    override fun getType(uri: Uri): String = "image/gif"
+    override fun getType(uri: Uri): String = when (uri.lastPathSegment?.substringAfterLast('.', "")) {
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        "jpg", "jpeg" -> "image/jpeg"
+        else -> "image/gif"
+    }
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?) = 0
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?) = 0

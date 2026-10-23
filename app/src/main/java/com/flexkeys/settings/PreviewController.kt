@@ -137,6 +137,8 @@ class PreviewController(
     override fun onOpenSettings() = Unit
     override fun onTranslateInsert(text: String) = Unit
     override fun onEditPhrases() = Unit
+    override fun onEditStickers() = Unit
+    override fun onStickerPicked(file: java.io.File) = Unit
     override fun toolSource(wholeField: Boolean) = ToolSource("", false)
     override fun onToolInsert(text: String) = Unit
     override fun onToolReplace(text: String, wholeField: Boolean) = Unit

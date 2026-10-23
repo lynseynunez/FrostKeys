@@ -14,7 +14,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Shift, double-tap shift (or long-press) for caps lock, auto-capitalization
 - Backspace with hold-to-repeat (emoji-aware), enter key that matches the app's action (search, send, go, next, done)
 - Long-press popups for accents, digits and alternate symbols, key preview bubbles
-- Swipe the space bar to move the cursor; long-press space to switch keyboards
+- Swipe the space bar to move the cursor, or rest your finger on it for a moment and then drag to select text; long-press space to switch keyboards
 - Double-space for ". "
 - Swipe left on backspace to select word by word and delete on release; swipe down on a letter to type the symbol in its corner
 - Voice typing: the mic button uses your phone's own speech recognizer (no microphone permission needed)
@@ -35,6 +35,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Clipboard history with pin, delete and clear (local only; items password managers mark as sensitive are skipped), optional auto-delete after an hour, day or week
 - Verification codes you copy from a message show above the keys for one-tap paste and are forgotten after 10 minutes
 - Tap the four dots at the top left for a tools menu; use Edit there to choose which tools show in the top row, and hold and drag to reorder them
+- Your own stickers: add images from the gallery and send them as images (apps that can't take images get a copy to paste)
 - Kaomoji and symbols tabs in the emoji panel
 - Fancy text: 16 styles (bold, italic, script, gothic, circled, small caps, strikethrough...) with a live preview
 - AI rewrite (optional, bring your own free Groq or Gemini key): fix, friendlier, professional, shorter, longer, casual, add emoji, rephrase, or your own instruction
@@ -143,6 +144,7 @@ app/src/main/java/com/flexkeys/
 ├── gif/        KlipyClient, GifLoader, GifProvider, GifPanel
 ├── translate/  Languages, TextChunker, MyMemoryClient, TranslateBar
 ├── phrases/    SnippetStore, PhrasesPanel, CustomKeys
+├── stickers/   StickerStore, StickerPanel
 ├── fancy/      FancyText (Unicode styles), FancyBar
 ├── ai/         GeminiClient, AiBar
 ├── voice/      VoiceInputActivity, VoiceBridge

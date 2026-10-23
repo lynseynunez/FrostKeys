@@ -563,6 +563,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         }, Triple("Phrases & extra keys", false) {
             startActivity(Intent(this@SettingsActivity, PhrasesActivity::class.java))
         })
+        buttons(Triple("Stickers", false) {
+            startActivity(Intent(this@SettingsActivity, StickersActivity::class.java))
+        })
         buttons(Triple("Clear learned words", false) {
             confirm("Forget every word SakuriKey has learned from your typing?") {
                 SuggestionEngine.get(this@SettingsActivity).user.clear()

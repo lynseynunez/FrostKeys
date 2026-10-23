@@ -59,6 +59,12 @@ class KeyboardView(context: Context) : View(context) {
         /** Swiping left on backspace has selected [words] words before the cursor so far. */
         fun onBackspaceSwipe(words: Int) {}
 
+        /** Holding the space bar and then dragging started a selection at the cursor. */
+        fun onSelectStart() {}
+
+        /** While selecting from the space bar, the selection's moving end moved by [steps] characters. */
+        fun onCursorSelect(steps: Int) {}
+
         /** The backspace swipe ended; the selected words should be deleted. */
         fun onBackspaceSwipeEnd() {}
     }
@@ -74,6 +80,9 @@ class KeyboardView(context: Context) : View(context) {
         var handled = false
         var repeating = false
         var cursorMode = false
+        /** Space bar drag that selects text (the finger rested a moment before moving). */
+        var selecting = false
+        val downTime = SystemClock.uptimeMillis()
         var cursorAnchorX = downX
         var popup: Popup? = null
         var longPress: Runnable? = null
@@ -582,7 +591,13 @@ class KeyboardView(context: Context) : View(context) {
         p.longPress?.let { handler.removeCallbacks(it) }
         val r = Runnable { onLongPressTimeout(id) }
         p.longPress = r
-        handler.postDelayed(r, if (p.key.def.type == KeyType.BACKSPACE) REPEAT_START_MS else LONG_PRESS_MS)
+        // The space bar waits longer, so a rest-then-drag (select) isn't mistaken for a long press.
+        val delay = when (p.key.def.type) {
+            KeyType.BACKSPACE -> REPEAT_START_MS
+            KeyType.SPACE -> SPACE_LONG_PRESS_MS
+            else -> LONG_PRESS_MS
+        }
+        handler.postDelayed(r, delay)
     }
 
     private fun onLongPressTimeout(id: Int) {
@@ -667,13 +682,16 @@ class KeyboardView(context: Context) : View(context) {
                 p.handled = true
                 p.cursorAnchorX = x
                 p.longPress?.let { handler.removeCallbacks(it) }
+                // Resting a moment on the space bar before dragging selects text instead of moving the cursor.
+                p.selecting = SystemClock.uptimeMillis() - p.downTime >= SELECT_DWELL_MS
+                if (p.selecting) listener?.onSelectStart()
             }
             if (p.cursorMode) {
                 val stepWidth = t.dp(11f)
                 val steps = ((x - p.cursorAnchorX) / stepWidth).toInt()
                 if (steps != 0) {
                     p.cursorAnchorX += steps * stepWidth
-                    listener?.onCursorMove(steps)
+                    if (p.selecting) listener?.onCursorSelect(steps) else listener?.onCursorMove(steps)
                 }
             }
             return
@@ -755,6 +773,9 @@ class KeyboardView(context: Context) : View(context) {
         const val PRESS_MS = 70f
         const val RELEASE_MS = 200f
         const val LONG_PRESS_MS = 380L
+        const val SPACE_LONG_PRESS_MS = 750L
+        /** Resting this long on the space bar before dragging starts selecting. */
+        const val SELECT_DWELL_MS = 300L
         const val REPEAT_START_MS = 420L
         const val REPEAT_MS = 60L
         const val REPEAT_FAST_MS = 30L

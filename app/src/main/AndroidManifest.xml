@@ -37,6 +37,10 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".settings.StickersActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".settings.PhrasesActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

@@ -1,5 +1,6 @@
 package com.flexkeys.service
 
+import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
@@ -34,6 +35,7 @@ import com.flexkeys.phrases.CustomKeys
 import com.flexkeys.phrases.SnippetStore
 import com.flexkeys.settings.PhrasesActivity
 import com.flexkeys.settings.SettingsActivity
+import com.flexkeys.settings.StickersActivity
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.suggest.Suggestions
@@ -43,6 +45,7 @@ import com.flexkeys.ui.KeyboardRootView
 import com.flexkeys.ui.ToolSource
 import com.flexkeys.voice.VoiceBridge
 import com.flexkeys.voice.VoiceInputActivity
+import java.io.File
 
 /**
  * The input method. Owns the views and turns key events into edits on the text field.
@@ -384,6 +387,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
             SuggestionStripView.Action.PHRASES -> togglePanel(KeyboardRootView.Panel.PHRASES)
+            SuggestionStripView.Action.STICKERS -> togglePanel(KeyboardRootView.Panel.STICKERS)
             SuggestionStripView.Action.AI -> when {
                 !prefs.aiEnabled || !AiClient.hasKey(prefs) ->
                     Toast.makeText(this, "Turn on AI rewrite and add your API key in SakuriKey settings", Toast.LENGTH_LONG).show()
@@ -420,6 +424,33 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     override fun onOpenSettings() = openSettings()
+
+    override fun onEditStickers() {
+        requestHideSelf(0)
+        startActivity(Intent(this, StickersActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /** Sends the sticker as an image; if the app can't take images, copies it so it can be pasted. */
+    override fun onStickerPicked(file: File) {
+        feedback.keyPress(KeyType.CHAR)
+        val ic = currentInputConnection ?: return
+        val app = applicationContext
+        val sendDir = File(app.cacheDir, GifLoader.SEND_DIR).apply { mkdirs() }
+        val copy = File(sendDir, file.name)
+        try {
+            if (!copy.isFile) file.copyTo(copy, overwrite = true)
+        } catch (e: java.io.IOException) {
+            Toast.makeText(app, "Couldn't open that sticker", Toast.LENGTH_SHORT).show()
+            return
+        }
+        commitPending(ic)
+        val uri = GifProvider.uriFor(app, copy)
+        val info = InputContentInfo(uri, ClipDescription("Sticker", arrayOf("image/png")))
+        if (!ic.commitContent(info, InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)) {
+            clipboard.setPrimaryClip(ClipData.newUri(app.contentResolver, "Sticker", uri))
+            Toast.makeText(app, "This app can't receive stickers. Copied, so you can paste it.", Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onEditPhrases() {
         requestHideSelf(0)
@@ -550,6 +581,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         // Password managers mark copied secrets as sensitive; never store those.
         if (clip.description?.extras?.getBoolean(EXTRA_IS_SENSITIVE) == true) return
         if (clip.itemCount == 0) return
+        // A sticker we copied ourselves for pasting isn't something to keep in the history.
+        if (clip.description?.label == "Sticker") return
         val text = clip.getItemAt(0).coerceToText(this)?.toString() ?: return
         ClipboardStore.get(this).add(text)
         updateSuggestions()
@@ -642,6 +675,26 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         swipeAnchor = -1
         swipeText = ""
         updateSuggestions()
+    }
+
+    private var selectAnchor = -1
+    private var selectHead = -1
+
+    override fun onSelectStart() {
+        if (composing.isNotEmpty()) {
+            currentInputConnection?.finishComposingText()
+            composing.clear()
+        }
+        selectAnchor = selectionEnd
+        selectHead = selectionEnd
+        feedback.longPress()
+    }
+
+    override fun onCursorSelect(steps: Int) {
+        val ic = currentInputConnection ?: return
+        if (selectAnchor < 0) return
+        selectHead = (selectHead + steps).coerceAtLeast(0)
+        ic.setSelection(minOf(selectAnchor, selectHead), maxOf(selectAnchor, selectHead))
     }
 
     override fun onCursorMove(steps: Int) {
