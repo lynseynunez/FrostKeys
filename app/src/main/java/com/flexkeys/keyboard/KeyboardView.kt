@@ -242,14 +242,17 @@ class KeyboardView(context: Context) : View(context) {
         cardTheme = t
         cardW = w
         cardH = h
-        // A soft diagonal sheen, like brushed glass: lighter toward one corner, no color.
-        val hi = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.16f else 0.40f)
-        val lo = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.02f else 0.06f)
-        cardSheen = LinearGradient(0f, 0f, w, h, intArrayOf(hi, lo, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.07f else 0.2f)),
-            floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+        // A soft diagonal sheen, like brushed glass: lighter toward one corner, no color. The
+        // "Space bar glass" setting (k) scales how bright it is.
+        val k = t.spaceGlass
+        val hi = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.10f + 0.40f * k else 0.30f + 0.40f * k)
+        val lo = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.02f + 0.04f * k else 0.06f)
+        val end = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.05f + 0.15f * k else 0.15f + 0.20f * k)
+        cardSheen = LinearGradient(0f, 0f, w, h, intArrayOf(hi, lo, end), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
         // A hairline edge only: no raised rim, so it reads as a pane of glass and not a button.
-        cardEdge = LinearGradient(0f, 0f, w, h, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.20f else 0.55f),
-            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.05f else 0.16f), Shader.TileMode.CLAMP)
+        cardEdge = LinearGradient(0f, 0f, w, h,
+            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.12f + 0.45f * k else 0.45f + 0.40f * k),
+            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.03f + 0.12f * k else 0.15f), Shader.TileMode.CLAMP)
     }
 
     /**
@@ -277,7 +280,10 @@ class KeyboardView(context: Context) : View(context) {
         host?.backdrop?.drawBlurred(canvas, offset.x + v.left, offset.y + v.top)
         cardPaint.style = Paint.Style.FILL
         cardPaint.shader = null
-        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF101012.toInt(), 0.40f) else GlassTheme.withAlpha(Color.WHITE, 0.34f)
+        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF101012.toInt(), 0.30f) else GlassTheme.withAlpha(Color.WHITE, 0.30f)
+        canvas.drawRect(0f, 0f, w, h, cardPaint)
+        // A light veil over the blur makes the pane stand out; the setting controls how much.
+        cardPaint.color = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.02f + 0.20f * t.spaceGlass else 0.10f + 0.30f * t.spaceGlass)
         canvas.drawRect(0f, 0f, w, h, cardPaint)
         cardPaint.shader = cardSheen
         canvas.drawRect(0f, 0f, w, h, cardPaint)
@@ -341,7 +347,7 @@ class KeyboardView(context: Context) : View(context) {
     /** The space bar emblem: the supplied flower artwork in white, about the height of the letters. */
     private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, t: GlassTheme) {
         val bitmap = emblem() ?: return
-        val size = rowHeight * 0.40f * t.fontScale.coerceIn(0.8f, 1.3f)
+        val size = rowHeight * 0.40f * t.fontScale.coerceIn(0.8f, 1.3f) * t.emblemScale
         emblemRect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f)
         val color = if (t.glassKeys) t.glassTextFill else t.textColor
         if (color != emblemTint) {

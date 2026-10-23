@@ -111,8 +111,10 @@ app/src/main/java/com/flexkeys/
 └── settings/   SettingsActivity, PreviewController, ColorPickerView
 app/src/main/assets/words.txt    English word list with frequencies
 app/src/main/assets/emoji.tsv    emoji keywords for search and suggestions
+app/src/main/assets/typos.tsv    common misspellings and their fixes
 tools/make_words.py              regenerates words.txt
 tools/make_emoji.py              regenerates emoji.tsv
+tools/make_typos.py              regenerates typos.tsv
 ```
 
 ### Adding a layout
@@ -147,6 +149,9 @@ The bundled word list is derived from [FrequencyWords](https://github.com/hermit
 (OpenSubtitles 2018) by Hermit Dave, licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). It was filtered and extended with
 contractions by `tools/make_words.py`.
+The misspelling list (`typos.tsv`) is filtered from the [codespell](https://github.com/codespell-project/codespell)
+dictionary, a derivative of English Wikipedia's lists of common misspellings, licensed
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), by `tools/make_typos.py`.
 The bundled fonts [Inter](https://github.com/rsms/inter) and [Manrope](https://github.com/googlefonts/manrope)
 are licensed under the SIL Open Font License 1.1 (see `app/src/main/assets/fonts`).
 Emoji keywords and skin tone data come from [gemoji](https://github.com/github/gemoji)

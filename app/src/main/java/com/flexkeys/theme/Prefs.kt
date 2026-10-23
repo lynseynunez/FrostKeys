@@ -22,6 +22,10 @@ class Prefs private constructor(context: Context) {
     var fontFamily by string(KEY_FONT_FAMILY, Fonts.INTER)
     /** Emoji shown in the middle of the space bar; empty for none. */
     var spaceEmblem by string(KEY_SPACE_EMBLEM, SPACE_EMBLEM_ICON)
+    /** How bright and visible the frosted space bar is, 0..100. */
+    var spaceGlass by int(KEY_SPACE_GLASS, 60)
+    /** Size of the space bar emblem in percent. */
+    var emblemSize by int(KEY_EMBLEM_SIZE, 100)
     var cornerRadiusDp by int(KEY_CORNER, 8)
     /** Label size in percent of the default. */
     var fontPercent by int(KEY_FONT, 100)
@@ -105,6 +109,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_STYLE = "key_style"
         const val KEY_FONT_FAMILY = "font_family"
         const val KEY_SPACE_EMBLEM = "space_emblem"
+        const val KEY_SPACE_GLASS = "space_glass"
+        const val KEY_EMBLEM_SIZE = "emblem_size"
         const val KEY_STYLE_GLASS = 0
         const val KEY_STYLE_TILES = 1
         const val KEY_BG_VERSION = "bg_version"

@@ -246,7 +246,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             val ctx = readContext(ic)
             // Gboard-style emoji suggestions for the word being typed or just typed.
             when {
-                composing.isNotEmpty() -> engine.suggest(composing.toString(), ctx.previous, correctionOn).let { s ->
+                composing.isNotEmpty() -> engine.suggest(composing.toString(), ctx.previous, correctionOn, ctx.sentenceStart).let { s ->
                     EmojiIndex.forWord(composing.toString()).firstOrNull()?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
                 }
                 ctx.afterSpace -> engine.predict(ctx.previous, ctx.sentenceStart).let { s ->
@@ -551,12 +551,13 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     /** Commits the composing word, autocorrecting it if asked, and learns it. */
     private fun commitComposing(ic: InputConnection, autocorrect: Boolean) {
         val typed = composing.toString()
-        val previous = if (learningOn || autocorrect) readContext(ic).previous else null
+        val context = if (learningOn || autocorrect) readContext(ic) else null
+        val previous = context?.previous
         var final = engine.displayForm(typed)
         if (autocorrect) {
             val shownForThisWord = suggestions.typedIndex >= 0 &&
                 suggestions.slots.getOrNull(suggestions.typedIndex) == typed
-            val correction = if (shownForThisWord) suggestions.correction else engine.suggest(typed, previous, true).correction
+            val correction = if (shownForThisWord) suggestions.correction else engine.suggest(typed, previous, true, context?.sentenceStart ?: true).correction
             if (correction != null && correction != typed) {
                 final = correction
                 lastCorrection = Correction(typed, correction)

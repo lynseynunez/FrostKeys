@@ -27,6 +27,10 @@ class GlassTheme(
     val glassKeys: Boolean = false,
     val fontId: String = Fonts.INTER,
     val spaceEmblem: String = "",
+    /** 0..1, brightness of the frosted space bar. */
+    val spaceGlass: Float = 0.6f,
+    /** Multiplier for the space bar emblem size. */
+    val emblemScale: Float = 1f,
 ) {
     // Glass lettering: translucent fill, a bright thin edge, a soft shadow and the gradient shining through.
     val glassTextFill: Int = if (dark) withAlpha(Color.WHITE, 0.80f) else withAlpha(0xFF15171C.toInt(), 0.80f)
@@ -104,6 +108,8 @@ class GlassTheme(
                 glassKeys = prefs.keyStyle == Prefs.KEY_STYLE_GLASS,
                 fontId = prefs.fontFamily,
                 spaceEmblem = prefs.spaceEmblem,
+                spaceGlass = prefs.spaceGlass.coerceIn(0, 100) / 100f,
+                emblemScale = prefs.emblemSize.coerceIn(50, 160) / 100f,
             )
         }
 

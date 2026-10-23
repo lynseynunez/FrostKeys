@@ -495,6 +495,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         segmented("Space bar emblem", listOf("Icon", "🌸", "❤️", "None"), emblems.indexOf(prefs.spaceEmblem).coerceAtLeast(0)) {
             prefs.spaceEmblem = emblems[it]
         }
+        slider("Emblem size", 50, 160, prefs::emblemSize) { "$it%" }
+        slider("Space bar glass", 0, 100, prefs::spaceGlass) { "$it%" }
         slider("Keyboard height", 60, 150, prefs::heightPercent) { "$it%" }
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
         slider("Corner radius", 0, 30, prefs::cornerRadiusDp) { "$it dp" }

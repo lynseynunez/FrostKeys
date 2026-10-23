@@ -44,17 +44,39 @@ class SuggestionEngine private constructor(context: Context) {
         private set
     val user = UserDictionary(context)
 
+    /** Common misspellings with their fix ("teh" -> "the"), from assets/typos.tsv. */
+    @Volatile
+    private var typos: Map<String, String> = emptyMap()
+
     init {
         val app = context.applicationContext
         val main = Handler(Looper.getMainLooper())
         Executors.newSingleThreadExecutor().execute {
             val dict = WordDictionary.load(app)
+            val typoMap = loadTypos(app)
             val learned = user.loadBlocking()
             main.post {
                 dictionary = dict
+                typos = typoMap
                 user.install(learned)
             }
         }
+    }
+
+    private fun loadTypos(app: Context): Map<String, String> {
+        val map = HashMap<String, String>(50_000)
+        try {
+            app.assets.open("typos.tsv").bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    if (line.isEmpty() || line[0] == '#') continue
+                    val tab = line.indexOf('\t')
+                    if (tab > 0) map[line.substring(0, tab)] = line.substring(tab + 1)
+                }
+            }
+        } catch (e: java.io.IOException) {
+            // Without the list the keyboard still corrects with its dictionary.
+        }
+        return map
     }
 
     private class Candidate(val display: String, val score: Double, val cost: Double)
@@ -74,7 +96,11 @@ class SuggestionEngine private constructor(context: Context) {
             2.2 * ln(1.0 + user.bigramCount(prev, word))
     }
 
-    fun suggest(typed: String, prev: String?, allowCorrection: Boolean): Suggestions {
+    /**
+     * @param sentenceStart true when [typed] begins a sentence; a capitalized word elsewhere is
+     * probably a name and is left alone.
+     */
+    fun suggest(typed: String, prev: String?, allowCorrection: Boolean, sentenceStart: Boolean = true): Suggestions {
         if (typed.isEmpty()) return Suggestions.EMPTY
         val lower = typed.lowercase(Locale.ROOT)
         val candidates = HashMap<String, Candidate>()
@@ -97,8 +123,9 @@ class SuggestionEngine private constructor(context: Context) {
             add(word, score(word, dictionary.frequency(word), prev) - if (extra > 0) COMPLETION_PENALTY + 0.12 * extra else 0.0, COMPLETION_COST)
         }
 
+        val capitalized = typed.length > 1 && typed[0].isUpperCase()
         val correctable = allowCorrection && lower.length >= 2 && lower.all { it.isLetter() || it == '\'' } &&
-            !hasInnerCapital(typed)
+            !hasInnerCapital(typed) && !(capitalized && !sentenceStart)
         if (correctable) {
             var bestEdit = Double.NEGATIVE_INFINITY
             forEachEdit(lower) { edit, cost ->
@@ -132,14 +159,20 @@ class SuggestionEngine private constructor(context: Context) {
             .map { it.value }
 
         var correction: String? = null
-        if (correctable) {
+        // A known misspelling ("teh", "definately") is fixed straight away, unless the user taught us the word.
+        val typoFix = if (correctable && user.count(lower) < LEARNED_THRESHOLD) typos[lower] else null
+        if (typoFix != null) {
+            correction = applyCase(typoFix, typed)
+        } else if (correctable) {
+            // Capitalized words are often names, so they need a clearer win to be changed.
+            val threshold = if (capitalized) CORRECTION_THRESHOLD + 2.0 else CORRECTION_THRESHOLD
             val best = if (isKnown(lower)) {
                 // A valid but rare word is only corrected through the most typo-like edits
                 // (missing apostrophe or doubled letter) to a far more likely word: "helo" -> "hello".
                 val typedScore = score(lower, dictionary.frequency(lower), prev)
                 ranked.firstOrNull { it.cost <= KNOWN_WORD_MAX_COST }?.takeIf { it.score >= typedScore + KNOWN_WORD_MARGIN }
             } else {
-                ranked.firstOrNull()?.takeIf { it.score >= CORRECTION_THRESHOLD }
+                ranked.firstOrNull()?.takeIf { it.score >= threshold }
             }
             if (best != null) correction = applyCase(best.display, typed)
         }
