@@ -95,10 +95,9 @@ class GlassBackdrop {
         basePaint.shader = null
         val bmp = photo
         if (bmp != null && !bmp.isRecycled && t.backgroundOpacity > 0f) {
-            // Center-crop the photo into the backdrop.
-            val scale = maxOf(w / bmp.width, h / bmp.height)
-            photoMatrix.setScale(scale, scale)
-            photoMatrix.postTranslate((w - bmp.width * scale) / 2f, (h - bmp.height * scale) / 2f)
+            val fit = PhotoFit.compute(bmp.width, bmp.height, w, h, t.photoZoom, t.photoPanX, t.photoPanY)
+            photoMatrix.setScale(fit.scale, fit.scale)
+            photoMatrix.postTranslate(fit.dx, fit.dy)
             photoPaint.alpha = (t.backgroundOpacity * 255).toInt()
             canvas.drawBitmap(bmp, photoMatrix, photoPaint)
             basePaint.color = GlassTheme.withAlpha(t.photoScrim, (t.photoScrim ushr 24) / 255f * t.backgroundOpacity)

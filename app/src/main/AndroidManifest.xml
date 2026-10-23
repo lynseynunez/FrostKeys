@@ -29,6 +29,10 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".settings.PhotoAdjustActivity"
+            android:exported="false" />
+
         <provider
             android:name=".gif.GifProvider"
             android:authorities="${applicationId}.gifs"

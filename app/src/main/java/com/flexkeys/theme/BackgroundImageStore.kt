@@ -28,6 +28,14 @@ object BackgroundImageStore {
 
     fun delete(context: Context) {
         file(context).delete()
+        resetAdjustments(Prefs.get(context), luma = -1)
+    }
+
+    private fun resetAdjustments(prefs: Prefs, luma: Int) {
+        prefs.photoZoom = 100
+        prefs.photoPanX = 0
+        prefs.photoPanY = 0
+        prefs.photoLuma = luma
     }
 
     /**
@@ -72,8 +80,15 @@ object BackgroundImageStore {
 
             val tmp = File(context.filesDir, "$FILE_NAME.tmp")
             FileOutputStream(tmp).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) }
+            val colors = PhotoColors.analyze(bitmap)
             bitmap.recycle()
-            tmp.renameTo(file(context))
+            val saved = tmp.renameTo(file(context))
+            if (saved) {
+                val prefs = Prefs.get(context)
+                prefs.photoAccent = colors.accent
+                resetAdjustments(prefs, (colors.luma * 100).toInt())
+            }
+            saved
         } catch (e: IOException) {
             Log.w(TAG, "Could not import background", e)
             false

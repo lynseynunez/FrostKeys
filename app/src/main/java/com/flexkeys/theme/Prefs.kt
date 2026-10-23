@@ -48,6 +48,16 @@ class Prefs private constructor(context: Context) {
     var blurStrength by int(KEY_BLUR, 50)
     /** Strength of the blue/purple/pink glow across the glass; 0 turns it off. */
     var gradientStrength by int(KEY_GRADIENT, 60)
+    /** Photo zoom in percent (100 = just covering the keyboard) and pan, -100..100 (0 = centered). */
+    var photoZoom by int(KEY_PHOTO_ZOOM, 100)
+    var photoPanX by int(KEY_PHOTO_PAN_X, 0)
+    var photoPanY by int(KEY_PHOTO_PAN_Y, 0)
+    /** When on, light or dark tint follows how bright the photo is. */
+    var adaptTint by bool(KEY_ADAPT_TINT, false)
+    /** Average brightness of the photo in percent, or -1 when there is no photo. */
+    var photoLuma by int(KEY_PHOTO_LUMA, -1)
+    /** Most prominent color of the photo, found when it was picked. */
+    var photoAccent by int(KEY_PHOTO_ACCENT, DEFAULT_ACCENT)
     /** Bumped every time the background photo changes so views know to reload it. */
     var backgroundVersion by long(KEY_BG_VERSION, 0L)
 
@@ -120,6 +130,12 @@ class Prefs private constructor(context: Context) {
         const val KEY_STYLE_GLASS = 0
         const val KEY_STYLE_TILES = 1
         const val KEY_BG_VERSION = "bg_version"
+        const val KEY_PHOTO_ZOOM = "photo_zoom"
+        const val KEY_PHOTO_PAN_X = "photo_pan_x"
+        const val KEY_PHOTO_PAN_Y = "photo_pan_y"
+        const val KEY_ADAPT_TINT = "adapt_tint"
+        const val KEY_PHOTO_LUMA = "photo_luma"
+        const val KEY_PHOTO_ACCENT = "photo_accent"
         const val KEY_SUGGESTIONS = "suggestions"
         const val KEY_AUTOCORRECT = "autocorrect"
         const val KEY_AUTOCAP = "autocap"
@@ -153,7 +169,8 @@ class Prefs private constructor(context: Context) {
         val THEME_KEYS: Set<String> = setOf(
             KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
-            KEY_SPACE_GLASS, KEY_EMBLEM_SIZE,
+            KEY_SPACE_GLASS, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
+            KEY_ADAPT_TINT, KEY_PHOTO_LUMA,
         )
 
         @Volatile private var instance: Prefs? = null

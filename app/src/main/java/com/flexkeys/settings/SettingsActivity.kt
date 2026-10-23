@@ -471,6 +471,21 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             BackgroundImageStore.delete(this@SettingsActivity)
             prefs.backgroundVersion = System.currentTimeMillis()
         })
+        buttons(Triple("Adjust position", false) {
+            if (BackgroundImageStore.exists(this@SettingsActivity)) {
+                startActivity(Intent(this@SettingsActivity, PhotoAdjustActivity::class.java))
+            } else {
+                toast("Choose a photo first")
+            }
+        }, Triple("Use photo's colors", false) {
+            if (BackgroundImageStore.exists(this@SettingsActivity) && prefs.photoLuma >= 0) {
+                prefs.accentColor = prefs.photoAccent
+                toast("Accent matched to your photo")
+            } else {
+                toast("Choose a photo first")
+            }
+        })
+        toggle("Adapt tint to photo", "Light or dark follows how bright the photo is.", prefs::adaptTint)
         slider("Photo opacity", 0, 100, prefs::backgroundOpacity) { "$it%" }
         slider("Glass opacity", 0, 100, prefs::glassOpacity) { "$it%" }
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }

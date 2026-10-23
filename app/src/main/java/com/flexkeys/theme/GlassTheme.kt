@@ -31,6 +31,11 @@ class GlassTheme(
     val spaceGlass: Float = 0.6f,
     /** Multiplier for the space bar emblem size. */
     val emblemScale: Float = 1f,
+    /** 1 = the photo just covers the keyboard; larger zooms in. */
+    val photoZoom: Float = 1f,
+    /** -1..1, where the zoomed photo is positioned (0 is centered). */
+    val photoPanX: Float = 0f,
+    val photoPanY: Float = 0f,
 ) {
     // Glass lettering: translucent fill, a bright thin edge, a soft shadow and the gradient shining through.
     val glassTextFill: Int = if (dark) withAlpha(Color.WHITE, 0.80f) else withAlpha(0xFF15171C.toInt(), 0.80f)
@@ -86,9 +91,11 @@ class GlassTheme(
     companion object {
         fun from(context: Context, prefs: Prefs): GlassTheme {
             val dm = context.resources.displayMetrics
-            val dark = when (prefs.themeMode) {
-                Prefs.THEME_LIGHT -> false
-                Prefs.THEME_DARK -> true
+            val adaptive = prefs.adaptTint && prefs.photoLuma >= 0 && prefs.backgroundOpacity > 0
+            val dark = when {
+                adaptive -> prefs.photoLuma < 55
+                prefs.themeMode == Prefs.THEME_LIGHT -> false
+                prefs.themeMode == Prefs.THEME_DARK -> true
                 else -> (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                     Configuration.UI_MODE_NIGHT_YES
             }
@@ -110,6 +117,9 @@ class GlassTheme(
                 spaceEmblem = prefs.spaceEmblem,
                 spaceGlass = prefs.spaceGlass.coerceIn(0, 100) / 100f,
                 emblemScale = prefs.emblemSize.coerceIn(50, 160) / 100f,
+                photoZoom = prefs.photoZoom.coerceIn(100, 400) / 100f,
+                photoPanX = prefs.photoPanX.coerceIn(-100, 100) / 100f,
+                photoPanY = prefs.photoPanY.coerceIn(-100, 100) / 100f,
             )
         }
 
