@@ -126,7 +126,9 @@ class GlassBackdrop {
     private fun drawWithRenderNode(canvas: Canvas) {
         val t = theme ?: return
         val rn = (node as? RenderNode) ?: RenderNode("FlexKeysBackdrop").also { node = it }
-        if (nodeDirty) {
+        // Android may free a standalone RenderNode's recording to save memory (e.g. while the
+        // keyboard is hidden), so re-record whenever it's gone, not only when settings change.
+        if (nodeDirty || !rn.hasDisplayList()) {
             rn.setPosition(0, 0, width, height)
             val recording = rn.beginRecording(width, height)
             try {
