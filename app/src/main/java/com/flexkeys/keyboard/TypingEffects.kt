@@ -6,6 +6,7 @@ import android.graphics.Path
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -43,18 +44,22 @@ class TypingEffects(private val density: Float) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val star = Path()
 
+    /** 0..1: how strong the effects are (fewer, smaller, fainter at low values). */
+    var strength = 0.5f
+    private val fade get() = 0.3f + 0.7f * strength
+
     /** True while something is still animating, so the caller should keep redrawing. */
     val active: Boolean get() = sparks.isNotEmpty() || rings.isNotEmpty() || warpLevel > 0.01f
 
     fun onPress(style: Int, x: Float, y: Float, reach: Float, now: Long) {
         when (style) {
-            SPARKLES -> repeat(5) {
+            SPARKLES -> repeat(1 + (4f * strength).roundToInt()) {
                 if (sparks.size >= MAX_PARTICLES) sparks.removeAt(0)
                 val angle = Random.nextFloat() * 2f * PI.toFloat()
-                val speed = (40f + Random.nextFloat() * 80f) * density
+                val speed = (40f + Random.nextFloat() * 80f) * density * (0.5f + 0.5f * strength)
                 sparks.add(Spark(
                     x, y, cos(angle) * speed, sin(angle) * speed - 25f * density, now,
-                    420L + Random.nextLong(300L), (2.2f + Random.nextFloat() * 2.8f) * density, Random.nextInt(3) == 0,
+                    420L + Random.nextLong(300L), (2.2f + Random.nextFloat() * 2.8f) * density * (0.6f + 0.4f * strength), Random.nextInt(3) == 0,
                 ))
             }
             RIPPLE -> {
@@ -81,7 +86,7 @@ class TypingEffects(private val density: Float) {
             val py = s.y + s.vy * sec + 60f * density * sec * sec
             paint.style = Paint.Style.FILL
             val base = if (s.tinted) accent or 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
-            paint.color = (base and 0x00FFFFFF) or (((1f - t) * 230f).toInt().coerceIn(0, 255) shl 24)
+            paint.color = (base and 0x00FFFFFF) or (((1f - t) * 230f * fade).toInt().coerceIn(0, 255) shl 24)
             drawStar(canvas, px, py, s.size * (1f - 0.4f * t))
         }
 
@@ -90,8 +95,8 @@ class TypingEffects(private val density: Float) {
             val t = (now - r.born).toFloat() / RIPPLE_MS
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2f * density
-            paint.color = (0x00FFFFFF) or (((1f - t) * 150f).toInt().coerceIn(0, 255) shl 24)
-            canvas.drawCircle(r.x, r.y, r.reach * (0.25f + 0.85f * t), paint)
+            paint.color = (0x00FFFFFF) or (((1f - t) * 150f * fade).toInt().coerceIn(0, 255) shl 24)
+            canvas.drawCircle(r.x, r.y, r.reach * (0.6f + 0.4f * strength) * (0.25f + 0.85f * t), paint)
         }
 
         // Typing fast (about 5 presses within the window) fades in streaks flying outward from the middle.
@@ -113,7 +118,7 @@ class TypingEffects(private val density: Float) {
             val p = (linePhase[i] + time * lineSpeed[i]) % 1f
             val r0 = max * p * p
             val r1 = r0 + max * 0.12f * (0.3f + p)
-            val a = (warpLevel * 0.45f * (1f - p * 0.5f) * 255f).toInt().coerceIn(0, 255)
+            val a = (warpLevel * 0.45f * fade * (1f - p * 0.5f) * 255f).toInt().coerceIn(0, 255)
             paint.color = (0x00FFFFFF) or (a shl 24)
             val c = cos(lineAngles[i])
             val s = sin(lineAngles[i])

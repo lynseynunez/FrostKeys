@@ -53,6 +53,7 @@ class LookBar(
         addRow("Photo", 0, 100, prefs.backgroundOpacity) { prefs.backgroundOpacity = it }
         addRow("Blur", 0, 100, prefs.blurStrength) { prefs.blurStrength = it }
         addRow("Glow", 0, 100, prefs.gradientStrength) { prefs.gradientStrength = it }
+        addRow("Effects", 0, 100, prefs.effectStrength) { prefs.effectStrength = it }
     }
 
     private fun addRow(name: String, min: Int, max: Int, value: Int, onChange: (Int) -> Unit) {

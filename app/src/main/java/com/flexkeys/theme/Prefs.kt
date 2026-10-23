@@ -104,6 +104,8 @@ class Prefs private constructor(context: Context) {
     var toolbarItems by string(KEY_TOOLBAR_ITEMS, "")
     /** Animation while typing: 0 off, 1 sparkles, 2 ripple, 3 warp speed (see TypingEffects). */
     var typingEffect by int(KEY_TYPING_EFFECT, 0)
+    /** How strong the typing animation is, 0..100. */
+    var effectStrength by int(KEY_EFFECT_STRENGTH, 40)
     /** Color a pressed key lights up in: 0 white, 1 accent, 2 gradient, 3 photo color. */
     var pressStyle by int(KEY_PRESS_STYLE, 0)
     /** The last fancy text style picked (index into FancyText.Style). */
@@ -181,6 +183,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_PRESS_STYLE = "press_style"
+        const val KEY_EFFECT_STRENGTH = "effect_strength"
         const val KEY_TYPING_EFFECT = "typing_effect"
         const val KEY_TOOLBAR_ITEMS = "toolbar_items"
         const val KEY_AI_ENABLED = "ai_enabled"

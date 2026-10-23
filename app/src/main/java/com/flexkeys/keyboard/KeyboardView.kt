@@ -493,6 +493,7 @@ class KeyboardView(context: Context) : View(context) {
         val h = host ?: return
         val t = h.theme
         if (effects.active || prefs.typingEffect != TypingEffects.OFF) {
+            effects.strength = prefs.effectStrength.coerceIn(0, 100) / 100f
             effects.draw(canvas, SystemClock.uptimeMillis(), width.toFloat(), height.toFloat(), t.accent)
             if (effects.active) h.invalidateOverlay()
         }
@@ -572,6 +573,7 @@ class KeyboardView(context: Context) : View(context) {
         listener?.onKeyDown(key.def)
         val style = prefs.typingEffect
         if (style != TypingEffects.OFF) {
+            effects.strength = prefs.effectStrength.coerceIn(0, 100) / 100f
             effects.onPress(style, key.visual.centerX(), key.visual.centerY(), rowHeight * 1.1f, SystemClock.uptimeMillis())
             host?.invalidateOverlay()
         }

@@ -496,6 +496,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
         segmented("Key press color", listOf("White", "Accent", "Gradient", "Photo"), prefs.pressStyle) { prefs.pressStyle = it }
         segmented("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed"), prefs.typingEffect) { prefs.typingEffect = it }
+        slider("Animation strength", 0, 100, prefs::effectStrength) { "$it%" }
         text("Warp speed shows streaks when you type fast.", secondary = true)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             text("Live blur needs Android 12. This phone uses a lighter frosted look.", secondary = true)
