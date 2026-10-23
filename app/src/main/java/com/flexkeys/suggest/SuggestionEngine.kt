@@ -18,7 +18,16 @@ data class Suggestions(
     val typedIndex: Int = -1,
     /** Slot index holding an emoji suggestion ("pizza" -> 🍕), or -1. */
     val emojiIndex: Int = -1,
+    /** Slot index holding a one-time code copied from a message, or -1. */
+    val clipIndex: Int = -1,
 ) {
+    /** Puts a copied one-time [code] in the left-hand slot. */
+    fun withCode(code: String): Suggestions {
+        val list = slots.toMutableList()
+        if (list.size >= 3) list[0] = code else list.add(0, code)
+        return copy(slots = list, clipIndex = 0, highlighted = -1, typedIndex = -1, emojiIndex = -1)
+    }
+
     /** Puts [emoji] in the right-hand slot. */
     fun withEmoji(emoji: String): Suggestions {
         val list = slots.toMutableList()

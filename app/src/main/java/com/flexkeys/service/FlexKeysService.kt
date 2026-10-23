@@ -62,6 +62,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     private var correctionOn = false
     private var learningOn = false
 
+    private var passwordField = false
     private val snippets by lazy { SnippetStore.get(this) }
     private val composing = StringBuilder()
     private var selectionEnd = -1
@@ -141,7 +142,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
         val numeric = cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE ||
             cls == InputType.TYPE_CLASS_DATETIME
-        val password = cls == InputType.TYPE_CLASS_TEXT && variation in PASSWORD_VARIATIONS
+        val password = cls == InputType.TYPE_CLASS_TEXT && variation in PASSWORD_VARIATIONS ||
+            cls == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        passwordField = password
         val literal = cls == InputType.TYPE_CLASS_TEXT && variation in LITERAL_VARIATIONS
         val noSuggestions = (info.inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0
         predictionOn = prefs.suggestions && cls == InputType.TYPE_CLASS_TEXT && !password && !noSuggestions
@@ -263,8 +266,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         val r = root ?: return
         val strip = r.strip
         val ic = currentInputConnection
-        suggestions = if (!predictionOn || ic == null || r.panel != KeyboardRootView.Panel.NONE) {
+        suggestions = if (ic == null || r.panel != KeyboardRootView.Panel.NONE) {
             Suggestions.EMPTY
+        } else if (!predictionOn) {
+            withOtp(Suggestions.EMPTY)
         } else {
             val ctx = readContext(ic)
             // Gboard-style emoji suggestions for the word being typed or just typed.
@@ -276,14 +281,30 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                     ctx.previous?.let { EmojiIndex.forWord(it).firstOrNull() }?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
                 }
                 else -> Suggestions.EMPTY
-            }
+            }.let { withOtp(it) }
         }
         strip.suggestions = suggestions
+    }
+
+    /** A fresh verification code from a message offers itself as a one-tap paste (never in password fields). */
+    private fun withOtp(s: Suggestions): Suggestions {
+        if (composing.isNotEmpty() || passwordField || !prefs.clipboardHistory) return s
+        val code = ClipboardStore.get(this).freshOtp()?.second ?: return s
+        return s.withCode(code)
     }
 
     override fun onSuggestionPicked(index: Int, text: String) {
         val ic = currentInputConnection ?: return
         feedback.keyPress(KeyType.CHAR)
+        if (index == suggestions.clipIndex) {
+            // Paste the code, then forget the clip so the offer goes away.
+            commitPending(ic)
+            ic.commitText(text, 1)
+            ClipboardStore.get(this).freshOtp()?.let { ClipboardStore.get(this).delete(it.first.id) }
+            updateShiftState()
+            updateSuggestions()
+            return
+        }
         if (index == suggestions.emojiIndex) {
             // Keep the word and add the emoji after it: "pizza" -> "pizza 🍕 ".
             ic.beginBatchEdit()
@@ -461,6 +482,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         if (clip.itemCount == 0) return
         val text = clip.getItemAt(0).coerceToText(this)?.toString() ?: return
         ClipboardStore.get(this).add(text)
+        updateSuggestions()
     }
 
     override fun onStripTouched() {

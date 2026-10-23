@@ -68,6 +68,8 @@ class Prefs private constructor(context: Context) {
     var doubleSpacePeriod by bool(KEY_DOUBLE_SPACE, true)
     var learnWords by bool(KEY_LEARN, true)
     var clipboardHistory by bool(KEY_CLIPBOARD, true)
+    /** Delete unpinned clipboard history after: 0 never, 1 an hour, 2 a day, 3 a week. */
+    var clipboardExpiry by int(KEY_CLIPBOARD_EXPIRY, 0)
 
     // ---- emoji ----
     var recentEmoji by string(KEY_RECENT_EMOJI, "")
@@ -144,6 +146,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_DOUBLE_SPACE = "double_space_period"
         const val KEY_LEARN = "learn_words"
         const val KEY_CLIPBOARD = "clipboard_history"
+        const val KEY_CLIPBOARD_EXPIRY = "clipboard_expiry"
         const val KEY_RECENT_EMOJI = "recent_emoji"
         const val KEY_SKIN_TONES = "skin_tones"
         const val KEY_SKIN_DEFAULT = "skin_tone_default"

@@ -2,6 +2,7 @@ package com.flexkeys.clipboard
 
 import android.content.Context
 import android.util.Log
+import com.flexkeys.theme.Prefs
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -17,6 +18,7 @@ class ClipboardStore private constructor(context: Context) {
 
     data class Item(val id: Long, val text: String, val time: Long, val pinned: Boolean)
 
+    private val prefs = Prefs.get(context)
     private val file = File(context.filesDir, FILE_NAME)
     private val items = ArrayList<Item>()
     private val listeners = LinkedHashSet<() -> Unit>()
@@ -27,7 +29,35 @@ class ClipboardStore private constructor(context: Context) {
     }
 
     /** Pinned items first, then newest first. */
-    fun items(): List<Item> = items.sortedWith(compareByDescending<Item> { it.pinned }.thenByDescending { it.time })
+    fun items(): List<Item> {
+        prune()
+        return sorted()
+    }
+
+    /** The code from the newest clip if it is a fresh one-time code, or null. */
+    fun freshOtp(): Pair<Item, String>? {
+        prune()
+        val newest = items.maxByOrNull { it.time } ?: return null
+        if (System.currentTimeMillis() - newest.time > OTP_OFFER_MS) return null
+        val code = OtpDetector.find(newest.text) ?: return null
+        return newest to code
+    }
+
+    /** Forgets clips that have outlived their time: codes after [OTP_KEEP_MS], the rest per the setting. */
+    private fun prune() {
+        val now = System.currentTimeMillis()
+        val keep = EXPIRY_MS.getOrElse(prefs.clipboardExpiry) { 0L }
+        val before = items.size
+        items.removeAll { item ->
+            !item.pinned && (
+                now - item.time > OTP_KEEP_MS && OtpDetector.find(item.text) != null ||
+                    keep > 0 && now - item.time > keep
+                )
+        }
+        if (items.size != before) changed()
+    }
+
+    private fun sorted(): List<Item> = items.sortedWith(compareByDescending<Item> { it.pinned }.thenByDescending { it.time })
 
     fun addListener(l: () -> Unit) { listeners.add(l) }
     fun removeListener(l: () -> Unit) { listeners.remove(l) }
@@ -105,6 +135,10 @@ class ClipboardStore private constructor(context: Context) {
         private const val TAG = "FlexKeysClipboard"
         private const val FILE_NAME = "clipboard.json"
         private const val MAX_UNPINNED = 30
+        private const val OTP_OFFER_MS = 3 * 60_000L
+        private const val OTP_KEEP_MS = 10 * 60_000L
+        /** Auto-delete choices in the same order as the setting: never, 1 hour, 1 day, 1 week. */
+        private val EXPIRY_MS = longArrayOf(0L, 3_600_000L, 86_400_000L, 604_800_000L)
         private const val MAX_LENGTH = 10_000
         private val writer = Executors.newSingleThreadExecutor()
 

@@ -640,7 +640,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun clipboardCard() = card("Clipboard") {
         toggle("Clipboard history", "Paste recent copies from the keyboard", prefs::clipboardHistory)
-        text("Items password managers mark as sensitive are never saved.", secondary = true)
+        text("Items password managers mark as sensitive are never saved. Verification codes you copy appear above the keys for one tap and are forgotten after 10 minutes.", secondary = true)
+        segmented("Delete history after", listOf("Never", "1 hour", "1 day", "1 week"), prefs.clipboardExpiry) { prefs.clipboardExpiry = it }
         buttons(Triple("Clear history", false) {
             confirm("Delete all clipboard history, including pinned items?") {
                 ClipboardStore.get(this@SettingsActivity).clearAll()
