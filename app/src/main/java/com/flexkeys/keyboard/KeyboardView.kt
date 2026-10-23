@@ -12,7 +12,6 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
-import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -233,7 +232,7 @@ class KeyboardView(context: Context) : View(context) {
     // ---- the space bar as a frosted glass card ----
     private val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val cardPath = Path()
-    private var cardGlows: List<Shader> = emptyList()
+    private var cardSheen: Shader? = null
     private var cardEdge: Shader? = null
     private var cardTheme: GlassTheme? = null
     private var cardW = 0f
@@ -243,24 +242,19 @@ class KeyboardView(context: Context) : View(context) {
         cardTheme = t
         cardW = w
         cardH = h
-        fun glow(x: Float, y: Float, r: Float, color: Int) =
-            RadialGradient(x, y, r, color, color and 0x00FFFFFF, Shader.TileMode.CLAMP)
-        val blue = t.gradientColors[0]
-        val purple = t.gradientColors[1]
-        val magenta = GlassTheme.rotateHue(t.gradientColors[2], -18f)
-        cardGlows = listOf(
-            glow(w * 0.14f, h * 0.30f, w * 0.46f, blue),
-            glow(w * 0.52f, h * 1.05f, w * 0.40f, purple),
-            glow(w * 0.88f, h * 0.85f, w * 0.40f, magenta),
-        )
+        // A soft diagonal sheen, like brushed glass: lighter toward one corner, no color.
+        val hi = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.16f else 0.40f)
+        val lo = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.02f else 0.06f)
+        cardSheen = LinearGradient(0f, 0f, w, h, intArrayOf(hi, lo, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.07f else 0.2f)),
+            floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
         // A hairline edge only: no raised rim, so it reads as a pane of glass and not a button.
-        cardEdge = LinearGradient(0f, 0f, w, h, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.24f else 0.60f),
-            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.04f else 0.16f), Shader.TileMode.CLAMP)
+        cardEdge = LinearGradient(0f, 0f, w, h, GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.20f else 0.55f),
+            GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.05f else 0.16f), Shader.TileMode.CLAMP)
     }
 
     /**
-     * The space bar: dark translucent glass with soft blue, purple and magenta glows showing through
-     * over the blurred background and only a hairline edge, like a frosted card. The glow strength follows the gradient setting.
+     * The space bar: neutral frosted glass like a launcher search bar. The blurred background shows
+     * through a dark (or light) tint, with a faint brushed sheen and only a hairline edge.
      */
     private fun drawSpaceCard(canvas: Canvas, key: Key, t: GlassTheme, pressed: Float) {
         val v = key.visual
@@ -283,15 +277,10 @@ class KeyboardView(context: Context) : View(context) {
         host?.backdrop?.drawBlurred(canvas, offset.x + v.left, offset.y + v.top)
         cardPaint.style = Paint.Style.FILL
         cardPaint.shader = null
-        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF0A0A14.toInt(), 0.36f) else GlassTheme.withAlpha(Color.WHITE, 0.32f)
+        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF101012.toInt(), 0.40f) else GlassTheme.withAlpha(Color.WHITE, 0.34f)
         canvas.drawRect(0f, 0f, w, h, cardPaint)
-        val strength = t.gradientStrength.coerceAtLeast(0.35f)
-        val glowAlpha = ((if (t.dark) 0.85f else 0.55f) * strength * 255f).toInt().coerceIn(0, 255)
-        for (g in cardGlows) {
-            cardPaint.shader = g
-            cardPaint.alpha = glowAlpha
-            canvas.drawRect(0f, 0f, w, h, cardPaint)
-        }
+        cardPaint.shader = cardSheen
+        canvas.drawRect(0f, 0f, w, h, cardPaint)
         cardPaint.shader = null
         if (pressed > 0f) {
             cardPaint.color = GlassTheme.withAlpha(t.pressedOverlay, (t.pressedOverlay ushr 24) / 255f * pressed)
