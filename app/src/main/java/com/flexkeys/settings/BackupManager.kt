@@ -2,6 +2,7 @@ package com.flexkeys.settings
 
 import android.content.Context
 import android.util.Base64
+import com.flexkeys.phrases.SnippetStore
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.Prefs
@@ -26,12 +27,7 @@ object BackupManager {
         fun import(context: Context, data: String)
     }
 
-    private val sections = ArrayList<Section>()
-
-    fun register(section: Section) {
-        sections.removeAll { it.id == section.id }
-        sections.add(section)
-    }
+    private val sections: List<Section> = listOf(SnippetStore.BackupSection)
 
     fun export(context: Context, includePhoto: Boolean): String {
         val prefs = Prefs.get(context)

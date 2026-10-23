@@ -11,7 +11,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC,
+    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES,
 }
 
 object Icons {
@@ -118,6 +118,14 @@ object Icons {
                 paint.textSize = oldSize
                 paint.style = Paint.Style.STROKE
                 canvas.restoreToCount(layer)
+            }
+            Icon.PHRASES -> {
+                // A speech bubble with two lines of text.
+                oval.set(x(-0.46f), y(-0.40f), x(0.46f), y(0.22f))
+                canvas.drawRoundRect(oval, s * 0.14f, s * 0.14f, paint)
+                poly(-0.22f, 0.22f, -0.28f, 0.44f, 0f, 0.22f, close = false)
+                line(-0.26f, -0.20f, 0.26f, -0.20f)
+                line(-0.26f, 0f, 0.08f, 0f)
             }
             Icon.MIC -> {
                 oval.set(x(-0.17f), y(-0.46f), x(0.17f), y(0.10f))

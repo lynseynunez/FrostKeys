@@ -37,6 +37,11 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".settings.PhrasesActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".settings.PhotoAdjustActivity"
             android:exported="false" />
 

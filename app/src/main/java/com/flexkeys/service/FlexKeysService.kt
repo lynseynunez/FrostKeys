@@ -29,6 +29,9 @@ import com.flexkeys.keyboard.KeyboardView
 import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
+import com.flexkeys.phrases.CustomKeys
+import com.flexkeys.phrases.SnippetStore
+import com.flexkeys.settings.PhrasesActivity
 import com.flexkeys.settings.SettingsActivity
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.suggest.SuggestionStripView
@@ -59,6 +62,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     private var correctionOn = false
     private var learningOn = false
 
+    private val snippets by lazy { SnippetStore.get(this) }
     private val composing = StringBuilder()
     private var selectionEnd = -1
     private var swipeAnchor = -1
@@ -209,6 +213,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         state.lettersId = prefs.layoutId
         state.numberRow = prefs.numberRow
         state.punctuationKeys = prefs.punctuationKeys
+        state.customKeys = CustomKeys.parse(prefs.customKeys)
         kv.layer = state.layer
         kv.layout = state.layout
         kv.shiftState = state.shift
@@ -328,6 +333,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
+            SuggestionStripView.Action.PHRASES -> togglePanel(KeyboardRootView.Panel.PHRASES)
             SuggestionStripView.Action.MIC -> {
                 requestHideSelf(0)
                 startActivity(Intent(this, VoiceInputActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -347,6 +353,11 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     override fun onOpenSettings() = openSettings()
+
+    override fun onEditPhrases() {
+        requestHideSelf(0)
+        startActivity(Intent(this, PhrasesActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
 
     /** Puts the finished translation into the text field. */
     override fun onTranslateInsert(text: String) {
@@ -597,8 +608,15 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     /** Commits the composing word, autocorrecting it if asked, and learns it. */
-    private fun commitComposing(ic: InputConnection, autocorrect: Boolean) {
+    private fun commitComposing(ic: InputConnection, autocorrect: Boolean, expand: Boolean = false) {
         val typed = composing.toString()
+        val phrase = if (expand) snippets.expansion(typed) else null
+        if (phrase != null) {
+            ic.commitText(phrase, 1)
+            composing.clear()
+            lastCorrection = Correction(typed, phrase)
+            return
+        }
         val context = if (learningOn || autocorrect) readContext(ic) else null
         val previous = context?.previous
         var final = engine.displayForm(typed)
@@ -624,7 +642,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         var doubleSpaced = false
         if (composing.isNotEmpty()) {
             ic.beginBatchEdit()
-            commitComposing(ic, autocorrect = correctionOn)
+            commitComposing(ic, autocorrect = correctionOn, expand = true)
             ic.commitText(" ", 1)
             ic.endBatchEdit()
             lastCorrection?.separator = " "
@@ -731,7 +749,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         val r = root ?: return
         when (key) {
-            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION -> refreshKeyboard()
+            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS -> refreshKeyboard()
             Prefs.KEY_BG_VERSION -> r.reloadPhoto()
             null -> { // All settings were reset.
                 r.applyTheme(GlassTheme.from(this, prefs))

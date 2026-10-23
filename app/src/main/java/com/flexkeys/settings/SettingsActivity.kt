@@ -87,7 +87,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         when (key) {
-            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION -> previewController.refresh()
+            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS -> previewController.refresh()
             Prefs.KEY_BG_VERSION -> {
                 preview.reloadPhoto()
                 loadPagePhoto()
@@ -529,6 +529,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Double-space period", "Tap space twice for \". \"", prefs::doubleSpacePeriod)
         buttons(Triple("Manage learned words", false) {
             startActivity(Intent(this@SettingsActivity, LearnedWordsActivity::class.java))
+        }, Triple("Phrases & extra keys", false) {
+            startActivity(Intent(this@SettingsActivity, PhrasesActivity::class.java))
         })
         buttons(Triple("Clear learned words", false) {
             confirm("Forget every word SakuriKey has learned from your typing?") {

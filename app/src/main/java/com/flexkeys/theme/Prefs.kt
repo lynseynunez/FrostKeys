@@ -88,6 +88,8 @@ class Prefs private constructor(context: Context) {
     var klipyKey by string(KEY_KLIPY_KEY, "")
     /** Random id Klipy asks for; generated on the device, not linked to anything. */
     var klipyCustomerId by string(KEY_KLIPY_CUSTOMER, "")
+    /** Extra long-press characters per key, one "a:äå" line per key (see CustomKeys). */
+    var customKeys by string(KEY_CUSTOM_KEYS, "")
     /** Comma and period keys next to the space bar, as on Gboard. */
     var punctuationKeys by bool(KEY_PUNCTUATION, true)
 
@@ -155,6 +157,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_KLIPY_KEY = "klipy_key"
         const val KEY_KLIPY_CUSTOMER = "klipy_customer_id"
         const val KEY_PUNCTUATION = "punctuation_keys"
+        const val KEY_CUSTOM_KEYS = "custom_keys"
 
         const val THEME_AUTO = 0
         const val THEME_LIGHT = 1

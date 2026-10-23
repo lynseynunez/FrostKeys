@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
+import com.flexkeys.phrases.PhrasesPanel
 import com.flexkeys.gif.GifPanel
 import com.flexkeys.translate.TranslateBar
 import com.flexkeys.translate.TranslateListener
@@ -56,9 +57,9 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     /** Receives emoji, clipboard pastes and panel navigation from the panels. */
-    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, GifPanel.Listener, TranslateListener
+    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, PhrasesPanel.Listener, GifPanel.Listener, TranslateListener
 
-    enum class Panel { NONE, EMOJI, CLIPBOARD, GIF }
+    enum class Panel { NONE, EMOJI, CLIPBOARD, GIF, PHRASES }
 
     /** The GIF search being shown or typed (kept while the GIF panel is closed and reopened). */
     private var gifQuery = ""
@@ -182,6 +183,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             val view = when (newPanel) {
                 Panel.EMOJI -> EmojiPanel(context, l)
                 Panel.GIF -> GifPanel(context, l, gifQuery)
+                Panel.PHRASES -> PhrasesPanel(context, l)
                 else -> ClipboardPanel(context, l)
             }
             content.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -195,6 +197,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             Panel.EMOJI -> SuggestionStripView.Action.EMOJI
             Panel.CLIPBOARD -> SuggestionStripView.Action.CLIPBOARD
             Panel.GIF -> SuggestionStripView.Action.GIF
+            Panel.PHRASES -> SuggestionStripView.Action.PHRASES
             Panel.NONE -> null
         }
         invalidate()
