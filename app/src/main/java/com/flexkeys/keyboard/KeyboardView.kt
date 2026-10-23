@@ -160,8 +160,9 @@ class KeyboardView(context: Context) : View(context) {
 
     // ---- measuring and layout ----------------------------------------------------------------
 
+    /** Every page has the same total height; the rows share it equally (4 or 5 rows). */
     private fun computeRowHeight(t: GlassTheme, rows: Int): Float =
-        t.dp(BASE_ROW_DP) * t.heightScale * (if (rows > 4) 0.86f else 1f)
+        t.dp(BASE_ROW_DP) * t.heightScale * TOTAL_ROWS / rows.coerceAtLeast(1)
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
@@ -646,6 +647,8 @@ class KeyboardView(context: Context) : View(context) {
 
     private companion object {
         const val BASE_ROW_DP = 54f
+        /** Total key area in units of one 54dp row: the same as five rows at 86%. */
+        const val TOTAL_ROWS = 4.3f
         const val VERTICAL_PAD_DP = 4f
         const val PRESS_MS = 70f
         const val RELEASE_MS = 200f
