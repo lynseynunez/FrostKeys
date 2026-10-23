@@ -88,7 +88,7 @@ class TranslateBar(
         body.addView(inputView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { topMargin = dp(6f) })
         resultView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-        resultView.setPadding(dp(10f), dp(6f), dp(10f), dp(6f))
+        resultView.setPadding(dp(16f), dp(9f), dp(16f), dp(9f))
         resultScroll.addView(resultView)
         body.addView(resultScroll, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54f)).apply { topMargin = dp(4f) })
         // Copy and Insert side by side under the result.
@@ -136,6 +136,7 @@ class TranslateBar(
         insertChip.background = pill(t.accentFill, dp(17f).toFloat())
         insertChip.setTextColor(t.onAccent)
         inputView.background = pill(t.keyFill, dp(20f).toFloat())
+        resultScroll.background = pill(t.keyFill, dp(20f).toFloat())
         render()
     }
 
@@ -203,7 +204,7 @@ class TranslateBar(
         inputView.setTextColor(if (query.isEmpty()) secondary else primary)
         fromChip.text = Languages.nameOf(prefs.translateFrom)
         toChip.text = Languages.nameOf(prefs.translateTo)
-        resultView.text = status ?: result
+        resultView.text = status ?: result.ifEmpty { "Translation appears here" }
         resultView.setTextColor(if (status != null || result.isEmpty()) secondary else primary)
         val ready = result.isNotEmpty() && status == null
         insertChip.alpha = if (ready) 1f else 0.4f
