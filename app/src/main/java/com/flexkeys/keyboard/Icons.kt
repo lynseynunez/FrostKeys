@@ -11,7 +11,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI,
+    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI, SLIDERS,
 }
 
 object Icons {
@@ -118,6 +118,18 @@ object Icons {
                 paint.textSize = oldSize
                 paint.style = Paint.Style.STROKE
                 canvas.restoreToCount(layer)
+            }
+            Icon.SLIDERS -> {
+                // Three horizontal tracks with a knob each.
+                line(-0.44f, -0.28f, 0.44f, -0.28f)
+                line(-0.44f, 0f, 0.44f, 0f)
+                line(-0.44f, 0.28f, 0.44f, 0.28f)
+                val old = paint.style
+                paint.style = Paint.Style.FILL
+                circle(0.12f, -0.28f, 0.1f)
+                circle(-0.18f, 0f, 0.1f)
+                circle(0.22f, 0.28f, 0.1f)
+                paint.style = old
             }
             Icon.AI -> {
                 // A large four-point sparkle with a small one beside it.

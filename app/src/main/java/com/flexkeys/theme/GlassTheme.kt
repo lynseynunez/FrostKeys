@@ -36,6 +36,9 @@ class GlassTheme(
     /** -1..1, where the zoomed photo is positioned (0 is centered). */
     val photoPanX: Float = 0f,
     val photoPanY: Float = 0f,
+    /** See [Prefs.pressStyle]. */
+    val pressStyle: Int = 0,
+    val photoAccent: Int = Prefs.DEFAULT_ACCENT,
 ) {
     // Glass lettering: translucent fill, a bright thin edge, a soft shadow and the gradient shining through.
     val glassTextFill: Int = if (dark) withAlpha(Color.WHITE, 0.80f) else withAlpha(0xFF15171C.toInt(), 0.80f)
@@ -88,6 +91,18 @@ class GlassTheme(
 
     fun dp(value: Float): Float = value * density
 
+    /** The glow a pressed key gets. [x] is the key's horizontal position across the keyboard, 0..1. */
+    fun pressColor(x: Float): Int = when (pressStyle) {
+        1 -> withAlpha(accent, 0.55f)
+        2 -> {
+            val f = x.coerceIn(0f, 1f)
+            val c = gradientColors
+            withAlpha(if (f < 0.5f) lerp(c[0], c[1], f * 2f) else lerp(c[1], c[2], (f - 0.5f) * 2f), 0.6f)
+        }
+        3 -> withAlpha(photoAccent, 0.6f)
+        else -> pressedOverlay
+    }
+
     companion object {
         fun from(context: Context, prefs: Prefs): GlassTheme {
             val dm = context.resources.displayMetrics
@@ -120,11 +135,18 @@ class GlassTheme(
                 photoZoom = prefs.photoZoom.coerceIn(100, 400) / 100f,
                 photoPanX = prefs.photoPanX.coerceIn(-100, 100) / 100f,
                 photoPanY = prefs.photoPanY.coerceIn(-100, 100) / 100f,
+                pressStyle = prefs.pressStyle,
+                photoAccent = prefs.photoAccent,
             )
         }
 
         fun withAlpha(color: Int, alpha: Float): Int =
             (color and 0x00FFFFFF) or ((alpha.coerceIn(0f, 1f) * 255f + 0.5f).toInt() shl 24)
+
+        fun lerp(a: Int, b: Int, f: Float): Int {
+            fun ch(shift: Int) = (((a ushr shift) and 0xFF) + ((((b ushr shift) and 0xFF) - ((a ushr shift) and 0xFF)) * f)).toInt()
+            return (0xFF shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
+        }
 
         fun luminance(color: Int): Float =
             (0.2126f * Color.red(color) + 0.7152f * Color.green(color) + 0.0722f * Color.blue(color)) / 255f

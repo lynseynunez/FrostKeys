@@ -5,7 +5,7 @@ import com.flexkeys.suggest.SuggestionStripView.Action
 /** Which actions sit in the top row, and in what order, stored as comma-separated names. */
 object ToolbarItems {
 
-    val defaults = listOf(Action.CLIPBOARD, Action.EMOJI, Action.GIF, Action.TRANSLATE, Action.MIC, Action.SETTINGS)
+    val defaults = listOf(Action.CLIPBOARD, Action.EMOJI, Action.GIF, Action.TRANSLATE, Action.LOOK, Action.SETTINGS)
 
     /** Unknown names are skipped, repeats dropped; an empty result falls back to [defaults]. */
     fun parse(text: String): List<Action> {

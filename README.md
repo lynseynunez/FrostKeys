@@ -51,6 +51,9 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Two key styles: bare translucent "glass letters" (default) or a glass tile behind each key
 - A blue/purple/pink gradient glow across the glass, with its own slider
 - Modern fonts (Inter, Manrope) or your system font
+- Appearance tool: drag sliders for glass, photo, blur and glow right above the keys and watch the keyboard change live
+- Key press color: pressed keys glow white, in your accent, along the blue-purple-pink gradient, or in your photo's color
+- Hold the clipboard button to paste your latest copy without opening the panel
 - Optional typing animations: sparkles, ripples, or warp-speed streaks when you type fast (off by default)
 - One-tap theme presets (Frost, Midnight, Aurora, Sunset, Clear, Graphite)
 - Optional Gboard-style comma and period keys beside the space bar

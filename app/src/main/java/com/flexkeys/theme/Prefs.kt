@@ -104,6 +104,8 @@ class Prefs private constructor(context: Context) {
     var toolbarItems by string(KEY_TOOLBAR_ITEMS, "")
     /** Animation while typing: 0 off, 1 sparkles, 2 ripple, 3 warp speed (see TypingEffects). */
     var typingEffect by int(KEY_TYPING_EFFECT, 0)
+    /** Color a pressed key lights up in: 0 white, 1 accent, 2 gradient, 3 photo color. */
+    var pressStyle by int(KEY_PRESS_STYLE, 0)
     /** The last fancy text style picked (index into FancyText.Style). */
     var fancyStyle by int(KEY_FANCY_STYLE, 0)
     /** Extra long-press characters per key, one "a:äå" line per key (see CustomKeys). */
@@ -178,6 +180,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_PUNCTUATION = "punctuation_keys"
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
+        const val KEY_PRESS_STYLE = "press_style"
         const val KEY_TYPING_EFFECT = "typing_effect"
         const val KEY_TOOLBAR_ITEMS = "toolbar_items"
         const val KEY_AI_ENABLED = "ai_enabled"
@@ -201,7 +204,7 @@ class Prefs private constructor(context: Context) {
             KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
             KEY_SPACE_GLASS, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
-            KEY_ADAPT_TINT, KEY_PHOTO_LUMA,
+            KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,
         )
 
         @Volatile private var instance: Prefs? = null

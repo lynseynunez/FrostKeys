@@ -43,6 +43,7 @@ class GlassPainter(var theme: GlassTheme) {
         rim: Boolean = true,
         gradient: Shader? = null,
         gradientAlpha: Float = 0f,
+        pressColor: Int = 0,
     ) {
         val t = theme
         if (cacheTheme !== t) {
@@ -100,7 +101,8 @@ class GlassPainter(var theme: GlassTheme) {
             canvas.restore()
         }
         if (pressed > 0f) {
-            fillPaint.color = GlassTheme.withAlpha(t.pressedOverlay, (t.pressedOverlay ushr 24) / 255f * pressed)
+            val press = if (pressColor != 0) pressColor else t.pressedOverlay
+            fillPaint.color = GlassTheme.withAlpha(press, (press ushr 24) / 255f * pressed)
             canvas.drawRoundRect(local, r, r, fillPaint)
         }
 

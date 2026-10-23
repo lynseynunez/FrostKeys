@@ -34,6 +34,12 @@ class ClipboardStore private constructor(context: Context) {
         return sorted()
     }
 
+    /** The most recently copied item, or null. */
+    fun newest(): Item? {
+        prune()
+        return items.maxByOrNull { it.time }
+    }
+
     /** The code from the newest clip if it is a fresh one-time code, or null. */
     fun freshOtp(): Pair<Item, String>? {
         prune()

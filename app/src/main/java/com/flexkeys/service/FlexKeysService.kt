@@ -349,6 +349,22 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         }
     }
 
+    /** Holding the clipboard button pastes the most recent copy without opening the panel. */
+    override fun onActionLongPressed(action: SuggestionStripView.Action) {
+        if (action != SuggestionStripView.Action.CLIPBOARD) return
+        val ic = currentInputConnection ?: return
+        feedback.longPress()
+        val latest = ClipboardStore.get(this).newest()
+        if (latest == null) {
+            Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+        commitPending(ic)
+        ic.commitText(latest.text, 1)
+        updateShiftState()
+        updateSuggestions()
+    }
+
     override fun onMenuTapped() {
         feedback.keyPress(KeyType.CHAR)
         togglePanel(KeyboardRootView.Panel.MENU)
@@ -376,6 +392,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                     root?.startAi(toolSource(wholeField = true))
                     updateShiftState()
                 }
+            }
+            SuggestionStripView.Action.LOOK -> {
+                root?.startLook()
+                updateShiftState()
             }
             SuggestionStripView.Action.FANCY -> {
                 root?.startFancy(toolSource(wholeField = false).text)

@@ -35,6 +35,7 @@ class SuggestionStripView(context: Context) : View(context) {
         PHRASES(Icon.PHRASES, "Phrases"),
         FANCY(Icon.FANCY, "Fancy text"),
         AI(Icon.AI, "AI rewrite"),
+        LOOK(Icon.SLIDERS, "Appearance"),
         SETTINGS(Icon.SETTINGS, "Settings"),
         HIDE(Icon.HIDE, "Hide"),
     }
@@ -60,6 +61,8 @@ class SuggestionStripView(context: Context) : View(context) {
         fun onStripTouched()
         /** The four-dot button was tapped: open or close the tools menu. */
         fun onMenuTapped()
+        /** A toolbar button was held. Only some actions (clipboard) do something different. */
+        fun onActionLongPressed(action: Action) {}
     }
 
     var listener: Listener? = null
@@ -101,6 +104,11 @@ class SuggestionStripView(context: Context) : View(context) {
         if (!showingToolbar && idx in suggestions.slots.indices) {
             longPressFired = true
             listener?.onSuggestionLongPressed(suggestions.slots[idx])
+        } else if (showingToolbar && idx >= TOOLBAR) {
+            toolbarActions.getOrNull(idx - TOOLBAR)?.takeIf { it == Action.CLIPBOARD }?.let {
+                longPressFired = true
+                listener?.onActionLongPressed(it)
+            }
         }
     }
 

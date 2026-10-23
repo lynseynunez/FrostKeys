@@ -217,13 +217,14 @@ class KeyboardView(context: Context) : View(context) {
         for (key in keys) {
             val p = pressProgress(key, now)
             if ((key.pressed && p < 1f) || (!key.pressed && p > 0f)) animating = true
+            val glow = if (p > 0f) t.pressColor(key.visual.centerX() / width.coerceAtLeast(1)) else 0
             if (key.def.type == KeyType.SPACE) {
-                drawSpaceCard(canvas, key, t, p)
+                drawSpaceCard(canvas, key, t, p, glow)
             } else if (t.glassKeys) {
-                drawGlassKeyBackground(canvas, key, t, h, p)
+                drawGlassKeyBackground(canvas, key, t, h, p, glow)
             } else {
                 h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, fillFor(key, t), p,
-                    gradient = h.glassGradient(), gradientAlpha = t.keyGradientAlpha)
+                    gradient = h.glassGradient(), gradientAlpha = t.keyGradientAlpha, pressColor = glow)
             }
             canvas.save()
             if (p > 0f) {
@@ -268,7 +269,7 @@ class KeyboardView(context: Context) : View(context) {
      * The space bar: neutral frosted glass like a launcher search bar. The blurred background shows
      * through a dark (or light) tint, with a faint brushed sheen and only a hairline edge.
      */
-    private fun drawSpaceCard(canvas: Canvas, key: Key, t: GlassTheme, pressed: Float) {
+    private fun drawSpaceCard(canvas: Canvas, key: Key, t: GlassTheme, pressed: Float, glow: Int) {
         val v = key.visual
         val w = v.width()
         val h = v.height()
@@ -298,7 +299,8 @@ class KeyboardView(context: Context) : View(context) {
         canvas.drawRect(0f, 0f, w, h, cardPaint)
         cardPaint.shader = null
         if (pressed > 0f) {
-            cardPaint.color = GlassTheme.withAlpha(t.pressedOverlay, (t.pressedOverlay ushr 24) / 255f * pressed)
+            val press = if (glow != 0) glow else t.pressedOverlay
+            cardPaint.color = GlassTheme.withAlpha(press, (press ushr 24) / 255f * pressed)
             canvas.drawRect(0f, 0f, w, h, cardPaint)
         }
         canvas.restore()
@@ -327,16 +329,17 @@ class KeyboardView(context: Context) : View(context) {
      * Transparent style: no tile behind most keys. Only keys that carry state get one (active shift,
      * an action return key, the space bar's faint outline); a pressed key lights up softly.
      */
-    private fun drawGlassKeyBackground(canvas: Canvas, key: Key, t: GlassTheme, h: GlassHost, p: Float) {
+    private fun drawGlassKeyBackground(canvas: Canvas, key: Key, t: GlassTheme, h: GlassHost, p: Float, glow: Int) {
         val tile = when (key.def.type) {
             KeyType.ENTER -> if (enterAction == EnterAction.NEWLINE) 0 else t.accentFill
             KeyType.SPACE -> GlassTheme.withAlpha(t.keyFill, (t.keyFill ushr 24) / 255f * 0.55f)
             else -> 0
         }
         if (tile != 0) {
-            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, tile, p)
+            h.painter.draw(canvas, key.visual, t.cornerRadiusPx, null, offset.x, offset.y, tile, p, pressColor = glow)
         } else if (p > 0f) {
-            fillPaint.color = GlassTheme.withAlpha(t.pressedOverlay, (t.pressedOverlay ushr 24) / 255f * p)
+            val press = if (glow != 0) glow else t.pressedOverlay
+            fillPaint.color = GlassTheme.withAlpha(press, (press ushr 24) / 255f * p)
             canvas.drawRoundRect(key.visual, t.cornerRadiusPx, t.cornerRadiusPx, fillPaint)
         }
     }

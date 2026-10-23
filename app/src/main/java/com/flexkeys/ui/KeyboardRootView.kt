@@ -22,6 +22,7 @@ import com.flexkeys.suggest.MenuPanel
 import com.flexkeys.gif.GifPanel
 import com.flexkeys.ai.AiBar
 import com.flexkeys.fancy.FancyBar
+import com.flexkeys.look.LookBar
 import com.flexkeys.translate.TranslateBar
 import com.flexkeys.translate.TranslateListener
 import com.flexkeys.emoji.EmojiIndex
@@ -87,6 +88,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         onClose = { endTool() },
     )
 
+    private val lookBar = LookBar(context) { endTool() }
+
     private val aiBar = AiBar(
         context,
         sourceProvider = { panelListener?.toolSource(wholeField = true) ?: ToolSource("", false) },
@@ -145,6 +148,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         translateBar.visibility = View.GONE
         addView(fancyBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         fancyBar.visibility = View.GONE
+        addView(lookBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        lookBar.visibility = View.GONE
         addView(aiBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         aiBar.visibility = View.GONE
         addView(emojiSearchBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -280,6 +285,9 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         fancyBar.start(text)
     }
 
+    /** Opens the live look controls above the keys. */
+    fun startLook() = startTool(lookBar)
+
     /** Called after the text field changed, so AI rewrite can pick up what was typed. */
     fun refreshTools() {
         if (activeTool === aiBar) aiBar.refreshSource()
@@ -386,6 +394,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         translateBar.restyle()
         fancyBar.restyle()
         aiBar.restyle()
+        lookBar.restyle()
         keyboardView.onThemeChanged()
         strip.requestLayout()
         invalidateTree(this)
