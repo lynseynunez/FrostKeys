@@ -20,6 +20,8 @@ class Prefs private constructor(context: Context) {
     /** [KEY_STYLE_GLASS]: bare glass letters on the sheet; [KEY_STYLE_TILES]: a glass tile behind each key. */
     var keyStyle by int(KEY_STYLE, KEY_STYLE_GLASS)
     var fontFamily by string(KEY_FONT_FAMILY, Fonts.INTER)
+    /** Emoji shown in the middle of the space bar; empty for none. */
+    var spaceEmblem by string(KEY_SPACE_EMBLEM, "🌸")
     var cornerRadiusDp by int(KEY_CORNER, 8)
     /** Label size in percent of the default. */
     var fontPercent by int(KEY_FONT, 100)
@@ -95,6 +97,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_GRADIENT = "gradient"
         const val KEY_STYLE = "key_style"
         const val KEY_FONT_FAMILY = "font_family"
+        const val KEY_SPACE_EMBLEM = "space_emblem"
         const val KEY_STYLE_GLASS = 0
         const val KEY_STYLE_TILES = 1
         const val KEY_BG_VERSION = "bg_version"

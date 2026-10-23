@@ -74,17 +74,25 @@ object Layouts {
 
     // ---- builders -------------------------------------------------------------------------
 
-    private fun letterKey(c: Char, hint: String?): KeyDef {
+    /** Gboard's symbol on each letter position: shown in the key's corner and reachable by long-press. */
+    private val topSymbols = listOf("%", "\\", "|", "=", "[", "]", "<", ">", "{", "}")
+    private val middleSymbols = listOf("@", "#", "$", "_", "&", "-", "+", "(", ")")
+    private val lowerSymbols = listOf("*", "\"", "'", ":", ";", "!", "?")
+
+    /** [digit] (top row without a number row) and [symbol] come first in the long-press list, then accents. */
+    private fun letterKey(c: Char, digit: String?, symbol: String?): KeyDef {
         val popups = buildList {
-            if (hint != null) add(hint)
+            if (digit != null) add(digit)
+            if (symbol != null) add(symbol)
             accents[c]?.forEach { add(it.toString()) }
         }
-        return KeyDef(label = c.toString(), popup = popups, hint = hint)
+        return KeyDef(label = c.toString(), popup = popups, hint = digit ?: symbol)
     }
 
     private fun charKey(s: String, width: Float = 1f): KeyDef {
         val popups = symbolPopups[s]?.map { it.toString() } ?: emptyList()
-        return KeyDef(label = s, width = width, popup = popups, hint = popups.firstOrNull())
+        // No corner hint: the extra characters are still available with a long press.
+        return KeyDef(label = s, width = width, popup = popups)
     }
 
     private fun shift(width: Float) = KeyDef("shift", KeyType.SHIFT, width)
@@ -102,12 +110,12 @@ object Layouts {
 
     /** Builds a letter layout from three rows of characters. */
     fun letters(id: String, name: String, row1: String, row2: String, row3: String): LayoutDef {
-        val top = row1.mapIndexed { i, c -> letterKey(c, DIGITS.getOrNull(i)?.toString()) }
-        val middle = row2.map { letterKey(it, null) }
+        val top = row1.mapIndexed { i, c -> letterKey(c, DIGITS.getOrNull(i)?.toString(), topSymbols.getOrNull(i)) }
+        val middle = row2.mapIndexed { i, c -> letterKey(c, null, middleSymbols.getOrNull(i)) }
         val side = (LayoutDef.UNITS - row3.length) / 2f
         val bottomLetters = buildList {
             add(shift(side))
-            row3.forEach { add(letterKey(it, null)) }
+            row3.forEachIndexed { i, c -> add(letterKey(c, null, lowerSymbols.getOrNull(i))) }
             add(backspace(side))
         }
         return LayoutDef(
@@ -119,7 +127,15 @@ object Layouts {
     private fun withNumberRow(layout: LayoutDef): LayoutDef {
         val digits = RowDef(DIGITS.map { charKey(it.toString()) })
         val rows = layout.rows.mapIndexed { index, row ->
-            if (index == 0) RowDef(row.keys.map { it.copy(hint = null, popup = it.popup.drop(1)) }) else row
+            // With a number row the top letters show their symbol instead of the digit.
+            if (index == 0) {
+                RowDef(row.keys.map { key ->
+                    val symbol = key.popup.getOrNull(1)?.takeIf { !it[0].isLetterOrDigit() }
+                    key.copy(hint = symbol, popup = key.popup.drop(1))
+                })
+            } else {
+                row
+            }
         }
         return layout.copy(rows = listOf(digits) + rows)
     }

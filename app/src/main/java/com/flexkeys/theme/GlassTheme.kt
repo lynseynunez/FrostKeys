@@ -26,6 +26,7 @@ class GlassTheme(
     /** True for the transparent style: bare glass letters instead of a tile behind each key. */
     val glassKeys: Boolean = false,
     val fontId: String = Fonts.INTER,
+    val spaceEmblem: String = "",
 ) {
     // Glass lettering: translucent fill, a bright thin edge, a soft shadow and the gradient shining through.
     val glassTextFill: Int = if (dark) withAlpha(Color.WHITE, 0.80f) else withAlpha(0xFF15171C.toInt(), 0.80f)
@@ -102,6 +103,7 @@ class GlassTheme(
                 gradientStrength = prefs.gradientStrength.coerceIn(0, 100) / 100f,
                 glassKeys = prefs.keyStyle == Prefs.KEY_STYLE_GLASS,
                 fontId = prefs.fontFamily,
+                spaceEmblem = prefs.spaceEmblem,
             )
         }
 

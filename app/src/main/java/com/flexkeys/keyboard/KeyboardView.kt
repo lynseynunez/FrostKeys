@@ -95,7 +95,6 @@ class KeyboardView(context: Context) : View(context) {
         }
 
     var showKeyPreview = true
-    var spaceLabel = "EN"
 
     private var host: GlassHost? = null
     private val keys = ArrayList<Key>()
@@ -115,6 +114,7 @@ class KeyboardView(context: Context) : View(context) {
         typeface = Typeface.create("sans-serif", Typeface.NORMAL)
     }
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val emblemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -224,7 +224,6 @@ class KeyboardView(context: Context) : View(context) {
     private fun drawGlassKeyBackground(canvas: Canvas, key: Key, t: GlassTheme, h: GlassHost, p: Float) {
         val tile = when (key.def.type) {
             KeyType.ENTER -> if (enterAction == EnterAction.NEWLINE) 0 else t.accentFill
-            KeyType.SHIFT -> if (shiftActive) t.activeFill else 0
             KeyType.SPACE -> GlassTheme.withAlpha(t.keyFill, (t.keyFill ushr 24) / 255f * 0.55f)
             else -> 0
         }
@@ -277,7 +276,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun fillFor(key: Key, t: GlassTheme): Int = when (key.def.type) {
         // Return is plain glass for new lines and accent-colored for actions like Search or Send.
         KeyType.ENTER -> if (enterAction == EnterAction.NEWLINE) t.specialKeyFill else t.accentFill
-        KeyType.SHIFT -> if (shiftActive) t.activeFill else t.specialKeyFill
+        KeyType.SHIFT -> t.specialKeyFill
         KeyType.CHAR, KeyType.SPACE -> t.keyFill
         else -> t.specialKeyFill
     }
@@ -298,17 +297,16 @@ class KeyboardView(context: Context) : View(context) {
                     shiftState == ShiftState.ONCE -> Icon.SHIFT_ON
                     else -> Icon.SHIFT
                 }
-                Icons.draw(canvas, icon, cx, cy, iconSize, if (shiftActive) t.onActive else t.textColor)
+                // Caps is shown by a filled arrow, not a highlighted key.
+                Icons.draw(canvas, icon, cx, cy, iconSize, t.textColor)
             }
             KeyType.BACKSPACE -> Icons.draw(canvas, Icon.BACKSPACE, cx, cy, iconSize, t.textColor)
             KeyType.ENTER -> Icons.draw(canvas, enterAction.icon, cx, cy, iconSize,
                 if (enterAction == EnterAction.NEWLINE) t.textColor else t.onAccent)
             KeyType.EMOJI -> Icons.draw(canvas, Icon.EMOJI, cx, cy, iconSize, t.textColor)
-            KeyType.SPACE -> {
-                // A quiet language tag in the corner, as on iOS.
-                hintPaint.textSize = rowHeight * 0.17f * t.fontScale
-                hintPaint.color = t.secondaryTextColor
-                canvas.drawText(spaceLabel, v.right - t.dp(8f), v.bottom - t.dp(6f), hintPaint)
+            KeyType.SPACE -> if (t.spaceEmblem.isNotEmpty()) {
+                emblemPaint.textSize = minOf(v.height() * 0.5f, rowHeight * 0.36f) * t.fontScale.coerceIn(0.8f, 1.3f)
+                drawCentered(canvas, t.spaceEmblem, cx, cy, emblemPaint)
             }
             KeyType.LAYER -> if (key.def.label == "1234") {
                 // Gboard's number pad key: digits stacked in a small square.

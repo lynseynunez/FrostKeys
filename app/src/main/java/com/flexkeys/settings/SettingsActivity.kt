@@ -489,6 +489,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         segmented("Font", Fonts.options.map { it.second }, Fonts.options.indexOfFirst { it.first == prefs.fontFamily }.coerceAtLeast(0)) {
             prefs.fontFamily = Fonts.options[it].first
         }
+        val emblems = listOf("🌸", "❤️", "✨", "")
+        segmented("Space bar emblem", listOf("🌸", "❤️", "✨", "None"), emblems.indexOf(prefs.spaceEmblem).coerceAtLeast(0)) {
+            prefs.spaceEmblem = emblems[it]
+        }
         segmented("One-handed", listOf("Off", "Left", "Right"), prefs.oneHanded) { prefs.oneHanded = it }
         slider("Keyboard height", 60, 150, prefs::heightPercent) { "$it%" }
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
