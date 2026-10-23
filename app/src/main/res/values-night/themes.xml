@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="FlexKeys.Settings" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#FF8FB0FF</item>
+        <item name="android:colorPrimary">#FF8FB0FF</item>
+        <item name="android:statusBarColor">#FF101116</item>
+        <item name="android:navigationBarColor">#FF101116</item>
+        <item name="android:windowBackground">@color/settings_bg</item>
+    </style>
+</resources>
