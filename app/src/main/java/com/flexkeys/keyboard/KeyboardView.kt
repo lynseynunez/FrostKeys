@@ -2,13 +2,16 @@ package com.flexkeys.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
@@ -22,7 +25,6 @@ import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
 import com.flexkeys.layout.LayoutDef
-import com.flexkeys.theme.EmblemShape
 import com.flexkeys.theme.Fonts
 import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
@@ -123,24 +125,13 @@ class KeyboardView(context: Context) : View(context) {
     }
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val emblemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
-    private val emblemFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL_AND_STROKE
-        strokeJoin = Paint.Join.ROUND
-    }
-    private val emblemPath = Path().apply {
-        fillType = Path.FillType.EVEN_ODD
-        for (loop in EmblemShape.loops) {
-            moveTo(loop[0], loop[1])
-            var i = 2
-            while (i < loop.size) {
-                lineTo(loop[i], loop[i + 1])
-                i += 2
-            }
-            close()
-        }
-    }
-    private val emblemScaled = Path()
-    private val emblemMatrix = Matrix()
+    // The space bar emblem is the supplied PNG (assets/emblem.png: black artwork on transparent),
+    // tinted at draw time so it follows the theme's text color.
+    private val emblemBitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val emblemRect = RectF()
+    private var emblemBitmap: Bitmap? = null
+    private var emblemTried = false
+    private var emblemTint = 0
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -343,38 +334,29 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    /**
-     * The space bar emblem, styled like the lettering so it sits quietly among the keys: about the
-     * height of the letters, the same weight of line, and the same translucent glass fill with the
-     * gradient shining through.
-     */
-    private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, t: GlassTheme) {
-        val fontScale = t.fontScale.coerceIn(0.8f, 1.3f)
-        val size = rowHeight * 0.46f * fontScale
-        emblemMatrix.setScale(size, size)
-        emblemMatrix.postTranslate(cx - size / 2f, cy - size / 2f)
-        emblemPath.transform(emblemMatrix, emblemScaled)
-        // Even-odd keeps the inside of the line art hollow; set it explicitly since transform may not carry it over.
-        emblemScaled.fillType = Path.FillType.EVEN_ODD
-
-        // The artwork's own lines are about 6% of its size; top them up to the weight of the letters' strokes.
-        val letterStem = rowHeight * 0.41f * fontScale * 0.085f
-        emblemFill.strokeWidth = (letterStem - size * 0.06f).coerceAtLeast(0f)
-        val base = if (t.glassKeys) t.glassTextFill else t.textColor
-        emblemFill.color = GlassTheme.withAlpha(base, (base ushr 24) / 255f * 0.78f)
-        canvas.drawPath(emblemScaled, emblemFill)
-
-        val gradient = host?.glassGradient()
-        if (t.glassKeys && gradient != null && t.glassTextGradientAlpha > 0f) {
-            canvas.save()
-            canvas.translate(-offset.x, -offset.y)
-            emblemScaled.offset(offset.x, offset.y)
-            emblemFill.shader = gradient
-            emblemFill.alpha = (t.glassTextGradientAlpha * 0.8f * 255f).toInt().coerceIn(0, 255)
-            canvas.drawPath(emblemScaled, emblemFill)
-            emblemFill.shader = null
-            canvas.restore()
+    private fun emblem(): Bitmap? {
+        if (!emblemTried) {
+            emblemTried = true
+            emblemBitmap = try {
+                context.assets.open("emblem.png").use { BitmapFactory.decodeStream(it) }
+            } catch (e: java.io.IOException) {
+                null
+            }
         }
+        return emblemBitmap
+    }
+
+    /** The space bar emblem: the supplied flower artwork in white, about the height of the letters. */
+    private fun drawEmblemIcon(canvas: Canvas, cx: Float, cy: Float, t: GlassTheme) {
+        val bitmap = emblem() ?: return
+        val size = rowHeight * 0.5f * t.fontScale.coerceIn(0.8f, 1.3f)
+        emblemRect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f)
+        val color = if (t.glassKeys) t.glassTextFill else t.textColor
+        if (color != emblemTint) {
+            emblemTint = color
+            emblemBitmapPaint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
+        }
+        canvas.drawBitmap(bitmap, null, emblemRect, emblemBitmapPaint)
     }
 
     /** Key lettering. In the glass style it is translucent with a bright edge and the gradient shining through. */

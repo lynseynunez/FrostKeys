@@ -113,7 +113,6 @@ app/src/main/assets/words.txt    English word list with frequencies
 app/src/main/assets/emoji.tsv    emoji keywords for search and suggestions
 tools/make_words.py              regenerates words.txt
 tools/make_emoji.py              regenerates emoji.tsv
-tools/make_emblem.py             traces the space bar emblem icon into vector outlines
 ```
 
 ### Adding a layout
