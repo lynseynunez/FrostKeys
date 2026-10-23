@@ -13,9 +13,14 @@ import android.widget.LinearLayout
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
+import com.flexkeys.edit.EditPanel
+import com.flexkeys.emoji.EmojiIndex
 import com.flexkeys.emoji.EmojiPanel
+import com.flexkeys.emoji.EmojiSearchBar
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.keyboard.KeyboardView
+import com.flexkeys.layout.KeyDef
+import com.flexkeys.layout.KeyType
 import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.GlassBackdrop
@@ -46,9 +51,21 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     /** Receives emoji, clipboard pastes and panel navigation from the panels. */
-    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener
+    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, EditPanel.Listener
 
-    enum class Panel { NONE, EMOJI, CLIPBOARD }
+    enum class Panel { NONE, EMOJI, CLIPBOARD, EDIT }
+
+    /** Replaces the suggestion strip while searching emoji. */
+    private val emojiSearchBar = EmojiSearchBar(
+        context,
+        onPick = { emoji ->
+            EmojiIndex.addRecent(Prefs.get(context), emoji)
+            panelListener?.onEmoji(emoji)
+        },
+        onClose = { setEmojiSearch(false) },
+    )
+    var emojiSearching = false
+        private set
 
     var panelListener: PanelListener? = null
     var panel: Panel = Panel.NONE
@@ -81,6 +98,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         setWillNotDraw(false)
         clipChildren = false
         clipToPadding = false
+        addView(emojiSearchBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        emojiSearchBar.visibility = View.GONE
         addView(strip, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(content, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(bottomBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -96,7 +115,11 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         panelView = null
         val l = panelListener
         if (newPanel != Panel.NONE && l != null) {
-            val view = if (newPanel == Panel.EMOJI) EmojiPanel(context, l) else ClipboardPanel(context, l)
+            val view = when (newPanel) {
+                Panel.EMOJI -> EmojiPanel(context, l)
+                Panel.EDIT -> EditPanel(context, l)
+                else -> ClipboardPanel(context, l)
+            }
             content.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             panelView = view
             panel = newPanel
@@ -107,9 +130,61 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         strip.activeAction = when (panel) {
             Panel.EMOJI -> SuggestionStripView.Action.EMOJI
             Panel.CLIPBOARD -> SuggestionStripView.Action.CLIPBOARD
+            Panel.EDIT -> SuggestionStripView.Action.EDIT
             Panel.NONE -> null
         }
         invalidate()
+    }
+
+    /**
+     * Emoji search: the keys stay visible and type into the search bar. Closing the search
+     * returns to the emoji panel.
+     */
+    fun setEmojiSearch(on: Boolean) {
+        if (on == emojiSearching) return
+        emojiSearching = on
+        emojiSearchBar.setQuery("")
+        emojiSearchBar.visibility = if (on) View.VISIBLE else View.GONE
+        strip.visibility = if (on) View.GONE else View.VISIBLE
+        showPanel(if (on) Panel.NONE else Panel.EMOJI)
+    }
+
+    /** Leaves emoji search without reopening the emoji panel (e.g. a new text field). */
+    fun cancelEmojiSearch() {
+        if (!emojiSearching) return
+        emojiSearching = false
+        emojiSearchBar.visibility = View.GONE
+        strip.visibility = View.VISIBLE
+    }
+
+    /** While searching emoji, typed keys edit the query. Returns true if the key was used. */
+    fun routeKeyToSearch(key: KeyDef, shifted: Boolean): Boolean {
+        if (!emojiSearching) return false
+        val q = emojiSearchBar.query
+        when (key.type) {
+            KeyType.CHAR -> emojiSearchBar.setQuery(q + if (key.isLetter && shifted) key.output.uppercase() else key.output)
+            KeyType.SPACE -> emojiSearchBar.setQuery("$q ")
+            KeyType.BACKSPACE -> if (q.isNotEmpty()) emojiSearchBar.setQuery(q.dropLast(1))
+            KeyType.ENTER -> {
+                val first = emojiSearchBar.firstResult()
+                if (first != null) emojiSearchBar.setQuery("").also {
+                    EmojiIndex.addRecent(Prefs.get(context), first)
+                    panelListener?.onEmoji(first)
+                } else {
+                    setEmojiSearch(false)
+                }
+            }
+            KeyType.EMOJI -> setEmojiSearch(false)
+            else -> return false
+        }
+        return true
+    }
+
+    /** Popup characters while searching emoji. */
+    fun routeTextToSearch(text: String): Boolean {
+        if (!emojiSearching) return false
+        emojiSearchBar.setQuery(emojiSearchBar.query + text)
+        return true
     }
 
     /** [mode] is one of the Prefs.ONE_HANDED_* constants. */

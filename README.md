@@ -21,7 +21,9 @@ Everything stays on your device: the app has **no internet permission and no ana
 - No learning in password fields or in apps that ask for incognito input
 
 **Panels**
-- Emoji panel with categories and recently used emoji
+- Emoji panel with categories, recents, offline emoji search and skin tones (long-press an emoji; your choice is remembered)
+- Emoji suggestions while typing ("pizza" offers 🍕)
+- Text editing panel: cursor keys, select, select all, copy, cut, paste, start/end
 - Clipboard history with pin, delete and clear (local only; items password managers mark as sensitive are skipped)
 - One-handed mode, left or right
 
@@ -32,6 +34,9 @@ Everything stays on your device: the app has **no internet permission and no ana
 - Sliders for photo opacity, glass opacity and blur strength with a live preview
 - Auto/light/dark tint and an accent color picker
 - Adjustable keyboard height, key spacing, corner radius and font size; haptics and key sound toggles
+- One-tap theme presets (Frost, Midnight, Aurora, Sunset, Clear, Graphite)
+- Optional Gboard-style comma and period keys beside the space bar
+- Manage learned words: search, add and remove them
 
 ## Install the APK (no Android Studio needed)
 
@@ -93,12 +98,15 @@ app/src/main/java/com/flexkeys/
 ├── layout/     Layout data classes and Layouts (all layouts defined as data)
 ├── theme/      Prefs, GlassTheme, GlassPainter, GlassBackdrop (blur), BoxBlur, BackgroundImageStore
 ├── suggest/    WordDictionary, UserDictionary, SuggestionEngine, SuggestionStripView
-├── emoji/      EmojiData, EmojiPanel
+├── emoji/      EmojiData, EmojiIndex (search, skin tones), EmojiPanel, EmojiSearchBar
+├── edit/       EditPanel (cursor and clipboard tools)
 ├── clipboard/  ClipboardStore, ClipboardPanel
 ├── ui/         KeyboardRootView (shared backdrop, panels, one-handed), GlassHost, GlassButton, GlassPanelLayout
 └── settings/   SettingsActivity, PreviewController, ColorPickerView
 app/src/main/assets/words.txt    English word list with frequencies
+app/src/main/assets/emoji.tsv    emoji keywords for search and suggestions
 tools/make_words.py              regenerates words.txt
+tools/make_emoji.py              regenerates emoji.tsv
 ```
 
 ### Adding a layout
@@ -128,3 +136,5 @@ The bundled word list is derived from [FrequencyWords](https://github.com/hermit
 (OpenSubtitles 2018) by Hermit Dave, licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). It was filtered and extended with
 contractions by `tools/make_words.py`.
+Emoji keywords and skin tone data come from [gemoji](https://github.com/github/gemoji)
+(MIT License, Copyright (c) 2019 GitHub, Inc.), converted by `tools/make_emoji.py`.

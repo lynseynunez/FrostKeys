@@ -27,6 +27,7 @@ class SuggestionStripView(context: Context) : View(context) {
     enum class Action(val icon: Icon) {
         CLIPBOARD(Icon.CLIPBOARD),
         EMOJI(Icon.EMOJI),
+        EDIT(Icon.EDIT),
         ONE_HANDED(Icon.ONE_HANDED),
         SETTINGS(Icon.SETTINGS),
         HIDE(Icon.HIDE),
@@ -34,7 +35,8 @@ class SuggestionStripView(context: Context) : View(context) {
         SWITCH_KEYBOARD(Icon.GLOBE),
     }
 
-    private val toolbarActions = listOf(Action.CLIPBOARD, Action.EMOJI, Action.ONE_HANDED, Action.SETTINGS, Action.HIDE)
+    private val toolbarActions =
+        listOf(Action.CLIPBOARD, Action.EMOJI, Action.EDIT, Action.ONE_HANDED, Action.SETTINGS, Action.HIDE)
 
     interface Listener {
         fun onSuggestionPicked(index: Int, text: String)

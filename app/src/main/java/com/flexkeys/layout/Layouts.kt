@@ -44,11 +44,31 @@ object Layouts {
 
     fun letterLayout(id: String): LayoutDef = letterLayouts.firstOrNull { it.id == id } ?: letterLayouts[0]
 
-    fun forLayer(layer: Layer, lettersId: String, numberRow: Boolean): LayoutDef = when (layer) {
-        Layer.LETTERS -> letterLayout(lettersId).let { if (numberRow) withNumberRow(it) else it }
-        Layer.SYMBOLS -> symbols
-        Layer.SYMBOLS_EXTRA -> symbolsExtra
-        Layer.NUMPAD -> numpad
+    fun forLayer(layer: Layer, lettersId: String, numberRow: Boolean, punctuation: Boolean = false): LayoutDef {
+        val base = when (layer) {
+            Layer.LETTERS -> letterLayout(lettersId).let { if (numberRow) withNumberRow(it) else it }
+            Layer.SYMBOLS -> symbols
+            Layer.SYMBOLS_EXTRA -> symbolsExtra
+            Layer.NUMPAD -> return numpad
+        }
+        return if (punctuation) withPunctuation(base) else base
+    }
+
+    /** Gboard-style bottom row with comma and period beside a narrower space bar. */
+    private fun withPunctuation(layout: LayoutDef): LayoutDef {
+        val last = layout.rows.last().keys
+        val switch = last.first { it.type == KeyType.LAYER }.copy(width = 1.3f)
+        val row = RowDef(
+            listOf(
+                switch,
+                KeyDef("emoji", KeyType.EMOJI, 1f),
+                KeyDef(",", popup = listOf(";", ":", "'", "\"", "-", "!", "?")),
+                KeyDef(" ", KeyType.SPACE, 3.9f),
+                KeyDef(".", popup = listOf("…", "?", "!", ",", "'", "\"", "-", ":", ";", "@", "#")),
+                KeyDef("enter", KeyType.ENTER, 1.8f),
+            )
+        )
+        return layout.copy(rows = layout.rows.dropLast(1) + row)
     }
 
     // ---- builders -------------------------------------------------------------------------

@@ -21,6 +21,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -84,7 +85,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         when (key) {
-            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW -> previewController.refresh()
+            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION -> previewController.refresh()
             Prefs.KEY_BG_VERSION -> {
                 preview.reloadPhoto()
                 loadPagePhoto()
@@ -92,7 +93,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             Prefs.KEY_ONE_HANDED -> preview.setOneHanded(prefs.oneHanded)
             Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT,
             Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP, Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND,
-            Prefs.KEY_SOUND_VOLUME -> Unit
+            Prefs.KEY_SOUND_VOLUME, Prefs.KEY_SKIN_TONES -> Unit
             Prefs.KEY_ACCENT -> {
                 applyAccent()
                 applyKeyboardTheme()
@@ -413,7 +414,47 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun showImePicker() = (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
 
+    /** A one-tap look: tint, accent, glass and blur. */
+    private class Preset(val name: String, val mode: Int, val accent: Int, val glass: Int, val blur: Int)
+
+    private val presets = listOf(
+        Preset("Frost", Prefs.THEME_LIGHT, 0xFF5B8CFF.toInt(), 30, 60),
+        Preset("Midnight", Prefs.THEME_DARK, 0xFF7C5CFF.toInt(), 35, 50),
+        Preset("Aurora", Prefs.THEME_DARK, 0xFF20C997.toInt(), 25, 70),
+        Preset("Sunset", Prefs.THEME_LIGHT, 0xFFFF6B6B.toInt(), 40, 50),
+        Preset("Clear", Prefs.THEME_AUTO, 0xFF22B8CF.toInt(), 8, 30),
+        Preset("Graphite", Prefs.THEME_DARK, 0xFF8A93A6.toInt(), 55, 40),
+    )
+
+    private fun LinearLayout.presetRow() {
+        text("Presets", topPad = 4f)
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(6f), 0, dp(2f))
+        }
+        presets.forEachIndexed { i, preset ->
+            row.addView(PillButton(context, preset.name, false, palette).apply {
+                onClick = {
+                    prefs.sp.edit()
+                        .putInt(Prefs.KEY_THEME_MODE, preset.mode)
+                        .putInt(Prefs.KEY_ACCENT, preset.accent)
+                        .putInt(Prefs.KEY_GLASS_OPACITY, preset.glass)
+                        .putInt(Prefs.KEY_BLUR, preset.blur)
+                        .apply()
+                    // Rebuild so every slider and picker shows the new values.
+                    recreate()
+                }
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { if (i > 0) marginStart = dp(8f) })
+        }
+        addView(HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(row)
+        })
+    }
+
     private fun appearanceCard() = card("Liquid glass") {
+        presetRow()
         segmented("Tint", listOf("Auto", "Light", "Dark"), prefs.themeMode) { prefs.themeMode = it }
         text("Accent", topPad = 14f)
         addView(ColorPickerView(context).apply {
@@ -445,6 +486,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
         slider("Corner radius", 0, 30, prefs::cornerRadiusDp) { "$it dp" }
         slider("Font size", 60, 160, prefs::fontPercent) { "$it%" }
+        toggle("Comma & period keys", "Show , and . beside the space bar, like Gboard", prefs::punctuationKeys)
         toggle("Number row", "Always show 1–0 above the letters", prefs::numberRow)
         toggle("Key preview", "Pop up a bubble above keys as you type", prefs::keyPreview)
     }
@@ -455,6 +497,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Learn my words", "Improve suggestions from what you type, on-device only", prefs::learnWords)
         toggle("Auto-capitalization", null, prefs::autoCapitalize)
         toggle("Double-space period", "Tap space twice for \". \"", prefs::doubleSpacePeriod)
+        buttons(Triple("Manage learned words", false) {
+            startActivity(Intent(this@SettingsActivity, LearnedWordsActivity::class.java))
+        })
         buttons(Triple("Clear learned words", false) {
             confirm("Forget every word FlexKeys has learned from your typing?") {
                 SuggestionEngine.get(this@SettingsActivity).user.clear()

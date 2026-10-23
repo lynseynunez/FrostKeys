@@ -2,6 +2,7 @@ package com.flexkeys.settings
 
 import android.os.SystemClock
 import android.widget.TextView
+import com.flexkeys.edit.EditAction
 import com.flexkeys.keyboard.KeyboardState
 import com.flexkeys.keyboard.KeyboardView
 import com.flexkeys.layout.KeyDef
@@ -39,6 +40,7 @@ class PreviewController(
     fun refresh() {
         state.lettersId = prefs.layoutId
         state.numberRow = prefs.numberRow
+        state.punctuationKeys = prefs.punctuationKeys
         val kv = root.keyboardView
         kv.layer = state.layer
         kv.layout = state.layout
@@ -61,6 +63,13 @@ class PreviewController(
     override fun onKeyDown(key: KeyDef) = feedback.keyPress(key.type)
 
     override fun onKey(key: KeyDef) {
+        if (root.routeKeyToSearch(key, state.isShifted)) {
+            if (key.type == KeyType.CHAR) {
+                state.onCharacterTyped()
+                root.keyboardView.shiftState = state.shift
+            }
+            return
+        }
         when (key.type) {
             KeyType.CHAR -> type(if (key.isLetter && state.isShifted) key.output.uppercase() else key.output)
             KeyType.SPACE -> type(" ")
@@ -96,7 +105,9 @@ class PreviewController(
         autoCaps()
     }
 
-    override fun onText(text: String) = type(text)
+    override fun onText(text: String) {
+        if (!root.routeTextToSearch(text)) type(text)
+    }
 
     override fun onLongPress(key: KeyDef): Boolean {
         if (key.type == KeyType.SHIFT) {
@@ -116,6 +127,10 @@ class PreviewController(
     override fun onPaste(text: String) = type(text)
     override fun onPanelBackspace() = onKey(KeyDef("backspace", KeyType.BACKSPACE))
     override fun onPanelClosed() = root.showPanel(KeyboardRootView.Panel.NONE)
+    override fun onEmojiSearch() = root.setEmojiSearch(true)
+    override fun onEditAction(action: EditAction, selecting: Boolean) {
+        if (action == EditAction.BACKSPACE) onPanelBackspace()
+    }
 
     override fun onSuggestionPicked(index: Int, text: String) = Unit
     override fun onSuggestionLongPressed(text: String) = Unit
@@ -126,6 +141,7 @@ class PreviewController(
         val target = when (action) {
             SuggestionStripView.Action.EMOJI -> KeyboardRootView.Panel.EMOJI
             SuggestionStripView.Action.CLIPBOARD -> KeyboardRootView.Panel.CLIPBOARD
+            SuggestionStripView.Action.EDIT -> KeyboardRootView.Panel.EDIT
             SuggestionStripView.Action.ONE_HANDED -> {
                 prefs.oneHanded = if (prefs.oneHanded == Prefs.ONE_HANDED_OFF) Prefs.ONE_HANDED_RIGHT else Prefs.ONE_HANDED_OFF
                 return

@@ -80,6 +80,20 @@ class UserDictionary(context: Context) {
         if (++dirty >= SAVE_EVERY) save()
     }
 
+    val isLoaded: Boolean get() = loaded
+
+    /** Every learned word with how often it was typed, most used first. */
+    fun allWords(): List<Pair<String, Int>> = words.entries.sortedByDescending { it.value }.map { it.key to it.value }
+
+    /** Adds a word by hand so it is suggested and never autocorrected. */
+    fun addWord(word: String) {
+        val k = key(word.trim())
+        if (k.isEmpty() || k.length > MAX_WORD || k.contains(' ')) return
+        words[k] = maxOf(words[k] ?: 0, 2)
+        dirty++
+        save()
+    }
+
     fun forget(word: String) {
         val k = key(word)
         words.remove(k)

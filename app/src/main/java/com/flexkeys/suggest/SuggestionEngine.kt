@@ -16,7 +16,17 @@ data class Suggestions(
     val correction: String? = null,
     /** Slot index holding the literally typed word, or -1. */
     val typedIndex: Int = -1,
+    /** Slot index holding an emoji suggestion ("pizza" -> 🍕), or -1. */
+    val emojiIndex: Int = -1,
 ) {
+    /** Puts [emoji] in the right-hand slot. */
+    fun withEmoji(emoji: String): Suggestions {
+        val list = slots.toMutableList()
+        val index = if (list.size >= 3) 2 else list.size
+        if (index == 2 && list.size >= 3) list[2] = emoji else list.add(emoji)
+        return copy(slots = list, emojiIndex = index, highlighted = if (highlighted == index) -1 else highlighted)
+    }
+
     companion object {
         val EMPTY = Suggestions(emptyList())
     }

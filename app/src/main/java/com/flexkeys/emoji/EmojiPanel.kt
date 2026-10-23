@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AbsListView
 import android.widget.BaseAdapter
+import android.widget.FrameLayout
 import android.widget.GridView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -24,47 +25,66 @@ import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassPanelLayout
 
-/** Emoji grid with category tabs and recently used emoji. */
+/** Emoji grid with category tabs, recents, search and skin tones (long-press). */
 class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelLayout(context) {
 
     interface Listener {
         fun onEmoji(emoji: String)
         fun onPanelBackspace()
         fun onPanelClosed()
+        /** The search button was tapped: type on the keyboard to find emoji. */
+        fun onEmojiSearch()
     }
 
     private val prefs = Prefs.get(context)
     private val grid = GridView(context)
     private val adapter = EmojiAdapter()
     private val tabs = CategoryTabs(context)
+    /** Shown over the grid while picking a skin tone. */
+    private val toneRow = LinearLayout(context)
+    private var tones: Map<String, String> = EmojiIndex.chosenTones(prefs)
     /** Tab 0 is "recent"; the rest map onto [EmojiData.categories]. */
     private var selectedTab = 0
 
     init {
+        EmojiIndex.load(context)
         setPadding(dp(6f), dp(6f), dp(6f), dp(4f))
         grid.numColumns = GridView.AUTO_FIT
         grid.columnWidth = dp(44f)
         grid.stretchMode = GridView.STRETCH_COLUMN_WIDTH
         grid.adapter = adapter
         grid.isVerticalScrollBarEnabled = false
-        grid.setOnItemClickListener { _, _, position, _ ->
-            val emoji = adapter.items[position]
-            addRecent(emoji)
-            listener.onEmoji(emoji)
+        grid.setOnItemClickListener { _, _, position, _ -> pick(display(adapter.items[position])) }
+        grid.setOnItemLongClickListener { _, _, position, _ ->
+            val base = adapter.items[position]
+            if (EmojiIndex.supportsSkinTone(base)) {
+                showTones(base)
+                true
+            } else {
+                false
+            }
         }
-        addView(grid, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        val body = FrameLayout(context)
+        body.addView(grid)
+        toneRow.orientation = HORIZONTAL
+        toneRow.gravity = Gravity.CENTER
+        toneRow.visibility = View.GONE
+        body.addView(toneRow, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(60f), Gravity.TOP))
+        addView(body, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         val bar = LinearLayout(context).apply { orientation = HORIZONTAL }
         bar.addView(GlassButton(context, label = "ABC").apply { onClick = listener::onPanelClosed },
-            LayoutParams(dp(56f), dp(44f)))
+            LayoutParams(dp(52f), dp(44f)))
+        bar.addView(GlassButton(context, icon = Icon.SEARCH).apply { onClick = listener::onEmojiSearch },
+            LayoutParams(dp(44f), dp(44f)))
         bar.addView(tabs, LayoutParams(0, dp(44f), 1f))
         bar.addView(GlassButton(context, icon = Icon.BACKSPACE).apply {
             repeatWhileHeld = true
             onClick = listener::onPanelBackspace
-        }, LayoutParams(dp(56f), dp(44f)))
+        }, LayoutParams(dp(52f), dp(44f)))
         addView(bar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
-        selectTab(if (recents().isEmpty()) 1 else 0)
+        selectTab(if (EmojiIndex.recents(prefs).isEmpty()) 1 else 0)
     }
 
     override fun onHostAttached() {
@@ -77,23 +97,45 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
             addState(intArrayOf(android.R.attr.state_pressed), pressed)
             addState(intArrayOf(), ColorDrawable(Color.TRANSPARENT))
         }
-        grid.setDrawSelectorOnTop(false)
+        toneRow.background = GradientDrawable().apply {
+            cornerRadius = t.dp(18f)
+            setColor(if (t.dark) 0xF02A2C36.toInt() else 0xF5FFFFFF.toInt())
+        }
         adapter.notifyDataSetChanged()
         tabs.invalidate()
     }
 
-    private fun recents(): List<String> = prefs.recentEmoji.split(' ').filter { it.isNotEmpty() }
+    /** The emoji as shown: with the user's remembered skin tone applied. */
+    private fun display(base: String): String = tones[base] ?: base
 
-    private fun addRecent(emoji: String) {
-        val list = recents().toMutableList()
-        list.remove(emoji)
-        list.add(0, emoji)
-        prefs.recentEmoji = list.take(MAX_RECENTS).joinToString(" ")
+    private fun pick(emoji: String) {
+        EmojiIndex.addRecent(prefs, emoji)
+        listener.onEmoji(emoji)
+    }
+
+    private fun showTones(base: String) {
+        toneRow.removeAllViews()
+        for (variant in EmojiIndex.skinVariants(base)) {
+            toneRow.addView(TextView(context).apply {
+                text = variant
+                gravity = Gravity.CENTER
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
+                setOnClickListener {
+                    EmojiIndex.rememberTone(prefs, base, variant)
+                    tones = EmojiIndex.chosenTones(prefs)
+                    toneRow.visibility = View.GONE
+                    adapter.notifyDataSetChanged()
+                    pick(variant)
+                }
+            }, LayoutParams(dp(48f), ViewGroup.LayoutParams.MATCH_PARENT))
+        }
+        toneRow.visibility = View.VISIBLE
     }
 
     private fun selectTab(index: Int) {
         selectedTab = index
-        adapter.items = if (index == 0) recents() else supported(index - 1)
+        toneRow.visibility = View.GONE
+        adapter.items = if (index == 0) EmojiIndex.recents(prefs) else supported(index - 1)
         adapter.notifyDataSetChanged()
         grid.setSelection(0)
         tabs.invalidate()
@@ -111,7 +153,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
                 layoutParams = AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46f))
                 includeFontPadding = false
             }
-            tv.text = items[position]
+            tv.text = display(items[position])
             tv.setTextColor(host?.theme?.textColor ?: Color.BLACK)
             return tv
         }
@@ -130,14 +172,14 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
                 val cx = w * i + w / 2f
                 if (i == selectedTab) {
                     paint.color = t.accentSoft
-                    canvas.drawCircle(cx, cy, minOf(w, height.toFloat()) * 0.42f, paint)
+                    canvas.drawCircle(cx, cy, minOf(w, height.toFloat()) * 0.46f, paint)
                 }
                 if (i == 0) {
-                    Icons.draw(canvas, Icon.CLOCK, cx, cy, minOf(w, height.toFloat()) * 0.45f, t.textColor)
+                    Icons.draw(canvas, Icon.CLOCK, cx, cy, minOf(w, height.toFloat()) * 0.5f, t.textColor)
                 } else {
                     paint.color = Color.BLACK
                     paint.alpha = if (i == selectedTab) 255 else 150
-                    paint.textSize = minOf(w * 0.55f, height * 0.45f)
+                    paint.textSize = minOf(w * 0.62f, height * 0.45f)
                     val fm = paint.fontMetrics
                     canvas.drawText(EmojiData.categories[i - 1].icon, cx, cy - (fm.ascent + fm.descent) / 2f, paint)
                     paint.alpha = 255
@@ -156,7 +198,6 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     }
 
     companion object {
-        private const val MAX_RECENTS = 32
         private val supportedCache = HashMap<Int, List<String>>()
 
         /** Emoji in category [index] that the device font can actually draw. */

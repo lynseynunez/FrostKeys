@@ -15,6 +15,8 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import com.flexkeys.clipboard.ClipboardStore
+import com.flexkeys.edit.EditAction
+import com.flexkeys.emoji.EmojiIndex
 import com.flexkeys.keyboard.EnterAction
 import com.flexkeys.keyboard.KeyboardState
 import com.flexkeys.keyboard.KeyboardView
@@ -67,6 +69,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         prefs = Prefs.get(this)
         feedback = Feedback(this, prefs)
         engine = SuggestionEngine.get(this)
+        EmojiIndex.load(this)
         prefs.sp.registerOnSharedPreferenceChangeListener(this)
         clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.addPrimaryClipChangedListener(clipListener)
@@ -113,6 +116,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
 
         state.setLayer(if (numeric) Layer.NUMPAD else Layer.LETTERS)
+        root?.cancelEmojiSearch()
         root?.showPanel(KeyboardRootView.Panel.NONE)
         refreshKeyboard()
         updateShiftState()
@@ -161,6 +165,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         val kv = root?.keyboardView ?: return
         state.lettersId = prefs.layoutId
         state.numberRow = prefs.numberRow
+        state.punctuationKeys = prefs.punctuationKeys
         kv.layer = state.layer
         kv.layout = state.layout
         kv.shiftState = state.shift
@@ -214,9 +219,14 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             Suggestions.EMPTY
         } else {
             val ctx = readContext(ic)
+            // Gboard-style emoji suggestions for the word being typed or just typed.
             when {
-                composing.isNotEmpty() -> engine.suggest(composing.toString(), ctx.previous, correctionOn)
-                ctx.afterSpace -> engine.predict(ctx.previous, ctx.sentenceStart)
+                composing.isNotEmpty() -> engine.suggest(composing.toString(), ctx.previous, correctionOn).let { s ->
+                    EmojiIndex.forWord(composing.toString()).firstOrNull()?.let { s.withEmoji(it) } ?: s
+                }
+                ctx.afterSpace -> engine.predict(ctx.previous, ctx.sentenceStart).let { s ->
+                    ctx.previous?.let { EmojiIndex.forWord(it).firstOrNull() }?.let { s.withEmoji(it) } ?: s
+                }
                 else -> Suggestions.EMPTY
             }
         }
@@ -226,6 +236,20 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onSuggestionPicked(index: Int, text: String) {
         val ic = currentInputConnection ?: return
         feedback.keyPress(KeyType.CHAR)
+        if (index == suggestions.emojiIndex) {
+            // Keep the word and add the emoji after it: "pizza" -> "pizza 🍕 ".
+            ic.beginBatchEdit()
+            val hadWord = composing.isNotEmpty() && composingIntact(ic)
+            if (hadWord) commitComposing(ic, autocorrect = false) else composing.clear()
+            ic.commitText(if (hadWord) " $text " else "$text ", 1)
+            ic.endBatchEdit()
+            EmojiIndex.addRecent(prefs, text)
+            lastCorrection = null
+            pickedSuggestion = false
+            updateShiftState()
+            updateSuggestions()
+            return
+        }
         val previous = readContext(ic).previous
         ic.beginBatchEdit()
         ic.commitText(text, 1) // Replaces the composing word, if any.
@@ -269,6 +293,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             }
             SuggestionStripView.Action.CLIPBOARD -> togglePanel(KeyboardRootView.Panel.CLIPBOARD)
             SuggestionStripView.Action.EMOJI -> togglePanel(KeyboardRootView.Panel.EMOJI)
+            SuggestionStripView.Action.EDIT -> togglePanel(KeyboardRootView.Panel.EDIT)
             SuggestionStripView.Action.ONE_HANDED -> {
                 prefs.oneHanded = if (prefs.oneHanded == Prefs.ONE_HANDED_OFF) Prefs.ONE_HANDED_RIGHT else Prefs.ONE_HANDED_OFF
             }
@@ -308,6 +333,42 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         updateShiftState()
     }
 
+    override fun onEmojiSearch() {
+        feedback.keyPress(KeyType.CHAR)
+        root?.setEmojiSearch(true)
+        updateShiftState()
+    }
+
+    override fun onEditAction(action: EditAction, selecting: Boolean) {
+        val ic = currentInputConnection ?: return
+        feedback.keyPress(if (action == EditAction.BACKSPACE) KeyType.BACKSPACE else KeyType.CHAR)
+        if (action != EditAction.BACKSPACE && composing.isNotEmpty()) {
+            ic.finishComposingText()
+            composing.clear()
+        }
+        when (action) {
+            EditAction.LEFT -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_LEFT, selecting)
+            EditAction.RIGHT -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_RIGHT, selecting)
+            EditAction.UP -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_UP, selecting)
+            EditAction.DOWN -> sendCursorKey(ic, KeyEvent.KEYCODE_DPAD_DOWN, selecting)
+            EditAction.HOME -> sendCursorKey(ic, KeyEvent.KEYCODE_MOVE_HOME, selecting)
+            EditAction.END -> sendCursorKey(ic, KeyEvent.KEYCODE_MOVE_END, selecting)
+            EditAction.SELECT_ALL -> ic.performContextMenuAction(android.R.id.selectAll)
+            EditAction.COPY -> ic.performContextMenuAction(android.R.id.copy)
+            EditAction.CUT -> ic.performContextMenuAction(android.R.id.cut)
+            EditAction.PASTE -> ic.performContextMenuAction(android.R.id.paste)
+            EditAction.BACKSPACE -> onBackspace()
+        }
+    }
+
+    /** Sends a cursor key; with [select] held as shift so the selection grows. */
+    private fun sendCursorKey(ic: InputConnection, code: Int, select: Boolean) {
+        val now = SystemClock.uptimeMillis()
+        val meta = if (select) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0, meta))
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0, meta))
+    }
+
     override fun onPanelBackspace() {
         feedback.keyPress(KeyType.BACKSPACE)
         onBackspace()
@@ -343,6 +404,13 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onKeyDown(key: KeyDef) = feedback.keyPress(key.type)
 
     override fun onKey(key: KeyDef) {
+        if (root?.routeKeyToSearch(key, state.isShifted) == true) {
+            if (key.type == KeyType.CHAR) {
+                state.onCharacterTyped()
+                root?.keyboardView?.shiftState = state.shift
+            }
+            return
+        }
         when (key.type) {
             KeyType.CHAR -> handleText(if (key.isLetter && state.isShifted) key.output.uppercase() else key.output)
             KeyType.SPACE -> onSpace()
@@ -364,6 +432,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     override fun onText(text: String) {
+        if (root?.routeTextToSearch(text) == true) return
         handleText(text)
         lastSpaceTime = 0L
     }
@@ -578,7 +647,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         val r = root ?: return
         when (key) {
-            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW -> refreshKeyboard()
+            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION -> refreshKeyboard()
             Prefs.KEY_BG_VERSION -> r.reloadPhoto()
             Prefs.KEY_ONE_HANDED -> r.setOneHanded(prefs.oneHanded)
             null -> { // All settings were reset.
@@ -606,7 +675,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         private val BEHAVIOR_KEYS = setOf(
             Prefs.KEY_SUGGESTIONS, Prefs.KEY_AUTOCORRECT, Prefs.KEY_LEARN, Prefs.KEY_AUTOCAP,
             Prefs.KEY_DOUBLE_SPACE, Prefs.KEY_HAPTICS, Prefs.KEY_SOUND, Prefs.KEY_SOUND_VOLUME,
-            Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD,
+            Prefs.KEY_RECENT_EMOJI, Prefs.KEY_CLIPBOARD, Prefs.KEY_SKIN_TONES,
         )
 
         private val PASSWORD_VARIATIONS = setOf(

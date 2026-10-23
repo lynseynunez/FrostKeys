@@ -25,12 +25,13 @@ class KeyboardState {
         private set
     var lettersId: String = "qwerty"
     var numberRow: Boolean = false
+    var punctuationKeys: Boolean = true
 
     /** True when the user pressed shift themselves, so auto-capitalization leaves it alone. */
     private var manualShift = false
     private var lastShiftTap = 0L
 
-    val layout: LayoutDef get() = Layouts.forLayer(layer, lettersId, numberRow)
+    val layout: LayoutDef get() = Layouts.forLayer(layer, lettersId, numberRow, punctuationKeys)
     val isShifted: Boolean get() = shift != ShiftState.OFF && layer == Layer.LETTERS
 
     fun setLayer(newLayer: Layer) {

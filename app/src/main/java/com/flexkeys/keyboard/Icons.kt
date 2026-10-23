@@ -9,7 +9,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, ONE_HANDED, KEYBOARD, PIN, PIN_ON, TRASH, SWAP, EXPAND, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE,
+    MENU, HIDE, GLOBE, ARROW_UP, ARROW_DOWN, EDIT,
 }
 
 object Icons {
@@ -70,6 +70,20 @@ object Icons {
             Icon.ARROW_LEFT -> {
                 line(0.38f, 0f, -0.36f, 0f)
                 poly(-0.1f, -0.26f, -0.38f, 0f, -0.1f, 0.26f, close = false)
+            }
+            Icon.ARROW_UP -> {
+                line(0f, 0.38f, 0f, -0.36f)
+                poly(-0.26f, -0.1f, 0f, -0.38f, 0.26f, -0.1f, close = false)
+            }
+            Icon.ARROW_DOWN -> {
+                line(0f, -0.38f, 0f, 0.36f)
+                poly(-0.26f, 0.1f, 0f, 0.38f, 0.26f, 0.1f, close = false)
+            }
+            Icon.EDIT -> {
+                // Text cursor (I-beam).
+                line(0f, -0.36f, 0f, 0.36f)
+                line(-0.16f, -0.4f, 0.16f, -0.4f)
+                line(-0.16f, 0.4f, 0.16f, 0.4f)
             }
             Icon.SEARCH -> {
                 circle(-0.08f, -0.08f, 0.27f)

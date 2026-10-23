@@ -47,6 +47,9 @@ class Prefs private constructor(context: Context) {
 
     // ---- emoji ----
     var recentEmoji by string(KEY_RECENT_EMOJI, "")
+    var skinTones by string(KEY_SKIN_TONES, "")
+    /** Comma and period keys next to the space bar, as on Gboard. */
+    var punctuationKeys by bool(KEY_PUNCTUATION, true)
 
     private fun string(key: String, def: String) = Pref({ sp.getString(key, def) ?: def }, { sp.edit().putString(key, it).apply() })
     private fun bool(key: String, def: Boolean) = Pref({ sp.getBoolean(key, def) }, { sp.edit().putBoolean(key, it).apply() })
@@ -85,6 +88,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_LEARN = "learn_words"
         const val KEY_CLIPBOARD = "clipboard_history"
         const val KEY_RECENT_EMOJI = "recent_emoji"
+        const val KEY_SKIN_TONES = "skin_tones"
+        const val KEY_PUNCTUATION = "punctuation_keys"
 
         const val ONE_HANDED_OFF = 0
         const val ONE_HANDED_LEFT = 1
