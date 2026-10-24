@@ -250,15 +250,39 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             .apply { topMargin = dp(14f) }
     }
 
+    /** A card that folds up to just its title, so the long list of settings stays easy to scan. */
     private fun card(title: String, build: LinearLayout.() -> Unit): View = card().apply {
-        addView(TextView(context).apply {
-            text = title
-            setTextColor(palette.text)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setPadding(0, 0, 0, dp(4f))
-        })
-        build()
+        val body = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = if (title in openCards) View.VISIBLE else View.GONE
+        }
+        val chevron = TextView(context).apply {
+            setTextColor(palette.secondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            text = if (title in openCards) "⌄" else "›"
+        }
+        val header = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            isClickable = true
+            setOnClickListener {
+                val open = body.visibility != View.VISIBLE
+                body.visibility = if (open) View.VISIBLE else View.GONE
+                chevron.text = if (open) "⌄" else "›"
+                if (open) openCards.add(title) else openCards.remove(title)
+            }
+            addView(TextView(context).apply {
+                text = title
+                setTextColor(palette.text)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setPadding(0, dp(2f), 0, dp(2f))
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(chevron)
+        }
+        addView(header)
+        addView(body)
+        body.build()
     }
 
     private fun LinearLayout.text(value: String, secondary: Boolean = false, topPad: Float = 10f): TextView {
@@ -936,6 +960,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
     private companion object {
+        /** Titles of the cards the user has opened; kept while the app is running. */
+        private val openCards = hashSetOf("Liquid glass")
+
         const val REQUEST_PHOTO = 1
         const val REQUEST_EXPORT = 2
         const val REQUEST_IMPORT = 3
