@@ -40,7 +40,6 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     private val grid = GridView(context)
     private val adapter = EmojiAdapter()
     private val tabs = CategoryTabs(context)
-    private val tabScroll = android.widget.HorizontalScrollView(context)
     /** Shown over the grid while picking a skin tone. */
     private val toneRow = LinearLayout(context)
     private var tones: Map<String, String> = EmojiIndex.chosenTones(prefs)
@@ -81,12 +80,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         bar.addView(GlassButton(context, icon = Icon.SEARCH).apply { onClick = listener::onEmojiSearch },
             LayoutParams(dp(44f), dp(44f)))
         // Roomy, easy-to-hit tabs in a strip that scrolls sideways.
-        tabScroll.isHorizontalScrollBarEnabled = false
-        tabScroll.overScrollMode = View.OVER_SCROLL_NEVER
-        tabScroll.isHorizontalFadingEdgeEnabled = true
-        tabScroll.setFadingEdgeLength(dp(18f))
-        tabScroll.addView(tabs, FrameLayout.LayoutParams(tabs.totalCount * dp(TAB_DP), ViewGroup.LayoutParams.MATCH_PARENT))
-        bar.addView(tabScroll, LayoutParams(0, dp(44f), 1f))
+        bar.addView(tabs, LayoutParams(0, dp(44f), 1f))
         bar.addView(GlassButton(context, icon = Icon.BACKSPACE).apply {
             repeatWhileHeld = true
             onClick = listener::onPanelBackspace
@@ -155,8 +149,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         adapter.notifyDataSetChanged()
         grid.setSelection(0)
         tabs.invalidate()
-        // Keep the chosen tab in view.
-        tabScroll.post { tabScroll.smoothScrollTo(index * dp(TAB_DP) - (tabScroll.width - dp(TAB_DP)) / 2, 0) }
+        tabs.scrollTo(index)
     }
 
     private inner class EmojiAdapter : BaseAdapter() {
@@ -205,18 +198,49 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         }
     }
 
-    /** The row of category icons. */
+    /** The row of category icons. It scrolls sideways when there are more tabs than fit. */
     private inner class CategoryTabs(context: Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
         private val count get() = EmojiData.categories.size + 3
-        val totalCount get() = count
+        private val cell get() = dp(TAB_DP).toFloat()
+        private val contentWidth get() = count * cell
+        private val maxOffset get() = (contentWidth - width).coerceAtLeast(0f)
+
+        /** How far the strip is scrolled, in pixels. */
+        private var offsetX = 0f
+        private val scroller = android.widget.OverScroller(context)
+        private var velocity: android.view.VelocityTracker? = null
+        private var downX = 0f
+        private var lastX = 0f
+        private var dragging = false
+        private val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+
+        /** Scrolls so that tab [index] is centered, as far as the ends allow. */
+        fun scrollTo(index: Int) {
+            post {
+                val target = (index * cell + cell / 2f - width / 2f).coerceIn(0f, maxOffset)
+                scroller.forceFinished(true)
+                scroller.startScroll(offsetX.toInt(), 0, (target - offsetX).toInt(), 0, 250)
+                postInvalidateOnAnimation()
+            }
+        }
+
+        override fun computeScroll() {
+            if (scroller.computeScrollOffset()) {
+                offsetX = scroller.currX.toFloat().coerceIn(0f, maxOffset)
+                postInvalidateOnAnimation()
+            }
+        }
 
         override fun onDraw(canvas: Canvas) {
             val t = host?.theme ?: return
-            val w = width.toFloat() / count
+            val w = cell
             val cy = height / 2f
+            canvas.save()
+            canvas.translate(-offsetX, 0f)
             for (i in 0 until count) {
                 val cx = w * i + w / 2f
+                if (cx + w < offsetX || cx - w > offsetX + width) continue
                 if (i == selectedTab) {
                     paint.color = t.accentSoft
                     canvas.drawCircle(cx, cy, minOf(w, height.toFloat()) * 0.46f, paint)
@@ -239,13 +263,50 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
                     paint.alpha = 255
                 }
             }
+            canvas.restore()
         }
 
         @SuppressLint("ClickableViewAccessibility")
         override fun onTouchEvent(event: MotionEvent): Boolean {
-            if (event.actionMasked == MotionEvent.ACTION_UP) {
-                val i = (event.x / (width.toFloat() / count)).toInt().coerceIn(0, count - 1)
-                if (i != selectedTab) selectTab(i)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    scroller.forceFinished(true)
+                    velocity = android.view.VelocityTracker.obtain()
+                    downX = event.x
+                    lastX = event.x
+                    dragging = false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    velocity?.addMovement(event)
+                    if (!dragging && kotlin.math.abs(event.x - downX) > slop) {
+                        dragging = true
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                    if (dragging) {
+                        offsetX = (offsetX - (event.x - lastX)).coerceIn(0f, maxOffset)
+                        invalidate()
+                    }
+                    lastX = event.x
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (dragging) {
+                        velocity?.let {
+                            it.addMovement(event)
+                            it.computeCurrentVelocity(1000)
+                            scroller.fling(offsetX.toInt(), 0, -it.xVelocity.toInt(), 0, 0, maxOffset.toInt(), 0, 0)
+                            postInvalidateOnAnimation()
+                        }
+                    } else {
+                        val i = ((event.x + offsetX) / cell).toInt().coerceIn(0, count - 1)
+                        if (i != selectedTab) selectTab(i)
+                    }
+                    velocity?.recycle()
+                    velocity = null
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    velocity?.recycle()
+                    velocity = null
+                }
             }
             return true
         }
