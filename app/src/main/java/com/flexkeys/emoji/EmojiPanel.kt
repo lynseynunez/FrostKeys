@@ -40,6 +40,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     private val grid = GridView(context)
     private val adapter = EmojiAdapter()
     private val tabs = CategoryTabs(context)
+    private val tabScroll = android.widget.HorizontalScrollView(context)
     /** Shown over the grid while picking a skin tone. */
     private val toneRow = LinearLayout(context)
     private var tones: Map<String, String> = EmojiIndex.chosenTones(prefs)
@@ -79,7 +80,13 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
             LayoutParams(dp(52f), dp(44f)))
         bar.addView(GlassButton(context, icon = Icon.SEARCH).apply { onClick = listener::onEmojiSearch },
             LayoutParams(dp(44f), dp(44f)))
-        bar.addView(tabs, LayoutParams(0, dp(44f), 1f))
+        // Roomy, easy-to-hit tabs in a strip that scrolls sideways.
+        tabScroll.isHorizontalScrollBarEnabled = false
+        tabScroll.overScrollMode = View.OVER_SCROLL_NEVER
+        tabScroll.isHorizontalFadingEdgeEnabled = true
+        tabScroll.setFadingEdgeLength(dp(18f))
+        tabScroll.addView(tabs, FrameLayout.LayoutParams(tabs.totalCount * dp(TAB_DP), ViewGroup.LayoutParams.MATCH_PARENT))
+        bar.addView(tabScroll, LayoutParams(0, dp(48f), 1f))
         bar.addView(GlassButton(context, icon = Icon.BACKSPACE).apply {
             repeatWhileHeld = true
             onClick = listener::onPanelBackspace
@@ -148,6 +155,8 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         adapter.notifyDataSetChanged()
         grid.setSelection(0)
         tabs.invalidate()
+        // Keep the chosen tab in view.
+        tabScroll.post { tabScroll.smoothScrollTo(index * dp(TAB_DP) - (tabScroll.width - dp(TAB_DP)) / 2, 0) }
     }
 
     private inner class EmojiAdapter : BaseAdapter() {
@@ -200,6 +209,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     private inner class CategoryTabs(context: Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
         private val count get() = EmojiData.categories.size + 3
+        val totalCount get() = count
 
         override fun onDraw(canvas: Canvas) {
             val t = host?.theme ?: return
@@ -216,14 +226,14 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
                 } else if (i > EmojiData.categories.size) {
                     paint.color = t.textColor
                     paint.alpha = if (i == selectedTab) 255 else 150
-                    paint.textSize = minOf(w * 0.62f, height * 0.45f)
+                    paint.textSize = minOf(w * 0.62f, height * 0.5f)
                     val fm = paint.fontMetrics
                     canvas.drawText(if (i == kaomojiTab) "ツ" else "★", cx, cy - (fm.ascent + fm.descent) / 2f, paint)
                     paint.alpha = 255
                 } else {
                     paint.color = Color.BLACK
                     paint.alpha = if (i == selectedTab) 255 else 150
-                    paint.textSize = minOf(w * 0.62f, height * 0.45f)
+                    paint.textSize = minOf(w * 0.62f, height * 0.5f)
                     val fm = paint.fontMetrics
                     canvas.drawText(EmojiData.categories[i - 1].icon, cx, cy - (fm.ascent + fm.descent) / 2f, paint)
                     paint.alpha = 255
@@ -242,6 +252,9 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     }
 
     companion object {
+        /** Width of each category tab in dp. */
+        private const val TAB_DP = 48f
+
         private val supportedCache = HashMap<Int, List<String>>()
 
         /** Symbols the device font can draw. */
