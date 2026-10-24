@@ -294,8 +294,7 @@ class KeyboardView(context: Context) : View(context) {
 
         canvas.save()
         canvas.clipPath(cardPath)
-        // Frosted: the blurred background shows through the pane.
-        host?.backdrop?.drawBlurred(canvas, offset.x + v.left, offset.y + v.top)
+        // Frosted: the sheet behind (blurred photo, tint, gradient and any animation) shows through the pane.
         cardPaint.style = Paint.Style.FILL
         cardPaint.shader = null
         cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF101012.toInt(), 0.30f) else GlassTheme.withAlpha(Color.WHITE, 0.30f)
