@@ -86,7 +86,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         tabScroll.isHorizontalFadingEdgeEnabled = true
         tabScroll.setFadingEdgeLength(dp(18f))
         tabScroll.addView(tabs, FrameLayout.LayoutParams(tabs.totalCount * dp(TAB_DP), ViewGroup.LayoutParams.MATCH_PARENT))
-        bar.addView(tabScroll, LayoutParams(0, dp(48f), 1f))
+        bar.addView(tabScroll, LayoutParams(0, dp(44f), 1f))
         bar.addView(GlassButton(context, icon = Icon.BACKSPACE).apply {
             repeatWhileHeld = true
             onClick = listener::onPanelBackspace
@@ -253,7 +253,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
 
     companion object {
         /** Width of each category tab in dp. */
-        private const val TAB_DP = 48f
+        private const val TAB_DP = 44f
 
         private val supportedCache = HashMap<Int, List<String>>()
 
