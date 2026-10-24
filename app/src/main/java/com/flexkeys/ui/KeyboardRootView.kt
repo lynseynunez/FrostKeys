@@ -142,6 +142,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         invalidate()
         keyboardView.invalidate()
     }
+    private val glassAnimation = GlassAnimation()
+
     private val shimmerMatrix = android.graphics.Matrix()
     private val shimmerShader = LinearGradient(-0.5f, 0f, 0.5f, 0f,
         intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
@@ -486,6 +488,16 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             sheetPaint.alpha = (theme.sheetGradientAlpha * 255f).toInt().coerceIn(0, 255)
             canvas.drawRect(sheetRect, sheetPaint)
             sheetPaint.shader = null
+        }
+        val animStyle = shimmerPrefs.glassAnimation
+        if (animStyle != GlassAnimation.OFF && isShown) {
+            glassAnimation.tick(android.os.SystemClock.uptimeMillis(), shimmerPrefs.animationSpeed.coerceIn(0, 100) / 100f)
+            glassAnimation.draw(canvas, animStyle, width.toFloat(), height.toFloat(),
+                shimmerPrefs.animationIntensity.coerceIn(0, 100) / 100f, theme)
+            // About 30 frames a second is smooth enough for slow motion and easy on the battery.
+            postInvalidateDelayed(33L)
+        } else {
+            glassAnimation.pause()
         }
         syncShimmer()
         if (shimmerOn && tilt.running) {

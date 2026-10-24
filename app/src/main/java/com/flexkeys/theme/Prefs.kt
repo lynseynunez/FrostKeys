@@ -108,6 +108,10 @@ class Prefs private constructor(context: Context) {
     var keyMotion by int(KEY_KEY_MOTION, 0)
     /** How strong the typing animation is, 0..100. */
     var effectStrength by int(KEY_EFFECT_STRENGTH, 40)
+    /** Animation living in the glass: 0 off, 1 aurora, 2 light flow, 3 bubbles (see GlassAnimation). */
+    var glassAnimation by int(KEY_GLASS_ANIMATION, 0)
+    var animationSpeed by int(KEY_ANIMATION_SPEED, 40)
+    var animationIntensity by int(KEY_ANIMATION_INTENSITY, 50)
     /** Highlights on the glass shift slightly as the phone is tilted. */
     var shimmer by bool(KEY_SHIMMER, false)
     /** How strong the tilt shimmer is, 0..100. */
@@ -189,6 +193,9 @@ class Prefs private constructor(context: Context) {
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_PRESS_STYLE = "press_style"
+        const val KEY_GLASS_ANIMATION = "glass_animation"
+        const val KEY_ANIMATION_SPEED = "animation_speed"
+        const val KEY_ANIMATION_INTENSITY = "animation_intensity"
         const val KEY_SHIMMER = "shimmer"
         const val KEY_SHIMMER_STRENGTH = "shimmer_strength"
         const val KEY_EFFECT_STRENGTH = "effect_strength"
