@@ -108,6 +108,8 @@ class Prefs private constructor(context: Context) {
     var keyMotion by int(KEY_KEY_MOTION, 0)
     /** How strong the typing animation is, 0..100. */
     var effectStrength by int(KEY_EFFECT_STRENGTH, 40)
+    /** Pause the glass animation and tilt effects when the battery is low or battery saver is on. */
+    var batterySaver by bool(KEY_BATTERY_SAVER, true)
     /** Animation living in the glass: 0 off, 1 aurora, 2 light flow, 3 bubbles (see GlassAnimation). */
     var glassAnimation by int(KEY_GLASS_ANIMATION, 0)
     var animationSpeed by int(KEY_ANIMATION_SPEED, 40)
@@ -195,6 +197,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_PRESS_STYLE = "press_style"
+        const val KEY_BATTERY_SAVER = "battery_saver"
         const val KEY_GLASS_ANIMATION = "glass_animation"
         const val KEY_ANIMATION_SPEED = "animation_speed"
         const val KEY_ANIMATION_TILT = "animation_tilt"

@@ -1,14 +1,21 @@
 name: Release
 
-# Publishes a signed APK as a GitHub Release when you push a version tag, e.g.:
-#   git tag v1.0.0 && git push origin v1.0.0
-# Needs these repository secrets (see README, "Making a signed release"):
+# Publishes an APK as a GitHub Release. Start it either way:
+#   - in the Actions tab: Release > Run workflow, and type a version such as 1.0.0
+#   - or push a version tag: git tag v1.0.0 && git push origin v1.0.0
+# With these repository secrets the APK is signed with your own key (see README, "Making a signed release"):
 #   RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
+# Without them it is signed with the same debug key as the CI builds, so it still installs over them.
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number, like 1.0.0'
+        required: true
 
 permissions:
   contents: write
@@ -30,29 +37,37 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Restore the signing key
+      - name: Work out the version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then V="${{ github.event.inputs.version }}"; else V="${GITHUB_REF_NAME#v}"; fi
+          V="${V#v}"
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - name: Restore the signing key (if you added one)
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "The RELEASE_KEYSTORE_BASE64 secret is missing. See the README." >&2
-            exit 1
+            echo "No release key in the repository secrets; signing with the debug key." 
+          else
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Build the release APK
         env:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: gradle assembleRelease -PappVersionName="${GITHUB_REF_NAME#v}" -PappVersionCode="${{ github.run_number }}" --stacktrace
+        run: gradle assembleRelease -PappVersionName="$VERSION" -PappVersionCode="${{ github.run_number }}" --stacktrace
 
       - name: Name the APK
-        run: cp app/build/outputs/apk/release/app-release.apk "SakuriKey-${GITHUB_REF_NAME}.apk"
+        run: cp app/build/outputs/apk/release/app-release.apk "SakuriKey-v${VERSION}.apk"
 
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
           files: SakuriKey-*.apk
           generate_release_notes: true

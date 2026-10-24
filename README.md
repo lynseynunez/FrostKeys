@@ -80,10 +80,18 @@ Updating works the same way: install the newer APK over the old one. Your settin
 and clipboard history are kept. Every build is signed with the same debug key (`app/debug.keystore`),
 so updates install in place.
 
-## Making a signed release (optional)
+## Releases and updates
 
-Debug builds from every push are signed with a shared debug key. For a proper release that you can
-update from the app's "Check for updates" button, set up a private signing key once:
+The **Release** workflow publishes an APK as a GitHub Release, which the app's **Check for updates** button
+looks at. Start it from the **Actions** tab (Release > Run workflow, then type a version such as `1.0.0`),
+or push a tag: `git tag v1.0.0 && git push origin v1.0.0`.
+
+Out of the box the release APK is signed with the same debug key as the CI builds, so it installs over them and
+keeps your settings. That is fine for personal use.
+
+### Using your own private signing key (optional)
+
+For a release signed with a key only you hold:
 
 1. Create a key on your computer (keep the file and passwords safe, and never commit them):
    `keytool -genkeypair -v -keystore sakurikey-release.jks -alias sakurikey -keyalg RSA -keysize 2048 -validity 10000`
@@ -91,12 +99,11 @@ update from the app's "Check for updates" button, set up a private signing key o
 3. In the GitHub repository open **Settings → Secrets and variables → Actions** and add four secrets:
    `RELEASE_KEYSTORE_BASE64` (the text from step 2), `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`
    (`sakurikey` above) and `RELEASE_KEY_PASSWORD`.
-4. Publish: `git tag v1.0.0 && git push origin v1.0.0`. The **Release** workflow builds the signed APK and
-   attaches it to a GitHub Release.
+4. Publish a release as above. The workflow now signs with your key.
 
-Heads up: a release is signed with a different key from the debug builds, so Android will not install it over
-a debug build. Export a backup first (Settings → Backup & sharing), uninstall the debug build, install the
-release, then import the backup. After that, every later release updates in place.
+Heads up: a release signed with your own key differs from the debug builds, so Android will not install it over
+one. Export a backup first (Settings → Backup & sharing), uninstall the debug build, install the release, then
+import the backup. After that, every later release updates in place.
 
 ## Set it up
 

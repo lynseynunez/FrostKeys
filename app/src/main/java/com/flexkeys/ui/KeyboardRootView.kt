@@ -149,7 +149,10 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
     private val shimmerPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val shimmerOn get() = shimmerPrefs.shimmer
+    /** True when animations should rest to save battery. */
+    private val saving get() = shimmerPrefs.batterySaver && PowerState.isLow(context)
+
+    private val shimmerOn get() = shimmerPrefs.shimmer && !saving
     private val shimmerAmount get() = shimmerPrefs.shimmerStrength.coerceIn(0, 100) / 100f
 
     override val shimmerX: Float get() = if (shimmerOn) tilt.x * shimmerAmount else 0f
@@ -157,7 +160,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     /** The sensor only runs while the keyboard is on screen and the setting is on. */
     private fun syncShimmer() {
-        val animationFollowsTilt = shimmerPrefs.glassAnimation != GlassAnimation.OFF && shimmerPrefs.animationTilt
+        val animationFollowsTilt = shimmerPrefs.glassAnimation != GlassAnimation.OFF && shimmerPrefs.animationTilt && !saving
         if ((shimmerOn || animationFollowsTilt) && isShown) tilt.start() else tilt.stop()
     }
 
@@ -491,7 +494,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             sheetPaint.shader = null
         }
         val animStyle = shimmerPrefs.glassAnimation
-        if (animStyle != GlassAnimation.OFF && isShown) {
+        if (animStyle != GlassAnimation.OFF && isShown && !saving) {
             glassAnimation.tick(android.os.SystemClock.uptimeMillis(), shimmerPrefs.animationSpeed.coerceIn(0, 100) / 100f)
             glassAnimation.draw(canvas, animStyle, width.toFloat(), height.toFloat(),
                 shimmerPrefs.animationIntensity.coerceIn(0, 100) / 100f, theme,
