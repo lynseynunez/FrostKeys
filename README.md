@@ -84,7 +84,7 @@ so updates install in place.
 
 The **Release** workflow publishes an APK as a GitHub Release, which the app's **Check for updates** button
 looks at. Start it from the **Actions** tab (Release > Run workflow, then type a version such as `1.0.0`),
-or push a tag: `git tag v1.0.0 && git push origin v1.0.0`.
+or push a tag: `git tag v1.0.0 && git push origin v1.0.0`, or change the version in `release-version.txt` and push.
 
 Out of the box the release APK is signed with the same debug key as the CI builds, so it installs over them and
 keeps your settings. That is fine for personal use.

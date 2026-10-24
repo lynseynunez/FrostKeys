@@ -1,6 +1,7 @@
 name: Release
 
-# Publishes an APK as a GitHub Release. Start it either way:
+# Publishes an APK as a GitHub Release. Start it any of these ways:
+#   - change the version in release-version.txt and push (works from any branch)
 #   - in the Actions tab: Release > Run workflow, and type a version such as 1.0.0
 #   - or push a version tag: git tag v1.0.0 && git push origin v1.0.0
 # With these repository secrets the APK is signed with your own key (see README, "Making a signed release"):
@@ -11,6 +12,11 @@ on:
   push:
     tags:
       - 'v*'
+    # Changing release-version.txt on any branch also publishes a release of that version.
+    branches:
+      - '**'
+    paths:
+      - 'release-version.txt'
   workflow_dispatch:
     inputs:
       version:
@@ -39,7 +45,9 @@ jobs:
 
       - name: Work out the version
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then V="${{ github.event.inputs.version }}"; else V="${GITHUB_REF_NAME#v}"; fi
+          if [ -n "${{ github.event.inputs.version }}" ]; then V="${{ github.event.inputs.version }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then V="${GITHUB_REF_NAME#v}"
+          else V="$(tr -d ' \n\r' < release-version.txt)"; fi
           V="${V#v}"
           echo "VERSION=$V" >> "$GITHUB_ENV"
 
