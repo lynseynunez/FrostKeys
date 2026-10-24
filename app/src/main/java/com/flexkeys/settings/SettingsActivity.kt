@@ -209,10 +209,32 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 setStroke(dp(1f), palette.cardBorder)
             }
         }
-        dock.addView(output, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            .apply { setMargins(dp(16f), dp(6f), dp(16f), dp(8f)) })
+        // The keyboard preview takes a lot of room, so a slim handle folds it away.
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = if (prefs.previewOpen) View.VISIBLE else View.GONE
+        }
+        val handle = TextView(this).apply {
+            setTextColor(palette.secondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(6f), 0, dp(6f))
+            fun refreshLabel() {
+                text = if (prefs.previewOpen) "Keyboard preview   ⌄  tap to hide" else "Keyboard preview   ⌃  tap to show"
+            }
+            refreshLabel()
+            setOnClickListener {
+                prefs.previewOpen = !prefs.previewOpen
+                body.visibility = if (prefs.previewOpen) View.VISIBLE else View.GONE
+                refreshLabel()
+            }
+        }
+        dock.addView(handle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        dock.addView(body, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        body.addView(output, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { setMargins(dp(16f), dp(2f), dp(16f), dp(8f)) })
         preview = KeyboardRootView(this, GlassTheme.from(this, prefs))
-        dock.addView(preview, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        body.addView(preview, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         previewController = PreviewController(preview, output, prefs, Feedback(this, prefs))
         preview.reloadPhoto()
         previewDock = dock

@@ -120,6 +120,8 @@ class Prefs private constructor(context: Context) {
     var shimmer by bool(KEY_SHIMMER, false)
     /** How strong the tilt shimmer is, 0..100. */
     var shimmerStrength by int(KEY_SHIMMER_STRENGTH, 50)
+    /** The live keyboard preview docked at the bottom of settings is expanded. */
+    var previewOpen by bool(KEY_PREVIEW_OPEN, true)
     /** Color a pressed key lights up in: 0 white, 1 accent, 2 gradient, 3 photo color. */
     var pressStyle by int(KEY_PRESS_STYLE, 0)
     /** The last fancy text style picked (index into FancyText.Style). */
@@ -197,6 +199,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_PRESS_STYLE = "press_style"
+        const val KEY_PREVIEW_OPEN = "settings_preview_open"
         const val KEY_BATTERY_SAVER = "battery_saver"
         const val KEY_GLASS_ANIMATION = "glass_animation"
         const val KEY_ANIMATION_SPEED = "animation_speed"
