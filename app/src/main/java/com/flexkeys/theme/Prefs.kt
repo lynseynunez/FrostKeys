@@ -108,6 +108,10 @@ class Prefs private constructor(context: Context) {
     var keyMotion by int(KEY_KEY_MOTION, 0)
     /** How strong the typing animation is, 0..100. */
     var effectStrength by int(KEY_EFFECT_STRENGTH, 40)
+    /** Highlights on the glass shift slightly as the phone is tilted. */
+    var shimmer by bool(KEY_SHIMMER, false)
+    /** How strong the tilt shimmer is, 0..100. */
+    var shimmerStrength by int(KEY_SHIMMER_STRENGTH, 50)
     /** Color a pressed key lights up in: 0 white, 1 accent, 2 gradient, 3 photo color. */
     var pressStyle by int(KEY_PRESS_STYLE, 0)
     /** The last fancy text style picked (index into FancyText.Style). */
@@ -185,6 +189,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_PRESS_STYLE = "press_style"
+        const val KEY_SHIMMER = "shimmer"
+        const val KEY_SHIMMER_STRENGTH = "shimmer_strength"
         const val KEY_EFFECT_STRENGTH = "effect_strength"
         const val KEY_KEY_MOTION = "key_motion"
         const val KEY_TYPING_EFFECT = "typing_effect"

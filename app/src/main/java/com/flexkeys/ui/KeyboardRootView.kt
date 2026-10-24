@@ -136,6 +136,38 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     override fun glassGradient(): Shader? = gradient
 
+    // ---- tilt shimmer: a soft highlight that slides across the glass as the phone moves ----
+    private val shimmerPrefs = Prefs.get(context)
+    private val tilt = TiltSensor(context) {
+        invalidate()
+        keyboardView.invalidate()
+    }
+    private val shimmerMatrix = android.graphics.Matrix()
+    private val shimmerShader = LinearGradient(-0.5f, 0f, 0.5f, 0f,
+        intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+    private val shimmerPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    private val shimmerOn get() = shimmerPrefs.shimmer
+    private val shimmerAmount get() = shimmerPrefs.shimmerStrength.coerceIn(0, 100) / 100f
+
+    override val shimmerX: Float get() = if (shimmerOn) tilt.x * shimmerAmount else 0f
+    override val shimmerY: Float get() = if (shimmerOn) tilt.y * shimmerAmount else 0f
+
+    /** The sensor only runs while the keyboard is on screen and the setting is on. */
+    private fun syncShimmer() {
+        if (shimmerOn && isShown) tilt.start() else tilt.stop()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        syncShimmer()
+    }
+
+    override fun onDetachedFromWindow() {
+        tilt.stop()
+        super.onDetachedFromWindow()
+    }
+
     private val sheetPath = Path()
     private val sheetRect = RectF()
     private val sheetPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -454,6 +486,19 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             sheetPaint.alpha = (theme.sheetGradientAlpha * 255f).toInt().coerceIn(0, 255)
             canvas.drawRect(sheetRect, sheetPaint)
             sheetPaint.shader = null
+        }
+        syncShimmer()
+        if (shimmerOn && tilt.running) {
+            // A wide, soft band of light whose position follows the tilt.
+            val bandWidth = width * 0.8f
+            val centerX = width * (0.5f + 0.6f * tilt.x * shimmerAmount.coerceAtLeast(0.2f)) - tilt.y * width * 0.1f
+            shimmerMatrix.setScale(bandWidth, bandWidth)
+            shimmerMatrix.postRotate(24f)
+            shimmerMatrix.postTranslate(centerX, height * 0.4f)
+            shimmerShader.setLocalMatrix(shimmerMatrix)
+            shimmerPaint.shader = shimmerShader
+            shimmerPaint.alpha = (255f * (if (theme.dark) 0.16f else 0.30f) * shimmerAmount).toInt().coerceIn(0, 255)
+            canvas.drawRect(sheetRect, shimmerPaint)
         }
         canvas.restore()
     }

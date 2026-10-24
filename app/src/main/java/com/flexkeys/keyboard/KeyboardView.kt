@@ -237,6 +237,8 @@ class KeyboardView(context: Context) : View(context) {
             }
             canvas.save()
             if (KeyMotion.apply(canvas, prefs.keyMotion, key.visual, key.pressed, key.pressedAt, key.releasedAt, p, now, width)) animating = true
+            // With the tilt shimmer on, lettering drifts a hair against the glass for a sense of depth.
+            if (h.shimmerX != 0f || h.shimmerY != 0f) canvas.translate(h.shimmerX * t.dp(1.8f), h.shimmerY * t.dp(1.4f))
             drawKeyContent(canvas, key, t)
             canvas.restore()
         }

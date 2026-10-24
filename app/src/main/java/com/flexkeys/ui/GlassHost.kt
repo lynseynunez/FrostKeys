@@ -22,6 +22,10 @@ interface GlassHost {
     /** The blue/purple/pink gradient across the whole keyboard, in backdrop coordinates, or null. */
     fun glassGradient(): Shader?
 
+    /** How far the glass shimmer has shifted with the phone's tilt, -1..1 (0 when the shimmer is off). */
+    val shimmerX: Float get() = 0f
+    val shimmerY: Float get() = 0f
+
     /** Requests a redraw of the overlay layer (popups and key previews). */
     fun invalidateOverlay()
 }

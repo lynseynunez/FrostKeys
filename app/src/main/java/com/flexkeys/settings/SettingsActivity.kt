@@ -516,6 +516,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Glass opacity", 0, 100, prefs::glassOpacity) { "$it%" }
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
+        toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
+        slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }
         picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter"), prefs.typingEffect) { prefs.typingEffect = it }

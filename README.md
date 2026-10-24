@@ -55,6 +55,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Appearance tool: drag sliders for glass, photo, blur and glow right above the keys and watch the keyboard change live
 - Key press color: pressed keys glow white, in your accent, along the blue-purple-pink gradient, or in your photo's color
 - Hold the clipboard button to paste your latest copy without opening the panel
+- Optional tilt shimmer: a soft highlight slides across the glass and the lettering drifts a hair as you tilt your phone (off by default, uses the motion sensor only while the keyboard is showing)
 - Optional typing animations (off by default, with a strength slider): sparkles, ripple, warp-speed streaks when you type fast, glow bloom, ink splash, firecracker and paint splatter
 - Key motion: sink, pop, bounce, tilt or float up when a key is pressed
 - One-tap theme presets (Frost, Midnight, Aurora, Sunset, Clear, Graphite)
