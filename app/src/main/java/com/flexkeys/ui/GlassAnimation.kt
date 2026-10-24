@@ -59,16 +59,17 @@ class GlassAnimation {
         last = 0L
     }
 
-    fun draw(canvas: Canvas, style: Int, w: Float, h: Float, intensity: Float, theme: GlassTheme) {
+    /** [tiltX] and [tiltY] (-1..1) shift the animation with the phone's movement; 0 leaves it alone. */
+    fun draw(canvas: Canvas, style: Int, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float = 0f, tiltY: Float = 0f) {
         if (w <= 0f || h <= 0f) return
         when (style) {
-            AURORA -> aurora(canvas, w, h, intensity, theme)
-            LIGHT_FLOW -> lightFlow(canvas, w, h, intensity, theme)
-            BUBBLES -> bubbles(canvas, w, h, intensity, theme)
+            AURORA -> aurora(canvas, w, h, intensity, theme, tiltX, tiltY)
+            LIGHT_FLOW -> lightFlow(canvas, w, h, intensity, theme, tiltX, tiltY)
+            BUBBLES -> bubbles(canvas, w, h, intensity, theme, tiltX, tiltY)
         }
     }
 
-    private fun aurora(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme) {
+    private fun aurora(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
         val key = theme.gradientColors.contentHashCode() xor theme.accent
         if (blobShaders.isEmpty() || key != shaderKey) {
             shaderKey = key
@@ -83,8 +84,10 @@ class GlassAnimation {
         val radius = maxOf(w * 0.42f, h * 0.9f)
         for (i in 0 until BLOBS) {
             val a = clock * (0.35f + 0.12f * i) + i * 1.9f
-            val cx = w * (0.5f + 0.42f * sin(a))
-            val cy = h * (0.5f + 0.38f * cos(a * 0.8f + i))
+            // Each blob sits at its own depth, so tilting slides them by different amounts.
+            val depth = 0.5f + 0.35f * i
+            val cx = w * (0.5f + 0.42f * sin(a) + 0.30f * tiltX * depth)
+            val cy = h * (0.5f + 0.38f * cos(a * 0.8f + i) + 0.35f * tiltY * depth)
             canvas.save()
             canvas.translate(cx, cy)
             canvas.scale(radius, radius)
@@ -97,13 +100,13 @@ class GlassAnimation {
         paint.xfermode = null
     }
 
-    private fun lightFlow(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme) {
+    private fun lightFlow(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
         paint.shader = band
         for (i in 0 until 3) {
-            val travel = (sin(clock * (0.30f + 0.11f * i) + i * 2.1f) * 0.5f + 0.5f)
+            val travel = (sin(clock * (0.30f + 0.11f * i) + i * 2.1f) * 0.5f + 0.5f + 0.4f * tiltX * (0.6f + 0.3f * i)).coerceIn(-0.2f, 1.2f)
             val width = w * (0.55f + 0.25f * i)
             matrix.setScale(width, width)
-            matrix.postRotate(if (i % 2 == 0) 22f else -28f)
+            matrix.postRotate((if (i % 2 == 0) 22f else -28f) + tiltY * 14f)
             matrix.postTranslate(-width * 0.3f + travel * (w + width * 0.6f), h * 0.5f)
             band.setLocalMatrix(matrix)
             paint.alpha = (255f * (if (theme.dark) 0.14f else 0.26f) * intensity).toInt().coerceIn(0, 255)
@@ -112,14 +115,14 @@ class GlassAnimation {
         paint.shader = null
     }
 
-    private fun bubbles(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme) {
+    private fun bubbles(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
         paint.style = Paint.Style.STROKE
         val unit = minOf(w, h * 3f)
         for (b in bubbles) {
             // Rise at the bubble's own speed and wrap around at the top.
             val rise = (b.y - clock * b.speed).mod(1.15f)
-            val y = h * (1.05f - rise)
-            val x = w * (b.x + sin(clock * 0.6f + b.phase) * b.wobble)
+            val y = h * (1.05f - rise) - tiltY * h * 0.12f * b.size
+            val x = w * (b.x + sin(clock * 0.6f + b.phase) * b.wobble + tiltX * 0.18f * b.size)
             val r = unit * 0.035f * b.size
             val fade = (1f - kotlin.math.abs(rise - 0.575f) / 0.575f).coerceIn(0f, 1f)
             val a = 255f * fade * intensity

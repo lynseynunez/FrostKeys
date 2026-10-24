@@ -157,7 +157,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     /** The sensor only runs while the keyboard is on screen and the setting is on. */
     private fun syncShimmer() {
-        if (shimmerOn && isShown) tilt.start() else tilt.stop()
+        val animationFollowsTilt = shimmerPrefs.glassAnimation != GlassAnimation.OFF && shimmerPrefs.animationTilt
+        if ((shimmerOn || animationFollowsTilt) && isShown) tilt.start() else tilt.stop()
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
@@ -493,7 +494,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         if (animStyle != GlassAnimation.OFF && isShown) {
             glassAnimation.tick(android.os.SystemClock.uptimeMillis(), shimmerPrefs.animationSpeed.coerceIn(0, 100) / 100f)
             glassAnimation.draw(canvas, animStyle, width.toFloat(), height.toFloat(),
-                shimmerPrefs.animationIntensity.coerceIn(0, 100) / 100f, theme)
+                shimmerPrefs.animationIntensity.coerceIn(0, 100) / 100f, theme,
+                if (shimmerPrefs.animationTilt) tilt.x else 0f, if (shimmerPrefs.animationTilt) tilt.y else 0f)
             // About 30 frames a second is smooth enough for slow motion and easy on the battery.
             postInvalidateDelayed(33L)
         } else {

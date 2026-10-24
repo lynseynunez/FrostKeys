@@ -111,6 +111,8 @@ class Prefs private constructor(context: Context) {
     /** Animation living in the glass: 0 off, 1 aurora, 2 light flow, 3 bubbles (see GlassAnimation). */
     var glassAnimation by int(KEY_GLASS_ANIMATION, 0)
     var animationSpeed by int(KEY_ANIMATION_SPEED, 40)
+    /** The glass animation follows the phone's tilt. */
+    var animationTilt by bool(KEY_ANIMATION_TILT, true)
     var animationIntensity by int(KEY_ANIMATION_INTENSITY, 50)
     /** Highlights on the glass shift slightly as the phone is tilted. */
     var shimmer by bool(KEY_SHIMMER, false)
@@ -195,6 +197,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_PRESS_STYLE = "press_style"
         const val KEY_GLASS_ANIMATION = "glass_animation"
         const val KEY_ANIMATION_SPEED = "animation_speed"
+        const val KEY_ANIMATION_TILT = "animation_tilt"
         const val KEY_ANIMATION_INTENSITY = "animation_intensity"
         const val KEY_SHIMMER = "shimmer"
         const val KEY_SHIMMER_STRENGTH = "shimmer_strength"

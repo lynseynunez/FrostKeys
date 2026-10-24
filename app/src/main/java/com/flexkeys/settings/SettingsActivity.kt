@@ -519,6 +519,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         picker("Glass animation", listOf("Off", "Aurora", "Light flow", "Bubbles"), prefs.glassAnimation) { prefs.glassAnimation = it }
         slider("Animation speed", 0, 100, prefs::animationSpeed) { "$it%" }
         slider("Animation intensity", 0, 100, prefs::animationIntensity) { "$it%" }
+        toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
         toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
         slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
