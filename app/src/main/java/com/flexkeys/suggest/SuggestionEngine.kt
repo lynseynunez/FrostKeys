@@ -204,12 +204,15 @@ class SuggestionEngine private constructor(context: Context) {
 
         var correction: String? = null
         // A known misspelling ("teh", "definately") is fixed straight away, unless the user taught us the word.
-        val typoFix = if (correctable && user.count(lower) < learnedThreshold(lower)) typos[lower] else null
+        val typoFix = if (correctable && user.count(lower) < learnedThreshold(lower)) PHRASE_FIXES[lower] ?: typos[lower] else null
         if (typoFix != null) {
             correction = applyCase(typoFix, typed)
         } else if (correctable) {
             // Capitalized words are often names, so they need a clearer win to be changed.
-            val threshold = if (capitalized) CORRECTION_THRESHOLD + 2.0 else CORRECTION_THRESHOLD
+            var threshold = if (capitalized) CORRECTION_THRESHOLD + 2.0 else CORRECTION_THRESHOLD
+            // A long misspelled word with one clearly best match can be fixed on a lower score.
+            val lead = if (ranked.size > 1) ranked[0].score - ranked[1].score else Double.MAX_VALUE
+            if (lower.length >= LONG_WORD_LENGTH && lead >= LONG_WORD_LEAD) threshold -= LONG_WORD_THRESHOLD_DISCOUNT
             val best = if (isKnown(lower)) {
                 // A valid but rare word is only corrected through the most typo-like edits
                 // (missing apostrophe or doubled letter) to a far more likely word: "helo" -> "hello".
@@ -281,7 +284,7 @@ class SuggestionEngine private constructor(context: Context) {
                 }
             }
             if (i < n - 1 && w[i] != w[i + 1]) {
-                block(w.substring(0, i) + w[i + 1] + w[i] + w.substring(i + 2), 0.7)
+                block(w.substring(0, i) + w[i + 1] + w[i] + w.substring(i + 2), SWAP_COST)
             }
             for (c in ALPHABET) {
                 // A missed apostrophe or a missed double letter are the most common slips.
@@ -301,7 +304,7 @@ class SuggestionEngine private constructor(context: Context) {
         val n = w.length
         for (i in 0 until n) {
             NEIGHBORS[w[i]]?.forEach { c -> block(w.substring(0, i) + c + w.substring(i + 1), 0.6) }
-            if (i < n - 1 && w[i] != w[i + 1]) block(w.substring(0, i) + w[i + 1] + w[i] + w.substring(i + 2), 0.7)
+            if (i < n - 1 && w[i] != w[i + 1]) block(w.substring(0, i) + w[i + 1] + w[i] + w.substring(i + 2), SWAP_COST)
             if (i > 0 && w[i] == w[i - 1]) block(w.removeRange(i, i + 1), 0.5)
         }
     }
@@ -315,6 +318,19 @@ class SuggestionEngine private constructor(context: Context) {
         private const val CORRECTION_THRESHOLD = 5.0
         private const val KNOWN_WORD_MAX_COST = 0.5
         private const val KNOWN_WORD_LIKELY_SLIP_COST = 0.7
+        /** Swapped neighboring letters are the most common phone typo. */
+        private const val SWAP_COST = 0.6
+        /** Long words have few look-alikes, so a clear single best match can be accepted on a lower score. */
+        private const val LONG_WORD_LENGTH = 7
+        private const val LONG_WORD_THRESHOLD_DISCOUNT = 1.8
+        private const val LONG_WORD_LEAD = 2.0
+
+        /** Words run together by mistake, fixed into two words. */
+        private val PHRASE_FIXES = mapOf(
+            "alot" to "a lot", "atleast" to "at least", "incase" to "in case", "infact" to "in fact",
+            "aswell" to "as well", "eachother" to "each other", "alittle" to "a little", "alright" to "all right",
+            "inbetween" to "in between", "noone" to "no one", "everytime" to "every time", "ofcourse" to "of course",
+        )
         /** A word typed this many times that looks like a typo is finally accepted as learned. */
         private const val TYPO_LEARNED_THRESHOLD = 5
         /** How common a dictionary word must be for a near miss to make a typed word look like a typo. */

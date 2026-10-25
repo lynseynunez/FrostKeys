@@ -61,22 +61,23 @@ class WordDictionary private constructor(
         val EMPTY = WordDictionary(emptyArray(), emptyArray(), IntArray(0), HashMap())
 
         /** Reads the bundled word list. Blocking; call from a background thread. */
-        fun load(context: Context): WordDictionary {
+        fun load(context: Context): WordDictionary = try {
+            context.assets.open(ASSET).bufferedReader().useLines { parse(it) }
+        } catch (e: IOException) {
+            Log.w(TAG, "Word list missing", e)
+            EMPTY
+        }
+
+        /** Builds a dictionary from "word<TAB>frequency" lines. */
+        fun parse(lines: Sequence<String>): WordDictionary {
             val entries = ArrayList<Triple<String, String, Int>>(40_000)
-            try {
-                context.assets.open(ASSET).bufferedReader().useLines { lines ->
-                    for (line in lines) {
-                        if (line.isEmpty() || line[0] == '#') continue
-                        val tab = line.indexOf('\t')
-                        if (tab <= 0) continue
-                        val word = line.substring(0, tab)
-                        val freq = line.substring(tab + 1).trim().toIntOrNull() ?: continue
-                        entries.add(Triple(word.lowercase(Locale.ROOT), word, freq))
-                    }
-                }
-            } catch (e: IOException) {
-                Log.w(TAG, "Word list missing", e)
-                return EMPTY
+            for (line in lines) {
+                if (line.isEmpty() || line[0] == '#') continue
+                val tab = line.indexOf('\t')
+                if (tab <= 0) continue
+                val word = line.substring(0, tab)
+                val freq = line.substring(tab + 1).trim().toIntOrNull() ?: continue
+                entries.add(Triple(word.lowercase(Locale.ROOT), word, freq))
             }
             entries.sortBy { it.first }
             val keys = Array(entries.size) { entries[it].first }
