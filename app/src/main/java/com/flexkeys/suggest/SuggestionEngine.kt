@@ -68,6 +68,7 @@ class SuggestionEngine private constructor(context: Context) {
                 dictionary = dict
                 typos = typoMap
                 user.install(learned)
+                cleanLearned()
             }
         }
     }
@@ -90,7 +91,41 @@ class SuggestionEngine private constructor(context: Context) {
 
     private class Candidate(val display: String, val score: Double, val cost: Double)
 
-    fun isKnown(word: String): Boolean = dictionary.contains(word) || user.count(word) >= LEARNED_THRESHOLD
+    fun isKnown(word: String): Boolean = dictionary.contains(word) || user.count(word) >= learnedThreshold(word)
+
+    /**
+     * A word that isn't in the dictionary but is one slip away from a common word is probably a typo
+     * rather than a real new word ("thsi", "recieve"), so it must be typed many more times before it
+     * counts as learned.
+     */
+    private val typoLikeCache = HashMap<String, Boolean>()
+
+    private fun looksLikeTypo(word: String): Boolean {
+        val w = word.lowercase(Locale.ROOT)
+        if (dictionary.contains(w) || w.length < 3) return false
+        return typoLikeCache.getOrPut(w) {
+            var found = false
+            forEachEdit(w) { edit, _ ->
+                if (!found && dictionary.frequency(edit) >= TYPO_NEIGHBOR_FREQ) found = true
+            }
+            found
+        }
+    }
+
+    private fun learnedThreshold(word: String): Int = if (looksLikeTypo(word)) TYPO_LEARNED_THRESHOLD else LEARNED_THRESHOLD
+
+    /**
+     * Forgets learned words that look like typos and were typed only a few times. Returns how many
+     * were removed. Runs by itself after the dictionary loads, and from settings.
+     */
+    fun cleanLearned(): Int {
+        if (dictionary === WordDictionary.EMPTY) return 0
+        val doomed = user.allWords().filter { (word, count) ->
+            count < TYPO_LEARNED_THRESHOLD && !dictionary.contains(word) && looksLikeTypo(word)
+        }.map { it.first }
+        user.forgetMany(doomed)
+        return doomed.size
+    }
 
     /** Proper display form of a known word typed in lowercase ("i" -> "I", "im" stays "im"). */
     fun displayForm(word: String): String {
@@ -127,7 +162,7 @@ class SuggestionEngine private constructor(context: Context) {
             add(word, score(word, freq, prev) - if (extra > 0) COMPLETION_PENALTY + 0.12 * extra else 0.0, COMPLETION_COST)
         }
         for ((word, _) in user.withPrefix(lower)) {
-            if (user.count(word) < LEARNED_THRESHOLD && word != lower) continue
+            if (user.count(word) < learnedThreshold(word) && word != lower) continue
             val extra = word.length - lower.length
             add(word, score(word, dictionary.frequency(word), prev) - if (extra > 0) COMPLETION_PENALTY + 0.12 * extra else 0.0, COMPLETION_COST)
         }
@@ -139,7 +174,7 @@ class SuggestionEngine private constructor(context: Context) {
             var bestEdit = Double.NEGATIVE_INFINITY
             forEachEdit(lower) { edit, cost ->
                 val freq = dictionary.frequency(edit)
-                if (freq > 0 || user.count(edit) >= LEARNED_THRESHOLD) {
+                if (freq > 0 || user.count(edit) >= learnedThreshold(edit)) {
                     val s = score(edit, freq, prev) - EDIT_WEIGHT * cost
                     if (s > bestEdit) bestEdit = s
                     add(dictionary.displayForm(edit) ?: edit, s, cost)
@@ -169,7 +204,7 @@ class SuggestionEngine private constructor(context: Context) {
 
         var correction: String? = null
         // A known misspelling ("teh", "definately") is fixed straight away, unless the user taught us the word.
-        val typoFix = if (correctable && user.count(lower) < LEARNED_THRESHOLD) typos[lower] else null
+        val typoFix = if (correctable && user.count(lower) < learnedThreshold(lower)) typos[lower] else null
         if (typoFix != null) {
             correction = applyCase(typoFix, typed)
         } else if (correctable) {
@@ -179,7 +214,10 @@ class SuggestionEngine private constructor(context: Context) {
                 // A valid but rare word is only corrected through the most typo-like edits
                 // (missing apostrophe or doubled letter) to a far more likely word: "helo" -> "hello".
                 val typedScore = score(lower, dictionary.frequency(lower), prev)
+                // Swapped letters and a neighboring key (cost up to 0.7) count too, but need a bigger win.
                 ranked.firstOrNull { it.cost <= KNOWN_WORD_MAX_COST }?.takeIf { it.score >= typedScore + KNOWN_WORD_MARGIN }
+                    ?: ranked.firstOrNull { it.cost <= KNOWN_WORD_LIKELY_SLIP_COST }
+                        ?.takeIf { it.score >= typedScore + KNOWN_WORD_MARGIN + 2.0 }
             } else {
                 ranked.firstOrNull()?.takeIf { it.score >= threshold }
             }
@@ -276,6 +314,11 @@ class SuggestionEngine private constructor(context: Context) {
         private const val EDIT_WEIGHT = 3.0
         private const val CORRECTION_THRESHOLD = 5.0
         private const val KNOWN_WORD_MAX_COST = 0.5
+        private const val KNOWN_WORD_LIKELY_SLIP_COST = 0.7
+        /** A word typed this many times that looks like a typo is finally accepted as learned. */
+        private const val TYPO_LEARNED_THRESHOLD = 5
+        /** How common a dictionary word must be for a near miss to make a typed word look like a typo. */
+        private const val TYPO_NEIGHBOR_FREQ = 20_000
         private const val KNOWN_WORD_MARGIN = 4.0
         private const val COMPLETION_COST = 10.0
         private const val ALPHABET = "abcdefghijklmnopqrstuvwxyz'"

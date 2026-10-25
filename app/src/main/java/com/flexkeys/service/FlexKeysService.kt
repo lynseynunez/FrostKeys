@@ -333,7 +333,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         if (learningOn) {
             // Choosing the literal typed word over a correction marks it as a real word.
             val chosenTyped = index == suggestions.typedIndex && suggestions.correction != null
-            if (chosenTyped) engine.user.learn(text, previous, weight = 2) else engine.learn(text, previous)
+            if (chosenTyped) engine.user.learn(text, previous, weight = 3) else engine.learn(text, previous)
         }
         composing.clear()
         lastCorrection = null
@@ -832,7 +832,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 ic.deleteSurroundingText(committed.length, 0)
                 ic.commitText(correction.original + correction.separator, 1)
                 ic.endBatchEdit()
-                if (learningOn) engine.user.learn(correction.original, null, weight = 2)
+                if (learningOn) engine.user.learn(correction.original, null, weight = 3)
                 updateShiftState()
                 updateSuggestions()
                 return

@@ -619,6 +619,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         buttons(Triple("Stickers", false) {
             startActivity(Intent(this@SettingsActivity, StickersActivity::class.java))
         })
+        buttons(Triple("Clean up typos in learned words", false) {
+            val removed = SuggestionEngine.get(this@SettingsActivity).cleanLearned()
+            toast(if (removed == 0) "No typos found in your learned words" else "Removed $removed learned typo${if (removed == 1) "" else "s"}")
+        })
         buttons(Triple("Clear learned words", false) {
             confirm("Forget every word SakuriKey has learned from your typing?") {
                 SuggestionEngine.get(this@SettingsActivity).user.clear()

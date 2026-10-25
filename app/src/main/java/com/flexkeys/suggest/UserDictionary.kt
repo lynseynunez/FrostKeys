@@ -103,6 +103,19 @@ class UserDictionary(context: Context) {
         save()
     }
 
+    /** Forgets several words with a single save. */
+    fun forgetMany(list: Collection<String>) {
+        if (list.isEmpty()) return
+        for (word in list) {
+            val k = key(word)
+            words.remove(k)
+            bigrams.remove(k)
+            bigrams.values.forEach { it.remove(k) }
+        }
+        dirty++
+        save()
+    }
+
     fun clear() {
         words.clear()
         bigrams.clear()
