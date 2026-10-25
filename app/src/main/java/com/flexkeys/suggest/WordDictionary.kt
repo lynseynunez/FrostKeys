@@ -58,11 +58,21 @@ class WordDictionary private constructor(
         private const val TAG = "FlexKeysDictionary"
         const val ASSET = "words.txt"
 
+        /** Names, apps and texting words the subtitle-based list lacks, so they aren't treated as mistakes. */
+        val EXTRA_WORDS: List<String> = listOf(
+            "sakurikey", "klipy", "groq", "gboard", "gemini", "samsung", "tiktok", "whatsapp", "instagram", "youtube",
+            "snapchat", "spotify", "netflix", "wifi", "bluetooth", "okies", "hubby", "wifey", "lol", "omg", "yup", "nope",
+            "aww", "haha", "hahaha", "autocorrect", "autocomplete", "spellcheck", "translator", "keyboard", "emoji", "emojis",
+            "settings", "screenshot", "screenshots", "download", "uploads", "app", "apps", "online", "offline", "login", "email",
+            "texting", "unfollow", "podcast", "playlist", "wallpaper", "widget", "widgets", "notification", "notifications",
+            "customizable", "adjustable", "background", "animation", "animations", "tilt", "shimmer", "gradient",
+        ).map { "$it\t3000" }
+
         val EMPTY = WordDictionary(emptyArray(), emptyArray(), IntArray(0), HashMap())
 
         /** Reads the bundled word list. Blocking; call from a background thread. */
         fun load(context: Context): WordDictionary = try {
-            context.assets.open(ASSET).bufferedReader().useLines { parse(it) }
+            context.assets.open(ASSET).bufferedReader().useLines { parse(it + EXTRA_WORDS.asSequence()) }
         } catch (e: IOException) {
             Log.w(TAG, "Word list missing", e)
             EMPTY

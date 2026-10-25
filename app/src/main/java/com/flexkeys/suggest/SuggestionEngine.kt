@@ -66,7 +66,7 @@ class SuggestionEngine private constructor(context: Context) {
             val learned = user.loadBlocking()
             main.post {
                 dictionary = dict
-                typos = typoMap
+                typos = typoMap + PERSONAL_TYPOS
                 user.install(learned)
                 cleanLearned()
             }
@@ -225,6 +225,15 @@ class SuggestionEngine private constructor(context: Context) {
                 ranked.firstOrNull()?.takeIf { it.score >= threshold }
             }
             if (best != null) correction = applyCase(best.display, typed)
+            // Nothing close enough: maybe two words ran together.
+            if (correction == null && !capitalized) {
+                if (!isKnown(lower)) {
+                    correction = splitFix(lower)?.let { applyCase(it, typed) }
+                } else if (user.count(lower) == 0 && dictionary.frequency(lower) < RARE_WORD_FREQ) {
+                    // The subtitle list contains run-together junk like "thankyou"; two common words win over it.
+                    correction = splitFix(lower, STRICT_SPLIT_FREQ)?.let { applyCase(it, typed) }
+                }
+            }
         }
 
         val others = ranked.map { applyCase(it.display, typed) }.filter { it != correction }
@@ -237,6 +246,35 @@ class SuggestionEngine private constructor(context: Context) {
             correction = correction,
             typedIndex = 0,
         )
+    }
+
+    /**
+     * Two words typed with no space ("stillmissing"), or with a stray letter from a key next to the
+     * space bar where the space should be ("testingvit"). Returns the two words, or null.
+     */
+    private fun splitFix(lower: String, minFreq: Int = SPLIT_MIN_FREQ): String? {
+        if (lower.length < 5 || lower.length > 26 || !lower.all { it.isLetter() }) return null
+        var best: String? = null
+        var bestScore = Double.NEGATIVE_INFINITY
+        fun consider(a: String, b: String, penalty: Double) {
+            val okA = a.length >= 2 || a in ONE_LETTER_WORDS
+            if (!okA || b.length < 2) return
+            val fa = dictionary.frequency(a)
+            val fb = dictionary.frequency(b)
+            if (fa < minFreq || fb < minFreq) return
+            // Very short parts only count if they are very common words.
+            if ((a.length <= 2 && fa < 2_000_000) || (b.length <= 2 && fb < 2_000_000)) return
+            val s = ln(fa + 1.0) + ln(fb + 1.0) - penalty
+            if (s > bestScore) {
+                bestScore = s
+                best = "$a $b"
+            }
+        }
+        for (i in 1 until lower.length) {
+            consider(lower.substring(0, i), lower.substring(i), 0.0)
+            if (lower[i] in SPACE_NEIGHBORS && i + 1 < lower.length) consider(lower.substring(0, i), lower.substring(i + 1), 1.0)
+        }
+        return best
     }
 
     /** Next-word predictions after [prev]; [sentenceStart] capitalizes them. */
@@ -325,6 +363,19 @@ class SuggestionEngine private constructor(context: Context) {
         private const val LONG_WORD_THRESHOLD_DISCOUNT = 1.8
         private const val LONG_WORD_LEAD = 2.0
 
+        /** Slips seen in the user's own messages that are too far from the word for the general rules. */
+        private val PERSONAL_TYPOS = mapOf(
+            "inspirtabion" to "inspiration", "boackgrojnd" to "background", "spellchdck" to "spellcheck",
+            "ankmatioh" to "animation", "cinfurmation" to "confirmation", "adjustablw" to "adjustable",
+            "everyrhkng" to "everything", "soacebar" to "spacebar", "translocator" to "translator",
+            "seemlessly" to "seamlessly", "ahha" to "haha", "wamt" to "want", "thos" to "this", "stillcmissing" to "still missing",
+            "testingvit" to "testing it",
+        )
+
+        /** Keys right next to the space bar: a slip there is often a stray letter where the space should be. */
+        private const val SPACE_NEIGHBORS = "xcvbnm"
+        private val ONE_LETTER_WORDS = setOf("i", "a")
+
         /** Words run together by mistake, fixed into two words. */
         private val PHRASE_FIXES = mapOf(
             "alot" to "a lot", "atleast" to "at least", "incase" to "in case", "infact" to "in fact",
@@ -335,6 +386,11 @@ class SuggestionEngine private constructor(context: Context) {
         private const val TYPO_LEARNED_THRESHOLD = 5
         /** How common a dictionary word must be for a near miss to make a typed word look like a typo. */
         private const val TYPO_NEIGHBOR_FREQ = 20_000
+        /** Both halves of a split word must be at least this common. */
+        private const val SPLIT_MIN_FREQ = 20_000
+        /** A dictionary word rarer than this might be two words stuck together. */
+        private const val RARE_WORD_FREQ = 10_000
+        private const val STRICT_SPLIT_FREQ = 200_000
         private const val KNOWN_WORD_MARGIN = 4.0
         private const val COMPLETION_COST = 10.0
         private const val ALPHABET = "abcdefghijklmnopqrstuvwxyz'"
