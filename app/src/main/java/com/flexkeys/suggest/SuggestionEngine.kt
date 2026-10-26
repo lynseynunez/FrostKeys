@@ -100,6 +100,24 @@ class SuggestionEngine private constructor(context: Context) {
      */
     private val typoLikeCache = HashMap<String, Boolean>()
 
+    /** "cant" -> "can't", "im" -> "I'm": every dictionary contraction whose apostrophe-less form isn't a word itself. */
+    private val contractionCache = HashMap<WordDictionary, Map<String, String>>()
+
+    private fun contractionFor(lower: String): String? {
+        val map = contractionCache.getOrPut(dictionary) {
+            val m = HashMap<String, String>()
+            for (i in 0 until dictionary.size) {
+                val key = dictionary.keyAt(i)
+                if (!key.contains('\'') || key.startsWith("'") || key.endsWith("'")) continue
+                val bare = key.replace("'", "")
+                // "its", "lets", "were", "well" are real words; only fix the ones that aren't.
+                if (dictionary.frequency(bare) < REAL_WORD_FREQ) m.putIfAbsent(bare, dictionary.displayAt(i))
+            }
+            m
+        }
+        return map[lower]
+    }
+
     private fun looksLikeTypo(word: String): Boolean {
         val w = word.lowercase(Locale.ROOT)
         if (dictionary.contains(w) || w.length < 3) return false
@@ -204,7 +222,7 @@ class SuggestionEngine private constructor(context: Context) {
 
         var correction: String? = null
         // A known misspelling ("teh", "definately") is fixed straight away, unless the user taught us the word.
-        val typoFix = if (correctable && user.count(lower) < learnedThreshold(lower)) PHRASE_FIXES[lower] ?: typos[lower] else null
+        val typoFix = if (correctable && user.count(lower) < learnedThreshold(lower)) PHRASE_FIXES[lower] ?: contractionFor(lower) ?: typos[lower] else null
         if (typoFix != null) {
             correction = applyCase(typoFix, typed)
         } else if (correctable) {
@@ -387,6 +405,8 @@ class SuggestionEngine private constructor(context: Context) {
         /** How common a dictionary word must be for a near miss to make a typed word look like a typo. */
         private const val TYPO_NEIGHBOR_FREQ = 20_000
         /** Both halves of a split word must be at least this common. */
+        /** An apostrophe-less form this common is treated as a real word, not a missing apostrophe. */
+        private const val REAL_WORD_FREQ = 12_000
         private const val SPLIT_MIN_FREQ = 20_000
         /** A dictionary word rarer than this might be two words stuck together. */
         private const val RARE_WORD_FREQ = 10_000
