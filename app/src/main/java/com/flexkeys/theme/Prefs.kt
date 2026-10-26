@@ -116,6 +116,10 @@ class Prefs private constructor(context: Context) {
     /** The glass animation follows the phone's tilt. */
     var animationTilt by bool(KEY_ANIMATION_TILT, true)
     var animationIntensity by int(KEY_ANIMATION_INTENSITY, 50)
+    /** Words autocorrect must never change, one per line (lowercase). */
+    var protectedWords by string(KEY_PROTECTED_WORDS, "")
+    /** The user's own fixes, one "typed<TAB>replacement" per line: typed text is always changed to the replacement. */
+    var customFixes by string(KEY_CUSTOM_FIXES, "")
     /** Highlights on the glass shift slightly as the phone is tilted. */
     var shimmer by bool(KEY_SHIMMER, false)
     /** How strong the tilt shimmer is, 0..100. */
@@ -200,6 +204,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_PRESS_STYLE = "press_style"
         const val KEY_PREVIEW_OPEN = "settings_preview_open"
+        const val KEY_PROTECTED_WORDS = "protected_words"
+        const val KEY_CUSTOM_FIXES = "custom_fixes"
         const val KEY_BATTERY_SAVER = "battery_saver"
         const val KEY_GLASS_ANIMATION = "glass_animation"
         const val KEY_ANIMATION_SPEED = "animation_speed"

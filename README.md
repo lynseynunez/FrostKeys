@@ -24,6 +24,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 **Suggestions**
 - Word completions and next-word predictions in a glass suggestion strip
 - Simple autocorrect (keyboard-proximity edit distance) applied on space or punctuation. Press backspace right after to undo it.
+- Your own autocorrect list (Settings > Typing): words to leave alone (like gpu) and fixes that always apply (gpu becomes GPU)
 - Learns the words and word pairs you type, stored only on your device. Long-press a suggestion to forget a learned word.
 - No learning in password fields or in apps that ask for incognito input
 

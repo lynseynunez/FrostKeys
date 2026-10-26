@@ -89,7 +89,8 @@ class UserDictionary(context: Context) {
     fun addWord(word: String) {
         val k = key(word.trim())
         if (k.isEmpty() || k.length > MAX_WORD || k.contains(' ')) return
-        words[k] = maxOf(words[k] ?: 0, 2)
+        // A word added by hand always counts as known, even one that looks like a typo of another word.
+        words[k] = maxOf(words[k] ?: 0, 10)
         dirty++
         save()
     }

@@ -3,6 +3,7 @@ package com.flexkeys.suggest
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.flexkeys.theme.Prefs
 import java.util.Locale
 import java.util.concurrent.Executors
 import kotlin.math.ln
@@ -91,7 +92,7 @@ class SuggestionEngine private constructor(context: Context) {
 
     private class Candidate(val display: String, val score: Double, val cost: Double)
 
-    fun isKnown(word: String): Boolean = dictionary.contains(word) || user.count(word) >= learnedThreshold(word)
+    fun isKnown(word: String): Boolean = dictionary.contains(word) || word.lowercase(Locale.ROOT) in protectedWords || user.count(word) >= learnedThreshold(word)
 
     /**
      * A word that isn't in the dictionary but is one slip away from a common word is probably a typo
@@ -99,6 +100,27 @@ class SuggestionEngine private constructor(context: Context) {
      * counts as learned.
      */
     private val typoLikeCache = HashMap<String, Boolean>()
+
+    /** The user's own autocorrect rules (Settings > Typing > Autocorrect list), re-read when they change. */
+    private val rulePrefs: Prefs? = try { Prefs.get(context) } catch (e: RuntimeException) { null }
+    private var rulesRawProtected = ""
+    private var rulesRawFixes = ""
+    private var protectedWords: Set<String> = emptySet()
+    private var customFixes: Map<String, String> = emptyMap()
+
+    private fun refreshRules() {
+        val p = rulePrefs ?: return
+        val rawP = p.protectedWords
+        val rawF = p.customFixes
+        if (rawP == rulesRawProtected && rawF == rulesRawFixes) return
+        rulesRawProtected = rawP
+        rulesRawFixes = rawF
+        protectedWords = rawP.lines().map { it.trim().lowercase(Locale.ROOT) }.filter { it.isNotEmpty() }.toSet()
+        customFixes = rawF.lines().mapNotNull { line ->
+            val tab = line.indexOf('\t')
+            if (tab <= 0) null else line.substring(0, tab).trim().lowercase(Locale.ROOT) to line.substring(tab + 1).trim()
+        }.filter { it.first.isNotEmpty() && it.second.isNotEmpty() }.toMap()
+    }
 
     /** "cant" -> "can't", "im" -> "I'm": every dictionary contraction whose apostrophe-less form isn't a word itself. */
     private val contractionCache = HashMap<WordDictionary, Map<String, String>>()
@@ -164,6 +186,7 @@ class SuggestionEngine private constructor(context: Context) {
      */
     fun suggest(typed: String, prev: String?, allowCorrection: Boolean, sentenceStart: Boolean = true): Suggestions {
         if (typed.isEmpty()) return Suggestions.EMPTY
+        refreshRules()
         val lower = typed.lowercase(Locale.ROOT)
         val candidates = HashMap<String, Candidate>()
         fun add(display: String, s: Double, cost: Double) {
@@ -186,7 +209,7 @@ class SuggestionEngine private constructor(context: Context) {
         }
 
         val capitalized = typed.length > 1 && typed[0].isUpperCase()
-        val correctable = allowCorrection && lower.length >= 2 && lower.all { it.isLetter() || it == '\'' } &&
+        val correctable = allowCorrection && lower !in protectedWords && lower.length >= 2 && lower.all { it.isLetter() || it == '\'' } &&
             !hasInnerCapital(typed) && !(capitalized && !sentenceStart)
         if (correctable) {
             var bestEdit = Double.NEGATIVE_INFINITY
@@ -254,6 +277,8 @@ class SuggestionEngine private constructor(context: Context) {
             }
         }
 
+        // The user's own fixes win over everything else.
+        if (allowCorrection) customFixes[lower]?.let { correction = it }
         val others = ranked.map { applyCase(it.display, typed) }.filter { it != correction }
         val center = correction ?: others.getOrNull(0)
         val right = if (correction != null) others.getOrNull(0) else others.getOrNull(1)

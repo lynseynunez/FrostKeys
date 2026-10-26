@@ -611,6 +611,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Learn my words", "Improve suggestions from what you type, on-device only", prefs::learnWords)
         toggle("Auto-capitalization", null, prefs::autoCapitalize)
         toggle("Double-space period", "Tap space twice for \". \"", prefs::doubleSpacePeriod)
+        buttons(Triple("Autocorrect list (leave alone / always fix)", true) {
+            startActivity(Intent(this@SettingsActivity, CorrectionsActivity::class.java))
+        })
         buttons(Triple("Manage learned words", false) {
             startActivity(Intent(this@SettingsActivity, LearnedWordsActivity::class.java))
         }, Triple("Phrases & extra keys", false) {
