@@ -14,6 +14,7 @@ import android.os.SystemClock
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
@@ -135,7 +136,17 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             w.decorView.systemUiVisibility = w.decorView.systemUiVisibility or
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
         }
+        // If the system leaves a sliver below our view (seen after a restart), let the window's own
+        // background match the glass instead of showing the app underneath.
+        root?.let { w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(it.theme.baseBottom)) }
+        w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         root?.requestApplyInsets()
+    }
+
+    /** The system can change the window setup between showings (for example after a restart), so set it up each time. */
+    override fun onWindowShown() {
+        super.onWindowShown()
+        drawBehindNavigationBar()
     }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
