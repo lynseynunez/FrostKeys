@@ -28,6 +28,12 @@ class TypingEffects(private val density: Float) {
         const val INK = 5
         const val FIRECRACKER = 6
         const val PAINT = 7
+        const val SPOTLIGHT = 8
+        const val TRAIL = 9
+
+        private const val TRAIL_LIFE_MS = 900L
+        private const val TRAIL_GAP_MS = 700L
+        private const val MAX_TRAIL_POINTS = 28
 
         private const val MAX_PARTICLES = 70
         private const val RIPPLE_MS = 480L
@@ -51,6 +57,27 @@ class TypingEffects(private val density: Float) {
     private val blooms = ArrayList<Bloom>()
     private val dots = ArrayList<Dot>()
     private val hsv = FloatArray(3)
+
+    /** The theme's accent color, used by the spotlight and the trail. Set before each press. */
+    var accent: Int = 0xFF5B8CFF.toInt()
+
+    private class TrailPoint(val x: Float, val y: Float, val time: Long, val breakBefore: Boolean)
+    private val trail = ArrayList<TrailPoint>()
+    private val trailPath = Path()
+
+    /** A finger moved while down: extends the typing trail. */
+    fun onMove(style: Int, x: Float, y: Float, now: Long) {
+        if (style == TRAIL) addTrailPoint(x, y, now)
+    }
+
+    private fun addTrailPoint(x: Float, y: Float, now: Long) {
+        val last = trail.lastOrNull()
+        // A pause, or a long jump, starts a new line instead of drawing across it.
+        val breakBefore = last == null || now - last.time > TRAIL_GAP_MS
+        if (last != null && !breakBefore && kotlin.math.hypot(x - last.x, y - last.y) < 3f * density) return
+        if (trail.size >= MAX_TRAIL_POINTS) trail.removeAt(0)
+        trail.add(TrailPoint(x, y, now, breakBefore))
+    }
 
     /** A bright, soft color with a random hue. */
     private fun vivid(hue: Float = Random.nextFloat() * 360f, sat: Float = 0.55f): Int {
@@ -81,7 +108,7 @@ class TypingEffects(private val density: Float) {
     private val fade get() = 0.3f + 0.7f * strength
 
     /** True while something is still animating, so the caller should keep redrawing. */
-    val active: Boolean get() = sparks.isNotEmpty() || rings.isNotEmpty() || blooms.isNotEmpty() || dots.isNotEmpty() || warpLevel > 0.01f
+    val active: Boolean get() = trail.isNotEmpty() || sparks.isNotEmpty() || rings.isNotEmpty() || blooms.isNotEmpty() || dots.isNotEmpty() || warpLevel > 0.01f
 
     fun onPress(style: Int, x: Float, y: Float, reach: Float, now: Long) {
         when (style) {
@@ -98,6 +125,14 @@ class TypingEffects(private val density: Float) {
                 if (rings.size >= 8) rings.removeAt(0)
                 rings.add(Ring(x, y, now, reach))
             }
+            SPOTLIGHT -> {
+                // A wide soft pool of the accent color with a small bright core, fading slowly so it
+                // trails behind the finger from key to key.
+                val soft = (accent and 0x00FFFFFF) or 0xFF000000.toInt()
+                bloom(x, y, reach * 2.6f * (0.6f + 0.4f * strength), 900L, soft, now)
+                bloom(x, y, reach * 0.9f * (0.6f + 0.4f * strength), 500L, 0xFFFFFFFF.toInt(), now)
+            }
+            TRAIL -> addTrailPoint(x, y, now)
             BLOOM -> bloom(x, y, reach * 1.9f * (0.6f + 0.4f * strength), 800L, vivid(), now)
             INK -> {
                 val hue = Random.nextFloat() * 360f
@@ -199,11 +234,38 @@ class TypingEffects(private val density: Float) {
             canvas.drawCircle(r.x, r.y, r.reach * (0.6f + 0.4f * strength) * (0.25f + 0.85f * t), paint)
         }
 
+        trail.removeAll { now - it.time > TRAIL_LIFE_MS }
+        if (trail.size >= 2) drawTrail(canvas, now, accent)
+
         // Typing fast (about 5 presses within the window) fades in streaks flying outward from the middle.
         while (presses.isNotEmpty() && now - presses.first() > SPEED_WINDOW_MS) presses.removeFirst()
         val target = ((presses.size - 3) / 4f).coerceIn(0f, 1f)
         warpLevel = if (target > warpLevel) minOf(target, warpLevel + 5f * dt) else maxOf(target, warpLevel - 1.4f * dt)
         if (warpLevel > 0.01f) drawWarp(canvas, now, w, h)
+    }
+
+    /** The path the finger took, as a ribbon that thins and fades with age, in the accent color. */
+    private fun drawTrail(canvas: Canvas, now: Long, accent: Int) {
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
+        val base = (accent and 0x00FFFFFF)
+        for (i in 1 until trail.size) {
+            val a = trail[i - 1]
+            val b = trail[i]
+            if (b.breakBefore) continue
+            val age = ((now - b.time).toFloat() / TRAIL_LIFE_MS).coerceIn(0f, 1f)
+            val life = 1f - age
+            paint.strokeWidth = (1.2f + 5.5f * life * (0.5f + 0.5f * strength)) * density
+            paint.color = base or (((life * 0.85f * fade) * 255f).toInt().coerceIn(0, 255) shl 24)
+            canvas.drawLine(a.x, a.y, b.x, b.y, paint)
+            // A lighter core down the middle makes the ribbon glow.
+            paint.strokeWidth = paint.strokeWidth * 0.35f
+            paint.color = 0x00FFFFFF or (((life * 0.9f * fade) * 255f).toInt().coerceIn(0, 255) shl 24)
+            canvas.drawLine(a.x, a.y, b.x, b.y, paint)
+        }
+        paint.strokeCap = Paint.Cap.BUTT
+        paint.style = Paint.Style.FILL
     }
 
     private fun drawWarp(canvas: Canvas, now: Long, w: Float, h: Float) {

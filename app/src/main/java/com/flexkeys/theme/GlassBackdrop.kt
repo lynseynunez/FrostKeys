@@ -87,6 +87,44 @@ class GlassBackdrop {
         canvas.drawBitmap(bmp, photoMatrix, subjectPaint)
     }
 
+    // ---- liquid refraction (Android 13+): bends the blurred background around every key ----
+    private var refractionOn = false
+    private var refractionRects = FloatArray(0)
+    private var refractionCount = 0
+    private var refractionRadius = 0f
+    private var refractionBevel = 0f
+    private var refractionStrength = 0f
+    private var refractionBroken = false
+    private var refractionShader: Any? = null // RefractionShader, typed as Any to keep this class loadable on older Android
+
+    /** [rects] holds [count] key rectangles (left, top, right, bottom) in backdrop pixels. Turns the effect off when [enabled] is false. */
+    fun setRefraction(enabled: Boolean, rects: FloatArray, count: Int, radius: Float, bevel: Float, strength: Float) {
+        refractionOn = enabled && count > 0 && Build.VERSION.SDK_INT >= 33 && !refractionBroken
+        refractionRects = rects
+        refractionCount = count
+        refractionRadius = radius
+        refractionBevel = bevel
+        refractionStrength = strength
+        invalidate()
+    }
+
+    /** The effect to put on the backdrop: the blur, with refraction after it when it is on and working. */
+    @TargetApi(Build.VERSION_CODES.TIRAMISU)
+    private fun backdropEffect(blur: RenderEffect?): RenderEffect? {
+        if (!refractionOn) return blur
+        return try {
+            val shader = (refractionShader as? RefractionShader) ?: RefractionShader().also { refractionShader = it }
+            val padded = refractionRects.copyOf(RefractionShader.MAX_RECTS * 4)
+            val fx = shader.effect(padded, minOf(refractionCount, RefractionShader.MAX_RECTS), refractionRadius, refractionBevel, refractionStrength)
+            if (blur != null) RenderEffect.createChainEffect(fx, blur) else fx
+        } catch (e: Throwable) {
+            // If the phone can't compile the shader, carry on with the plain blur and don't try again.
+            refractionBroken = true
+            refractionOn = false
+            blur
+        }
+    }
+
     private fun invalidate() {
         nodeDirty = true
         softDirty = true
@@ -165,9 +203,8 @@ class GlassBackdrop {
                 rn.endRecording()
             }
             val radius = t.blurRadiusPx
-            rn.setRenderEffect(
-                if (radius >= 0.5f) RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP) else null
-            )
+            val blur = if (radius >= 0.5f) RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP) else null
+            rn.setRenderEffect(backdropEffect(blur))
             nodeDirty = false
         }
         canvas.drawRenderNode(rn)

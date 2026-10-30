@@ -24,12 +24,22 @@ class GlassAnimation {
         const val AURORA = 1
         const val LIGHT_FLOW = 2
         const val BUBBLES = 3
+        const val STARLIGHT = 4
+        private const val STAR_COUNT = 64
 
         private const val BLOBS = 4
         private const val BUBBLE_COUNT = 14
     }
 
     private class Bubble(var x: Float, var y: Float, val size: Float, val speed: Float, val wobble: Float, val phase: Float)
+
+    private class Star(val x: Float, val y: Float, val size: Float, val phase: Float, val rate: Float, val depth: Float)
+
+    private val stars = List(STAR_COUNT) {
+        Star(Random.nextFloat(), Random.nextFloat(), 0.4f + Random.nextFloat() * 1.3f, Random.nextFloat() * 6.28f,
+            0.5f + Random.nextFloat() * 1.6f, 0.3f + Random.nextFloat() * 0.9f)
+    }
+    private val starPath = android.graphics.Path()
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
@@ -66,6 +76,7 @@ class GlassAnimation {
             AURORA -> aurora(canvas, w, h, intensity, theme, tiltX, tiltY)
             LIGHT_FLOW -> lightFlow(canvas, w, h, intensity, theme, tiltX, tiltY)
             BUBBLES -> bubbles(canvas, w, h, intensity, theme, tiltX, tiltY)
+            STARLIGHT -> starlight(canvas, w, h, intensity, theme, tiltX, tiltY)
         }
     }
 
@@ -113,6 +124,35 @@ class GlassAnimation {
             canvas.drawRect(0f, 0f, w, h, paint)
         }
         paint.shader = null
+    }
+
+    /** Small stars that twinkle in and out; bigger ones sit nearer and shift more as the phone tilts. */
+    private fun starlight(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
+        paint.style = Paint.Style.FILL
+        val unit = minOf(w, h * 3f) * 0.012f
+        for (s in stars) {
+            val twinkle = sin(clock * s.rate + s.phase) * 0.5f + 0.5f
+            val glow = twinkle * twinkle * twinkle
+            if (glow < 0.03f) continue
+            val x = ((s.x + 0.035f * tiltX * s.depth + clock * 0.004f * s.depth) % 1f + 1f) % 1f * w
+            val y = ((s.y + 0.05f * tiltY * s.depth) % 1f + 1f) % 1f * h
+            val r = unit * s.size * (0.55f + 0.45f * glow)
+            val a = (255f * glow * intensity * (if (theme.dark) 1f else 0.7f)).toInt().coerceIn(0, 255)
+            paint.color = 0x00FFFFFF or (a shl 24)
+            starPath.reset()
+            starPath.moveTo(x, y - r)
+            starPath.quadTo(x, y, x + r, y)
+            starPath.quadTo(x, y, x, y + r)
+            starPath.quadTo(x, y, x - r, y)
+            starPath.quadTo(x, y, x, y - r)
+            starPath.close()
+            canvas.drawPath(starPath, paint)
+            // The larger stars get a soft halo.
+            if (s.size > 1.2f) {
+                paint.color = 0x00FFFFFF or ((a * 0.18f).toInt() shl 24)
+                canvas.drawCircle(x, y, r * 1.8f, paint)
+            }
+        }
     }
 
     private fun bubbles(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {

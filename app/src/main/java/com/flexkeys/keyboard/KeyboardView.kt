@@ -23,6 +23,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.flexkeys.diagnostics.Diagnostics
 import com.flexkeys.layout.KeyDef
+import com.flexkeys.ui.MotionPolicy
 import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
 import com.flexkeys.layout.LayoutDef
@@ -190,6 +191,14 @@ class KeyboardView(context: Context) : View(context) {
         layoutKeys()
     }
 
+    /** Called after the keys were laid out again, so effects that follow the keys can update. */
+    var onKeysLaidOut: (() -> Unit)? = null
+
+    /** Calls [block] with the visible rectangle of every key, in this view's coordinates. */
+    fun forEachKeyRect(block: (RectF) -> Unit) {
+        for (k in keys) block(k.visual)
+    }
+
     private fun layoutKeys() {
         keys.clear()
         val def = layout ?: return
@@ -232,6 +241,7 @@ class KeyboardView(context: Context) : View(context) {
                 if (splittable && i == splitAfter) x += gap
             }
         }
+        onKeysLaidOut?.invoke()
     }
 
     // ---- drawing --------------------------------------------------------------------------------
@@ -262,7 +272,7 @@ class KeyboardView(context: Context) : View(context) {
                 canvas.translate(h.shimmerX * t.dp(1.8f), h.shimmerY * t.dp(1.4f))
             }
             drawKeyContent(canvas, key, t)
-            if (prefs.keyGlints && key.def.type != KeyType.SPACER) drawGlint(canvas, key, t, h.shimmerX, h.shimmerY)
+            if (prefs.keyGlints && key.def.type != KeyType.SPACER && !MotionPolicy.reduced(context, prefs)) drawGlint(canvas, key, t, h.shimmerX, h.shimmerY)
             canvas.restore()
         }
         if (animating) postInvalidateOnAnimation()
@@ -658,8 +668,9 @@ class KeyboardView(context: Context) : View(context) {
         press(key)
         listener?.onKeyDown(key.def)
         val style = prefs.typingEffect
-        if (style != TypingEffects.OFF) {
+        if (style != TypingEffects.OFF && !MotionPolicy.reduced(context, prefs)) {
             effects.strength = prefs.effectStrength.coerceIn(0, 100) / 100f
+            theme?.let { effects.accent = it.accent }
             effects.onPress(style, key.visual.centerX(), key.visual.centerY(), rowHeight * 1.1f, SystemClock.uptimeMillis())
             host?.invalidateOverlay()
         }
@@ -736,6 +747,10 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun onPointerMove(id: Int, x: Float, y: Float) {
         val p = pointers[id] ?: return
+        if (prefs.typingEffect == TypingEffects.TRAIL && !MotionPolicy.reduced(context, prefs)) {
+            effects.onMove(TypingEffects.TRAIL, x, y, SystemClock.uptimeMillis())
+            host?.invalidateOverlay()
+        }
         val popup = p.popup
         if (popup != null) {
             val idx = floor((x - popup.rect.left) / popup.cellWidth).toInt().coerceIn(0, popup.options.size - 1)

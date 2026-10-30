@@ -581,10 +581,18 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
         toggle("Pause animations on low battery", "Stops the glass animation and tilt effects at 20% or in battery saver", prefs::batterySaver)
-        picker("Glass animation", listOf("Off", "Aurora", "Light flow", "Bubbles"), prefs.glassAnimation) { prefs.glassAnimation = it }
+        toggle("Reduce motion", "Turns off tilt effects, glass animation and typing effects together", prefs::reduceMotion)
+        toggle("Follow Android's \"Remove animations\"", "Also rest the effects when that accessibility setting is on", prefs::followSystemMotion)
+        picker("Glass animation", listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight"), prefs.glassAnimation) { prefs.glassAnimation = it }
         slider("Animation speed", 0, 100, prefs::animationSpeed) { "$it%" }
         slider("Animation intensity", 0, 100, prefs::animationIntensity) { "$it%" }
         toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            toggle("Liquid refraction (beta)", "Bends the blurred background around every key, like light through thick glass", prefs::refraction)
+            slider("Refraction strength", 0, 100, prefs::refractionStrength) { "$it%" }
+        } else {
+            text("Liquid refraction needs Android 13 or newer.", secondary = true)
+        }
         toggle("Depth effect (beta)", "The main subject of your photo stays sharp in front of the blurred glass, and shifts slightly as you tilt. Needs Google Play services.", prefs::depthEffect)
         slider("Depth strength", 0, 100, prefs::depthStrength) { "$it%" }
         toggle("Key glints", "Each key catches its own flash of light as you tilt the phone", prefs::keyGlints)
@@ -598,7 +606,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }
-        picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter"), prefs.typingEffect) { prefs.typingEffect = it }
+        picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight", "Typing trail"), prefs.typingEffect) { prefs.typingEffect = it }
         slider("Animation strength", 0, 100, prefs::effectStrength) { "$it%" }
         text("Warp speed shows streaks when you type fast.", secondary = true)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {

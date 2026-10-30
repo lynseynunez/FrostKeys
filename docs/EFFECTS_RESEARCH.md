@@ -56,6 +56,11 @@ Glass animations: aurora, light flow, bubbles (can follow tilt). Tilt shimmer, k
 | **Edge specular rim** (bright thin rim that shifts with tilt) | High, cheap | S | A cheap piece of the refraction look without the shader. |
 | **Reduce motion** switch | Needed | S | Turns off sensor-driven and looping effects together. Apple does this too. |
 
+## Status (built so far)
+Key spotlight, typing trail, starlight, the Reduce motion switch and a first version of liquid refraction (Android 13+,
+beta, off by default) are in the app. The edge specular rim was not requested. Refraction bends the blurred background
+around every key with one shader pass over the sheet; it still needs real-phone checks on look and speed.
+
 ## Suggested next steps
 1. **Edge specular rim** and **key spotlight**: cheap, work on every Android version, big visible gain.
 2. **Typing trail** and **starlight**.

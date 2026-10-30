@@ -38,6 +38,7 @@ import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.GlassBackdrop
 import com.flexkeys.theme.GlassPainter
 import com.flexkeys.theme.GlassTheme
+import com.flexkeys.theme.RefractionShader
 import com.flexkeys.theme.Prefs
 
 /**
@@ -171,7 +172,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     private val shimmerPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     /** True when animations should rest to save battery. */
-    private val saving get() = shimmerPrefs.batterySaver && PowerState.isLow(context)
+    private val saving get() = (shimmerPrefs.batterySaver && PowerState.isLow(context)) || MotionPolicy.reduced(context, shimmerPrefs)
 
     /** The sheet's sliding highlight and the lettering drift. */
     private val shimmerOn get() = shimmerPrefs.shimmer && !saving
@@ -204,6 +205,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     private val sheetPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     init {
+        keyboardView.onKeysLaidOut = { post { updateRefraction() } }
         orientation = VERTICAL
         setWillNotDraw(false)
         clipChildren = false
@@ -304,6 +306,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             Panel.NONE -> null
         }
         strip.menuOpen = panel == Panel.MENU
+        updateRefraction()
         invalidate()
     }
 
@@ -474,6 +477,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         textToolsBar.restyle()
         applyPaddings()
         keyboardView.onThemeChanged()
+        updateRefraction()
         strip.requestLayout()
         invalidateTree(this)
     }
@@ -508,6 +512,39 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     // ---- keyboard width and position (useful on tablets and foldables) ----
+    /** Pushes the key rectangles to the backdrop so refraction bends the background around each key. */
+    private fun updateRefraction() {
+        if (Build.VERSION.SDK_INT < 33) return
+        val showingKeys = panel == Panel.NONE && keyboardView.isShown
+        if (!layoutPrefs.refraction || !showingKeys) {
+            backdrop.setRefraction(false, FloatArray(0), 0, 0f, 0f, 0f)
+            return
+        }
+        val offset = PointF()
+        backdropOffset(keyboardView, offset)
+        val rects = FloatArray(RefractionShader.MAX_RECTS * 4)
+        var n = 0
+        var minSide = Float.MAX_VALUE
+        keyboardView.forEachKeyRect { r ->
+            if (n < RefractionShader.MAX_RECTS) {
+                rects[n * 4] = r.left + offset.x
+                rects[n * 4 + 1] = r.top + offset.y
+                rects[n * 4 + 2] = r.right + offset.x
+                rects[n * 4 + 3] = r.bottom + offset.y
+                n++
+                minSide = minOf(minSide, r.width(), r.height())
+            }
+        }
+        if (n == 0) {
+            backdrop.setRefraction(false, rects, 0, 0f, 0f, 0f)
+            return
+        }
+        val bevel = (minSide * 0.34f).coerceAtLeast(theme.dp(6f))
+        val s = layoutPrefs.refractionStrength.coerceIn(0, 100) / 100f
+        backdrop.setRefraction(true, rects, n, theme.cornerRadiusPx.coerceAtMost(minSide / 2f), bevel, bevel * (0.15f + 0.75f * s))
+        invalidate()
+    }
+
     private var bottomPadding = 0
     private val layoutPrefs = Prefs.get(context)
 
@@ -535,6 +572,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         applyPaddings()
+        post { updateRefraction() }
         backdrop.setSize(w, h)
         rebuildGradient()
         invalidateTree(this)
