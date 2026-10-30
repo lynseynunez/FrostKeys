@@ -111,3 +111,35 @@ class SmallLogicTest {
         }
     }
 }
+
+class SpotlightPaletteTest {
+
+    private val blue = 0xFF4D7CFF.toInt()
+    private val pink = 0xFFFF5DB1.toInt()
+
+    @Test
+    fun colorsAlongAPalette() {
+        val colors = intArrayOf(blue, 0xFF9B5CFF.toInt(), pink)
+        assertEquals(blue, com.flexkeys.keyboard.SpotlightPalettes.colorAt(colors, 0f))
+        assertEquals(pink, com.flexkeys.keyboard.SpotlightPalettes.colorAt(colors, 1f))
+        assertEquals(0xFF9B5CFF.toInt(), com.flexkeys.keyboard.SpotlightPalettes.colorAt(colors, 0.5f))
+        assertEquals(pink, com.flexkeys.keyboard.SpotlightPalettes.colorAt(intArrayOf(pink), 0.3f))
+    }
+
+    @Test
+    fun customColorsRoundTrip() {
+        val colors = intArrayOf(blue, pink)
+        val text = com.flexkeys.keyboard.SpotlightPalettes.formatCustom(colors)
+        assertEquals(colors.toList(), com.flexkeys.keyboard.SpotlightPalettes.parseCustom(text).toList())
+        assertEquals(0, com.flexkeys.keyboard.SpotlightPalettes.parseCustom("").size)
+        assertEquals(0, com.flexkeys.keyboard.SpotlightPalettes.parseCustom("zz,12").size)
+    }
+
+    @Test
+    fun everyPaletteHasColors() {
+        for (i in com.flexkeys.keyboard.SpotlightPalettes.names.indices) {
+            val c = com.flexkeys.keyboard.SpotlightPalettes.colors(i, blue, intArrayOf(blue, pink), intArrayOf())
+            assertTrue("palette $i", c.isNotEmpty())
+        }
+    }
+}

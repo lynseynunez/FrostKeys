@@ -41,7 +41,7 @@ Written for the 2.0 roadmap.
 ## What SakuriKey has now
 Typing animations: sparkles, ripple, warp speed, glow bloom, ink splash, firecracker, paint splatter.
 Key motion: sink, pop, bounce, tilt, float. Press colors: white, accent, gradient, photo, rainbow.
-Glass animations: aurora, light flow, bubbles (can follow tilt). Tilt shimmer, key glints, depth effect (optional).
+Glass animations: aurora, light flow, bubbles, starlight (can follow tilt). Tilt shimmer, key spotlight with palettes, reduce motion, liquid refraction (beta).
 
 ## Ideas, ranked by how good they would look and how hard they are
 | Idea | Look | Effort | Notes |
@@ -57,7 +57,7 @@ Glass animations: aurora, light flow, bubbles (can follow tilt). Tilt shimmer, k
 | **Reduce motion** switch | Needed | S | Turns off sensor-driven and looping effects together. Apple does this too. |
 
 ## Status (built so far)
-Key spotlight, typing trail, starlight, the Reduce motion switch and a first version of liquid refraction (Android 13+,
+Key spotlight, starlight, the Reduce motion switch and a first version of liquid refraction (Android 13+,
 beta, off by default) are in the app. The edge specular rim was not requested. Refraction bends the blurred background
 around every key with one shader pass over the sheet; it still needs real-phone checks on look and speed.
 
@@ -67,3 +67,7 @@ around every key with one shader pass over the sheet; it still needs real-phone 
 3. A **Reduce motion** master switch.
 4. Prototype **liquid refraction** behind a toggle for Android 13+, measured against the performance budget,
    before committing to it.
+
+## Removed
+Key glints, typing trail and the depth effect were built and then removed at the owner's request. The depth effect was the only
+use of the ML Kit library, so the app is back to having no third-party libraries.

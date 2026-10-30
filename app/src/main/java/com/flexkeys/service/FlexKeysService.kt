@@ -92,6 +92,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         super.onCreate()
         prefs = Prefs.get(this)
         Diagnostics.installCrashHandler(this)
+        java.io.File(filesDir, "background_subject.png").delete() // left over from a removed feature
         feedback = Feedback(this, prefs)
         engine = SuggestionEngine.get(this)
         EmojiIndex.load(this)

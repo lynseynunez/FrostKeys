@@ -58,35 +58,6 @@ class GlassBackdrop {
         invalidate()
     }
 
-    private var subject: Bitmap? = null
-    private val subjectPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-
-    /** The photo's main subject on a transparent background, drawn sharp over the blurred glass. */
-    fun setSubject(bitmap: Bitmap?) {
-        subject = bitmap
-    }
-
-    val hasSubject: Boolean get() = subject?.isRecycled == false
-
-    /**
-     * Draws the sharp subject filling (0, 0, width, height) in the same place the photo is drawn,
-     * nudged by ([dx], [dy]) pixels and scaled a little about the middle, for a sense of depth.
-     */
-    fun drawSubject(canvas: Canvas, alpha: Float, dx: Float, dy: Float, scale: Float) {
-        val t = theme ?: return
-        val bmp = subject ?: return
-        if (bmp.isRecycled || width <= 0 || height <= 0 || alpha <= 0f) return
-        val w = width.toFloat()
-        val h = height.toFloat()
-        val fit = PhotoFit.compute(bmp.width, bmp.height, w, h, t.photoZoom, t.photoPanX, t.photoPanY)
-        photoMatrix.setScale(fit.scale, fit.scale)
-        photoMatrix.postTranslate(fit.dx, fit.dy)
-        photoMatrix.postScale(scale, scale, w / 2f, h / 2f)
-        photoMatrix.postTranslate(dx, dy)
-        subjectPaint.alpha = (alpha * 255f).toInt().coerceIn(0, 255)
-        canvas.drawBitmap(bmp, photoMatrix, subjectPaint)
-    }
-
     // ---- liquid refraction (Android 13+): bends the blurred background around every key ----
     private var refractionOn = false
     private var refractionRects = FloatArray(0)

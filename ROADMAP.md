@@ -40,14 +40,10 @@ The biggest everyday improvement.
 
 ## Milestone 3: Look and feel
 
-- [x] **Per-key glints on tilt (S).** Each key catches its own small highlight as the phone tilts, building on
-  tilt shimmer.
+- [-] **Per-key glints on tilt (S).** *Built, then removed at the owner's request.*
 - [ ] **More glass animations and effects (S each).** New typing effects and glass animations in the spirit of
   the Keys Cafe ones, chosen after trying the current set. A place to try ideas quickly.
-- [~] **Depth effect (L).** *Built as an optional toggle (off by default): ML Kit finds the subject, which is drawn sharp over the blurred glass and behind the keys, with tilt parallax and a strength slider. Needs testing on the phone with the real photo.* Cut the main subject out of the background photo with an on-device segmentation model,
-  then draw it in front of the glass (and in front of the keys where it overlaps), with parallax as the phone
-  tilts. The cutout is made once when the photo is picked and stored with it. Costs app size, so decide after a
-  prototype.
+- [-] **Depth effect (L).** *Built as an optional toggle with ML Kit, then removed at the owner's request (it also removed the only library).*
 
 ## Milestone 4: AI features
 

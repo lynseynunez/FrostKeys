@@ -30,7 +30,7 @@ import com.flexkeys.ai.AiClient
 import com.flexkeys.ai.GeminiClient
 import com.flexkeys.ai.GroqClient
 import com.flexkeys.clipboard.ClipboardStore
-import com.flexkeys.depth.SubjectCutout
+import com.flexkeys.keyboard.SpotlightPalettes
 import com.flexkeys.diagnostics.Diagnostics
 import com.flexkeys.gif.KlipyClient
 import com.flexkeys.layout.Layouts
@@ -94,20 +94,6 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         when (key) {
             Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS -> previewController.refresh()
-            Prefs.KEY_DEPTH_EFFECT -> {
-                if (prefs.depthEffect && !SubjectCutout.exists(this) && BackgroundImageStore.exists(this)) {
-                    toast("Finding the subject in your photo…")
-                    SubjectCutout.generate(this) { ok, message ->
-                        toast(message)
-                        if (ok) prefs.backgroundVersion = System.currentTimeMillis()
-                    }
-                } else if (prefs.depthEffect && !BackgroundImageStore.exists(this)) {
-                    toast("Choose a background photo first")
-                } else {
-                    prefs.backgroundVersion = System.currentTimeMillis()
-                }
-                applyKeyboardTheme()
-            }
             Prefs.KEY_BG_VERSION -> {
                 preview.reloadPhoto()
                 loadPagePhoto()
@@ -593,9 +579,6 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         } else {
             text("Liquid refraction needs Android 13 or newer.", secondary = true)
         }
-        toggle("Depth effect (beta)", "The main subject of your photo stays sharp in front of the blurred glass, and shifts slightly as you tilt. Needs Google Play services.", prefs::depthEffect)
-        slider("Depth strength", 0, 100, prefs::depthStrength) { "$it%" }
-        toggle("Key glints", "Each key catches its own flash of light as you tilt the phone", prefs::keyGlints)
         toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
         slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
         slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
@@ -606,8 +589,14 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }
-        picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight", "Typing trail"), prefs.typingEffect) { prefs.typingEffect = it }
+        picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight"), prefs.typingEffect) { prefs.typingEffect = it }
         slider("Animation strength", 0, 100, prefs::effectStrength) { "$it%" }
+        picker("Key spotlight colors", SpotlightPalettes.names, prefs.spotlightPalette) {
+            prefs.spotlightPalette = it
+            if (it == SpotlightPalettes.CUSTOM) showSpotlightColors()
+        }
+        toggle("Change color every press", "Otherwise the spotlight's color follows where the key is across the keyboard", prefs::spotlightCycle)
+        buttons(Triple("Edit custom spotlight colors", false) { showSpotlightColors() })
         text("Warp speed shows streaks when you type fast.", secondary = true)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             text("Live blur needs Android 12. This phone uses a lighter frosted look.", secondary = true)
@@ -792,6 +781,33 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         }
         addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { topMargin = dp(12f) })
+    }
+
+    /** Pick up to three colors for the spotlight. */
+    private fun showSpotlightColors() {
+        val current = SpotlightPalettes.parseCustom(prefs.spotlightColors).let { if (it.isEmpty()) SpotlightPalettes.defaultCustom else it }
+        val colors = IntArray(3) { current.getOrElse(it) { SpotlightPalettes.defaultCustom[it] } }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20f), dp(12f), dp(20f), dp(4f))
+        }
+        for (i in 0 until 3) {
+            box.addView(TextView(this).apply { text = "Color ${i + 1}"; setPadding(0, dp(8f), 0, 0) })
+            box.addView(ColorPickerView(this).apply {
+                color = colors[i]
+                ringColor = 0xFF888888.toInt()
+                onColorChanged = { colors[i] = it or 0xFF000000.toInt() }
+            })
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Spotlight colors")
+            .setView(ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Save") { _, _ ->
+                prefs.spotlightColors = SpotlightPalettes.formatCustom(colors)
+                prefs.spotlightPalette = SpotlightPalettes.CUSTOM
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun aiCard() = card("AI rewrite") {

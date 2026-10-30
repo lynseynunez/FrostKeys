@@ -272,7 +272,6 @@ class KeyboardView(context: Context) : View(context) {
                 canvas.translate(h.shimmerX * t.dp(1.8f), h.shimmerY * t.dp(1.4f))
             }
             drawKeyContent(canvas, key, t)
-            if (prefs.keyGlints && key.def.type != KeyType.SPACER && !MotionPolicy.reduced(context, prefs)) drawGlint(canvas, key, t, h.shimmerX, h.shimmerY)
             canvas.restore()
         }
         if (animating) postInvalidateOnAnimation()
@@ -399,32 +398,6 @@ class KeyboardView(context: Context) : View(context) {
             fillPaint.color = GlassTheme.withAlpha(press, (press ushr 24) / 255f * p)
             canvas.drawRoundRect(key.visual, t.cornerRadiusPx, t.cornerRadiusPx, fillPaint)
         }
-    }
-
-    // ---- key glints: a soft band of light that crosses each key at a different moment as the phone tilts ----
-    private val glintMatrix = Matrix()
-    private val glintPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val glintShader = LinearGradient(-0.5f, 0f, 0.5f, 0f,
-        intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
-
-    private fun drawGlint(canvas: Canvas, key: Key, t: GlassTheme, tiltX: Float, tiltY: Float) {
-        val v = key.visual
-        // Where the band is along the keyboard, as the phone tilts; each key is at its own place along it.
-        val phase = tiltX * 0.9f + tiltY * 0.5f + v.centerX() / width.coerceAtLeast(1) * 1.0f + v.centerY() / height.coerceAtLeast(1) * 0.4f
-        val wrapped = phase - Math.floor(phase.toDouble()).toFloat()
-        val strength = (1f - abs(wrapped - 0.5f) * 4.5f).coerceIn(0f, 1f)
-        if (strength <= 0.02f) return
-        canvas.save()
-        canvas.clipRect(v)
-        glintMatrix.setScale(v.width() * 0.9f, v.width() * 0.9f)
-        glintMatrix.postRotate(28f)
-        glintMatrix.postTranslate(v.centerX(), v.centerY())
-        glintShader.setLocalMatrix(glintMatrix)
-        glintPaint.shader = glintShader
-        glintPaint.alpha = (255f * strength * (if (t.dark) 0.30f else 0.50f)).toInt().coerceIn(0, 255)
-        canvas.drawRect(v, glintPaint)
-        glintPaint.shader = null
-        canvas.restore()
     }
 
     private fun emblem(): Bitmap? {
@@ -670,8 +643,14 @@ class KeyboardView(context: Context) : View(context) {
         val style = prefs.typingEffect
         if (style != TypingEffects.OFF && !MotionPolicy.reduced(context, prefs)) {
             effects.strength = prefs.effectStrength.coerceIn(0, 100) / 100f
-            theme?.let { effects.accent = it.accent }
-            effects.onPress(style, key.visual.centerX(), key.visual.centerY(), rowHeight * 1.1f, SystemClock.uptimeMillis())
+            theme?.let {
+                effects.accent = it.accent
+                effects.spotlightColors = SpotlightPalettes.colors(
+                    prefs.spotlightPalette, it.accent, it.gradientColors, SpotlightPalettes.parseCustom(prefs.spotlightColors))
+            }
+            effects.spotlightCycle = prefs.spotlightCycle
+            effects.onPress(style, key.visual.centerX(), key.visual.centerY(), rowHeight * 1.1f, SystemClock.uptimeMillis(),
+                key.visual.centerX() / width.coerceAtLeast(1))
             host?.invalidateOverlay()
         }
         if (showKeyPreview && key.def.type == KeyType.CHAR) setPreview(key)
@@ -747,10 +726,6 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun onPointerMove(id: Int, x: Float, y: Float) {
         val p = pointers[id] ?: return
-        if (prefs.typingEffect == TypingEffects.TRAIL && !MotionPolicy.reduced(context, prefs)) {
-            effects.onMove(TypingEffects.TRAIL, x, y, SystemClock.uptimeMillis())
-            host?.invalidateOverlay()
-        }
         val popup = p.popup
         if (popup != null) {
             val idx = floor((x - popup.rect.left) / popup.cellWidth).toInt().coerceIn(0, popup.options.size - 1)

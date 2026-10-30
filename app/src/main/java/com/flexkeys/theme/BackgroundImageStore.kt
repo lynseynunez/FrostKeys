@@ -28,7 +28,6 @@ object BackgroundImageStore {
 
     fun delete(context: Context) {
         file(context).delete()
-        com.flexkeys.depth.SubjectCutout.delete(context)
         resetAdjustments(Prefs.get(context), luma = -1)
     }
 
@@ -85,8 +84,6 @@ object BackgroundImageStore {
             bitmap.recycle()
             val saved = tmp.renameTo(file(context))
             if (saved) {
-                // A new photo needs a new subject cutout.
-                com.flexkeys.depth.SubjectCutout.delete(context)
                 val prefs = Prefs.get(context)
                 prefs.photoAccent = colors.accent
                 resetAdjustments(prefs, (colors.luma * 100).toInt())

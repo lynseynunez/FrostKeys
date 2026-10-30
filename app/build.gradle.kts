@@ -81,9 +81,6 @@ android {
 }
 
 dependencies {
-    // Only for the optional depth effect: finds the subject of the background photo on the phone.
-    implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
-
     testImplementation("junit:junit:4.13.2")
     // The real org.json, because the one in the Android stub jar does nothing in unit tests.
     testImplementation("org.json:json:20231013")
