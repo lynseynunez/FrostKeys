@@ -592,10 +592,10 @@ class KeyboardView(context: Context) : View(context) {
                 tmpRect.set(left, top, left + popup.cellWidth, top + popup.cellHeight)
                 tmpRect.inset(t.dp(3f), t.dp(4f))
                 if (i == popup.selected) {
-                    fillPaint.color = t.accentFill
                     // Inset by the cell margin, so the highlight's corners follow the menu's own.
                     val cellRadius = (popupRadius - t.dp(3.5f)).coerceAtLeast(t.dp(4f)).coerceAtMost(minOf(tmpRect.width(), tmpRect.height()) / 2f)
-                    canvas.drawRoundRect(tmpRect, cellRadius, cellRadius, fillPaint)
+                    // A tinted pane of glass with the painter's soft highlight, not a flat fill.
+                    h.painter.draw(canvas, tmpRect, cellRadius, null, offset.x, offset.y, GlassTheme.withAlpha(t.accentFill, 0.62f), rim = false)
                 }
                 textPaint.color = if (i == popup.selected) t.onAccent else t.textColor
                 drawCentered(canvas, option, tmpRect.centerX(), tmpRect.centerY(), textPaint)

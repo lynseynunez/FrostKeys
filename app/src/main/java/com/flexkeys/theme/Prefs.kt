@@ -174,7 +174,7 @@ class Prefs private constructor(context: Context) {
     /** Keyboard height when the phone is sideways: 0 auto, 1 short, 2 medium, 3 normal. */
     var landscapeHeight by int(KEY_LANDSCAPE_HEIGHT, 0)
     /** The long-press menu's tint strength and how strongly it blurs what is behind it, both 0..100. */
-    var popupOpacity by int(KEY_POPUP_OPACITY, 35)
+    var popupOpacity by int(KEY_POPUP_OPACITY, 15)
     var popupBlur by int(KEY_POPUP_BLUR, 60)
 
     fun popupSettings() = com.flexkeys.layout.PopupSettings(
