@@ -572,8 +572,8 @@ class KeyboardView(context: Context) : View(context) {
 
         val popup = pointers.values.firstNotNullOfOrNull { it.popup }
         if (popup != null) {
-            // Same frosted glass as the emoji panel, a little denser so the keys behind don't fight the characters.
-            val popupFill = GlassTheme.withAlpha(if (t.dark) Color.BLACK else Color.WHITE, 0.5f + 0.3f * t.glassOpacity)
+            // Dark frosted glass like the emoji panel: the blurred photo shows through, darkened.
+            val popupFill = GlassTheme.withAlpha(if (t.dark) Color.BLACK else Color.WHITE, 0.30f + 0.2f * t.glassOpacity)
             h.painter.draw(canvas, popup.rect, t.cornerRadiusPx + t.dp(2f), h.backdrop, offset.x, offset.y, popupFill)
             textPaint.textSize = rowHeight * 0.38f * t.fontScale
             popup.options.forEachIndexed { i, option ->
