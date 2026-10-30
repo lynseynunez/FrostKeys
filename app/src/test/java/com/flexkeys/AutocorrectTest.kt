@@ -1,0 +1,131 @@
+package com.flexkeys
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AutocorrectTest {
+
+    private fun fix(typed: String, engine: com.flexkeys.suggest.SuggestionEngine = TestData.engine()): String? =
+        engine.suggest(typed, null, true, false).correction
+
+    @Test
+    fun fixesTyposFromRealMessages() {
+        val cases = mapOf(
+            "tgungs" to "things", "thsi" to "this", "recieve" to "receive", "definately" to "definitely",
+            "cinfurmation" to "confirmation", "ankmatioh" to "animation", "wamt" to "want", "thos" to "this",
+            "ans" to "and", "keybord" to "keyboard", "settigns" to "settings", "bascially" to "basically",
+            "wierd" to "weird", "frist" to "first", "becuase" to "because", "somthing" to "something",
+            "wich" to "which", "alot" to "a lot", "tomorow" to "tomorrow", "tommorow" to "tomorrow",
+            "helo" to "hello", "ti" to "to", "ot" to "to", "teh" to "the", "adn" to "and", "whn" to "when",
+            "thier" to "their", "freind" to "friend", "beleive" to "believe", "untill" to "until", "goign" to "going",
+            "pleae" to "please", "lve" to "love", "inspirtabion" to "inspiration", "boackgrojnd" to "background",
+            "spellchdck" to "spellcheck", "adjustablw" to "adjustable", "everyrhkng" to "everything",
+        )
+        val engine = TestData.engine()
+        val misses = cases.filter { (typed, want) -> fix(typed, engine)?.equals(want, ignoreCase = true) != true }
+        assertTrue("Not corrected as expected: $misses", misses.isEmpty())
+    }
+
+    @Test
+    fun leavesCorrectWordsAlone() {
+        val words = ("the quick brown fox jumps over lazy dog hello world please thanks sorry okay yes no maybe tonight " +
+            "tomorrow today going coming sleep awake time waste your don't can't won't i'm it's that's lol yup nope " +
+            "okies hubby aww haha wanna gonna gotta kinda sorta whatever anyway really actually probably definitely " +
+            "because without through though thought bed soon fall asleep yet did he message text call phone love miss " +
+            "you too home work car food dinner lunch its lets were well").split(" ")
+        val engine = TestData.engine()
+        val changed = words.filter { fix(it, engine) != null }
+        assertTrue("Correct words that were changed: $changed", changed.isEmpty())
+    }
+
+    @Test
+    fun missingApostropheBecomesTheContraction() {
+        val engine = TestData.engine()
+        val cases = mapOf(
+            "cant" to "can't", "dont" to "don't", "wont" to "won't", "im" to "I'm", "ive" to "I've",
+            "isnt" to "isn't", "didnt" to "didn't", "couldnt" to "couldn't", "wouldnt" to "wouldn't",
+            "doesnt" to "doesn't", "thats" to "that's", "whats" to "what's", "youre" to "you're", "theyre" to "they're",
+        )
+        for ((typed, want) in cases) assertEquals(typed, want, fix(typed, engine))
+    }
+
+    @Test
+    fun splitsWordsRunTogether() {
+        val engine = TestData.engine()
+        assertEquals("testing it", fix("testingvit", engine))
+        assertEquals("still missing", fix("stillcmissing", engine))
+        assertEquals("thank you", fix("thankyou", engine))
+        assertEquals("do you", fix("doyou", engine))
+        assertEquals("hello there", fix("hellothere", engine))
+    }
+
+    @Test
+    fun protectedWordsAreNeverChanged() {
+        val engine = TestData.engine()
+        assertEquals("gps", fix("gpu", engine))
+        engine.setRules(setOf("gpu"), emptyMap())
+        assertNull(fix("gpu", engine))
+    }
+
+    @Test
+    fun customFixesAlwaysApply() {
+        val engine = TestData.engine()
+        engine.setRules(emptySet(), mapOf("gpu" to "GPU", "teh" to "The thing"))
+        assertEquals("GPU", fix("gpu", engine))
+        assertEquals("The thing", fix("teh", engine))
+    }
+
+    @Test
+    fun repeatedTyposAreNotLearned() {
+        val engine = TestData.engine()
+        repeat(4) { engine.learn("thsi", null) }
+        assertEquals("this", fix("thsi", engine))
+        repeat(2) { engine.learn("thsi", null) }
+        assertNull("six uses is enough to count as learned", fix("thsi", engine))
+    }
+
+    @Test
+    fun realNewWordsAreLearnedQuickly() {
+        val engine = TestData.engine()
+        // A made-up name that is not close to any common word.
+        repeat(2) { engine.learn("zorblax", null) }
+        assertNull(fix("zorblax", engine))
+    }
+
+    @Test
+    fun cleanupRemovesLearnedTypos() {
+        val engine = TestData.engine()
+        assertTrue(!TestData.dictionary.contains("hellp"))
+        repeat(2) { engine.user.learn("hellp", null) }
+        repeat(2) { engine.user.learn("zorblax", null) }
+        val removed = engine.cleanLearned()
+        assertEquals(1, removed)
+        assertEquals(0, engine.user.count("hellp"))
+        assertEquals(2, engine.user.count("zorblax"))
+    }
+
+    @Test
+    fun suggestionsStayFast() {
+        val engine = TestData.engine()
+        val words = listOf("tgungs", "recieve", "somthing", "keybord", "communication", "extraordinary", "hello", "the")
+        // Warm up, then time every prefix of every word, as while typing.
+        words.forEach { w -> for (i in 1..w.length) engine.suggest(w.take(i), "i", true, false) }
+        val times = ArrayList<Long>()
+        repeat(5) {
+            for (w in words) for (i in 1..w.length) {
+                val t0 = System.nanoTime()
+                engine.suggest(w.take(i), "i", true, false)
+                times.add(System.nanoTime() - t0)
+            }
+        }
+        times.sort()
+        val p95 = times[(times.size * 95) / 100] / 1_000_000.0
+        val mean = times.average() / 1_000_000.0
+        println("suggest(): mean %.2f ms, p95 %.2f ms over %d calls".format(mean, p95, times.size))
+        // A generous budget for a loaded CI machine; a phone is several times slower, so keep this tight.
+        assertTrue("mean $mean ms", mean < 2.0)
+        assertTrue("p95 $p95 ms", p95 < 12.0)
+    }
+}

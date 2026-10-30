@@ -70,4 +70,15 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
+
+    testOptions {
+        // Unit tests run on the JVM; Android framework calls that aren't needed return defaults.
+        unitTests.isReturnDefaultValues = true
+    }
+}
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    // The real org.json, because the one in the Android stub jar does nothing in unit tests.
+    testImplementation("org.json:json:20231013")
 }

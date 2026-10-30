@@ -47,18 +47,34 @@ data class Suggestions(
  * the words this user has typed. One instance per process, shared by the keyboard service
  * and the settings screen.
  */
-class SuggestionEngine private constructor(context: Context) {
+class SuggestionEngine internal constructor(
+    val user: UserDictionary,
+    /** Where the user's own autocorrect rules are read from; null means none (used by tests). */
+    private val rulePrefs: Prefs? = null,
+) {
 
     @Volatile
     var dictionary: WordDictionary = WordDictionary.EMPTY
         private set
-    val user = UserDictionary(context)
 
     /** Common misspellings with their fix ("teh" -> "the"), from assets/typos.tsv. */
     @Volatile
     private var typos: Map<String, String> = emptyMap()
 
-    init {
+    /** Sets the user's own rules directly instead of reading them from settings. Used by tests. */
+    internal fun setRules(protected: Set<String>, fixes: Map<String, String>) {
+        protectedWords = protected
+        customFixes = fixes
+    }
+
+    /** Supplies the word data directly instead of loading it from assets. Used by tests. */
+    internal fun setData(dictionary: WordDictionary, typos: Map<String, String>) {
+        this.dictionary = dictionary
+        this.typos = typos + PERSONAL_TYPOS
+    }
+
+    /** Reads the bundled word lists and the learned words in the background and installs them. */
+    private fun loadAsync(context: Context) {
         val app = context.applicationContext
         val main = Handler(Looper.getMainLooper())
         Executors.newSingleThreadExecutor().execute {
@@ -102,7 +118,6 @@ class SuggestionEngine private constructor(context: Context) {
     private val typoLikeCache = HashMap<String, Boolean>()
 
     /** The user's own autocorrect rules (Settings > Typing > Autocorrect list), re-read when they change. */
-    private val rulePrefs: Prefs? = try { Prefs.get(context) } catch (e: RuntimeException) { null }
     private var rulesRawProtected = ""
     private var rulesRawFixes = ""
     private var protectedWords: Set<String> = emptySet()
@@ -205,6 +220,8 @@ class SuggestionEngine private constructor(context: Context) {
         var hasCompletions = false
         dictionary.forEachWithPrefix(lower) { word, freq ->
             if (word.length > lower.length) hasCompletions = true
+            // One or two letters match thousands of words; only the common ones can be useful suggestions.
+            if (lower.length <= 2 && freq < SHORT_PREFIX_MIN_FREQ && word != lower) return@forEachWithPrefix
             val extra = word.length - lower.length
             add(word, score(word, freq, prev) - if (extra > 0) COMPLETION_PENALTY + 0.12 * extra else 0.0, COMPLETION_COST)
         }
@@ -229,7 +246,7 @@ class SuggestionEngine private constructor(context: Context) {
             }
             // Two slips in one word ("tgungs" -> "things"). Only when one edit found nothing good
             // and the word isn't the start of a real word, to keep typing fast.
-            if (bestEdit < CORRECTION_THRESHOLD && !hasCompletions && lower.length >= 4) {
+            if (bestEdit < CORRECTION_THRESHOLD && !hasCompletions && lower.length in 4..TWO_SLIP_MAX_LENGTH && !dictionary.contains(lower)) {
                 forEachEdit(lower) { first, cost1 ->
                     forEachLikelySlip(first) { edit, cost2 ->
                         if (edit != lower) {
@@ -260,7 +277,10 @@ class SuggestionEngine private constructor(context: Context) {
             // A long misspelled word with one clearly best match can be fixed on a lower score.
             val lead = if (ranked.size > 1) ranked[0].score - ranked[1].score else Double.MAX_VALUE
             if (lower.length >= LONG_WORD_LENGTH && lead >= LONG_WORD_LEAD) threshold -= LONG_WORD_THRESHOLD_DISCOUNT
-            val best = if (isKnown(lower)) {
+            val best = if (isLearned(lower)) {
+                // The user taught us this word (typed it often, or undid corrections of it): leave it alone.
+                null
+            } else if (isKnown(lower)) {
                 // A valid but rare word is only corrected through the most typo-like edits
                 // (missing apostrophe or doubled letter) to a far more likely word: "helo" -> "hello".
                 val typedScore = score(lower, dictionary.frequency(lower), prev)
@@ -439,6 +459,9 @@ class SuggestionEngine private constructor(context: Context) {
         /** An apostrophe-less form this common is treated as a real word, not a missing apostrophe. */
         private const val REAL_WORD_FREQ = 12_000
         private const val SPLIT_MIN_FREQ = 20_000
+        /** Two-slip corrections are only tried on unknown words up to this long (they are the costly ones). */
+        private const val TWO_SLIP_MAX_LENGTH = 10
+        private const val SHORT_PREFIX_MIN_FREQ = 3_000
         /** A dictionary word rarer than this might be two words stuck together. */
         private const val RARE_WORD_FREQ = 10_000
         private const val STRICT_SPLIT_FREQ = 200_000
@@ -470,7 +493,11 @@ class SuggestionEngine private constructor(context: Context) {
 
         fun get(context: Context): SuggestionEngine =
             instance ?: synchronized(this) {
-                instance ?: SuggestionEngine(context.applicationContext).also { instance = it }
+                instance ?: SuggestionEngine(UserDictionary(context.applicationContext), Prefs.get(context.applicationContext))
+                    .also {
+                        instance = it
+                        it.loadAsync(context)
+                    }
             }
     }
 }

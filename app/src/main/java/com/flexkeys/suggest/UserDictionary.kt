@@ -12,9 +12,10 @@ import java.util.concurrent.Executors
  * storage (files/user_words.tsv). Accessed on the main thread; saving happens in the
  * background from a snapshot.
  */
-class UserDictionary(context: Context) {
+class UserDictionary(private val file: File) {
 
-    private val file = File(context.filesDir, FILE_NAME)
+    constructor(context: Context) : this(File(context.filesDir, FILE_NAME))
+
     private val words = java.util.TreeMap<String, Int>()
     private val bigrams = HashMap<String, HashMap<String, Int>>()
     private var dirty = 0
