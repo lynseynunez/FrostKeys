@@ -29,6 +29,8 @@ class Prefs private constructor(context: Context) {
     /** Size of the space bar emblem in percent. */
     var emblemSize by int(KEY_EMBLEM_SIZE, 100)
     var cornerRadiusDp by int(KEY_CORNER, 8)
+    /** Size of the suggestion words above the keys, in percent of the default. */
+    var suggestionFontPercent by int(KEY_SUGGESTION_FONT, 80)
     /** Label size in percent of the default. */
     var fontPercent by int(KEY_FONT, 100)
 
@@ -158,6 +160,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_SPACING = "key_spacing"
         const val KEY_CORNER = "corner_radius"
         const val KEY_FONT = "font_percent"
+        const val KEY_SUGGESTION_FONT = "suggestion_font_percent"
         const val KEY_HAPTICS = "haptics"
         const val KEY_SOUND = "sound"
         const val KEY_SOUND_VOLUME = "sound_volume"
@@ -241,7 +244,7 @@ class Prefs private constructor(context: Context) {
          * every other setting is simply read the next time it is used.
          */
         val THEME_KEYS: Set<String> = setOf(
-            KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
+            KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_SUGGESTION_FONT, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
             KEY_SPACE_GLASS, KEY_SPACE_STYLE, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
             KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,

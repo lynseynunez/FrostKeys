@@ -16,7 +16,8 @@ object TestData {
     }
 
     val dictionary: WordDictionary by lazy {
-        File(assetDir, "words.txt").useLines { WordDictionary.parse(it + WordDictionary.EXTRA_WORDS.asSequence()) }
+        val lines = File(assetDir, "words.txt").readLines() + File(assetDir, "extra_words.txt").readLines()
+        WordDictionary.parse(lines.asSequence())
     }
 
     val typos: Map<String, String> by lazy {

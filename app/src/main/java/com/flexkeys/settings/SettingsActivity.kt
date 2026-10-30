@@ -572,6 +572,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
         toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
         slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
+        slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
         picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }

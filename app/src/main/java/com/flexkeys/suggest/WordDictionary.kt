@@ -58,21 +58,20 @@ class WordDictionary private constructor(
         private const val TAG = "FlexKeysDictionary"
         const val ASSET = "words.txt"
 
-        /** Names, apps and texting words the subtitle-based list lacks, so they aren't treated as mistakes. */
-        val EXTRA_WORDS: List<String> = listOf(
-            "sakurikey", "klipy", "groq", "gboard", "gemini", "samsung", "tiktok", "whatsapp", "instagram", "youtube",
-            "snapchat", "spotify", "netflix", "wifi", "bluetooth", "okies", "hubby", "wifey", "lol", "omg", "yup", "nope",
-            "aww", "haha", "hahaha", "autocorrect", "autocomplete", "spellcheck", "translator", "keyboard", "emoji", "emojis",
-            "settings", "screenshot", "screenshots", "download", "uploads", "app", "apps", "online", "offline", "login", "email",
-            "texting", "unfollow", "podcast", "playlist", "wallpaper", "widget", "widgets", "notification", "notifications",
-            "customizable", "adjustable", "background", "animation", "animations", "tilt", "shimmer", "gradient",
-        ).map { "$it\t3000" }
+        const val EXTRA_ASSET = "extra_words.txt"
 
         val EMPTY = WordDictionary(emptyArray(), emptyArray(), IntArray(0), HashMap())
 
         /** Reads the bundled word list. Blocking; call from a background thread. */
         fun load(context: Context): WordDictionary = try {
-            context.assets.open(ASSET).bufferedReader().useLines { parse(it + EXTRA_WORDS.asSequence()) }
+            val main = context.assets.open(ASSET).bufferedReader().useLines { it.toList() }
+            // Tech words, slang, brands, names and places the subtitle list lacks. Optional.
+            val extra = try {
+                context.assets.open(EXTRA_ASSET).bufferedReader().useLines { it.toList() }
+            } catch (e: IOException) {
+                emptyList()
+            }
+            parse((main + extra).asSequence())
         } catch (e: IOException) {
             Log.w(TAG, "Word list missing", e)
             EMPTY
@@ -80,15 +79,22 @@ class WordDictionary private constructor(
 
         /** Builds a dictionary from "word<TAB>frequency" lines. */
         fun parse(lines: Sequence<String>): WordDictionary {
-            val entries = ArrayList<Triple<String, String, Int>>(40_000)
+            // One entry per word. The first one wins, except that a brand spelled with a capital inside
+            // (iPhone, YouTube) replaces a plain lowercase entry for the same word.
+            val unique = LinkedHashMap<String, Triple<String, String, Int>>(40_000)
             for (line in lines) {
                 if (line.isEmpty() || line[0] == '#') continue
                 val tab = line.indexOf('\t')
                 if (tab <= 0) continue
                 val word = line.substring(0, tab)
                 val freq = line.substring(tab + 1).trim().toIntOrNull() ?: continue
-                entries.add(Triple(word.lowercase(Locale.ROOT), word, freq))
+                val key = word.lowercase(Locale.ROOT)
+                val old = unique[key]
+                val innerCapital = word.length > 1 && word.drop(1).any { it.isUpperCase() }
+                val oldInnerCapital = old != null && old.second.length > 1 && old.second.drop(1).any { it.isUpperCase() }
+                if (old == null || (innerCapital && !oldInnerCapital)) unique[key] = Triple(key, word, maxOf(freq, old?.third ?: 0))
             }
+            val entries = ArrayList(unique.values)
             entries.sortBy { it.first }
             val keys = Array(entries.size) { entries[it].first }
             val display = Array(entries.size) { entries[it].second }

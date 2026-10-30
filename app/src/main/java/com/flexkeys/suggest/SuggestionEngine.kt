@@ -303,6 +303,10 @@ class SuggestionEngine internal constructor(
             }
         }
 
+        // Two real words mixed up ("better then"): only the previous word can tell.
+        if (correction == null && correctable && prev != null) {
+            ConfusableFixes.fix(lower, prev.lowercase(Locale.ROOT))?.let { correction = applyCase(it, typed) }
+        }
         // The user's own fixes win over everything else.
         if (allowCorrection) customFixes[lower]?.let { correction = it }
         val others = ranked.map { applyCase(it.display, typed) }.filter { it != correction }

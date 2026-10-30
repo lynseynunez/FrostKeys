@@ -183,7 +183,7 @@ class SuggestionStripView(context: Context) : View(context) {
             }
             drawPressed(canvas, i, tmp)
             Fonts.apply(textPaint, context, t.fontId, if (highlighted || (suggestions.highlighted < 0 && i == 1)) 620 else 440)
-            textPaint.textSize = barRect.height() * 0.40f * t.fontScale.coerceIn(0.8f, 1.3f)
+            textPaint.textSize = barRect.height() * 0.40f * t.fontScale.coerceIn(0.8f, 1.3f) * prefs.suggestionFontPercent.coerceIn(50, 130) / 100f
             textPaint.color = if (highlighted || i == 1) t.textColor else t.secondaryTextColor
             val label = if (i == suggestions.typedIndex && suggestions.correction != null) "“$word”" else word
             val shown = TextUtils.ellipsize(label, textPaint, tmp.width() - dp(10f), TextUtils.TruncateAt.END).toString()

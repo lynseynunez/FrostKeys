@@ -64,9 +64,10 @@ class AutocorrectTest {
     @Test
     fun protectedWordsAreNeverChanged() {
         val engine = TestData.engine()
-        assertEquals("gps", fix("gpu", engine))
-        engine.setRules(setOf("gpu"), emptyMap())
-        assertNull(fix("gpu", engine))
+        // "hellp" is not a word, so it is normally corrected; protecting it stops that.
+        assertTrue(fix("hellp", engine) != null)
+        engine.setRules(setOf("hellp"), emptyMap())
+        assertNull(fix("hellp", engine))
     }
 
     @Test
@@ -127,5 +128,58 @@ class AutocorrectTest {
         // A generous budget for a loaded CI machine; a phone is several times slower, so keep this tight.
         assertTrue("mean $mean ms", mean < 2.0)
         assertTrue("p95 $p95 ms", p95 < 12.0)
+    }
+}
+
+class VocabularyTest {
+
+    private val engine = TestData.engine()
+
+    @Test
+    fun namesBrandsAndSlangAreLeftAlone() {
+        val words = listOf(
+            "Logan", "Sasuke", "okies", "Klipy", "iPhone", "YouTube", "TikTok", "Groq", "gpu", "wifi", "tbh", "omw",
+            "bestie", "Samsung", "Pixel", "Sakura", "Hinata", "Ethan", "Priya", "Mateo", "Toronto", "Tokyo", "chatgpt",
+        )
+        val changed = words.filter { engine.suggest(it, null, true, true).correction != null }
+        assertTrue("Changed but should not be: $changed", changed.isEmpty())
+    }
+
+    @Test
+    fun brandsKeepTheirCapitalization() {
+        assertEquals("iPhone", engine.displayForm("iphone"))
+        assertEquals("YouTube", engine.displayForm("youtube"))
+        assertEquals("TikTok", engine.displayForm("tiktok"))
+    }
+
+    @Test
+    fun ordinaryWordsKeepTheirLowercaseForm() {
+        // Words that are also names or brands must stay lowercase when typed lowercase.
+        for (w in listOf("target", "switch", "mark", "grace", "teams", "slack", "prime", "jack", "frank")) {
+            assertEquals(w, engine.displayForm(w))
+        }
+    }
+
+    @Test
+    fun capitalizationOfIAndContractions() {
+        assertEquals("I", engine.displayForm("i"))
+        assertEquals("I'm", engine.displayForm("i'm"))
+        assertEquals("I'll", engine.displayForm("i'll"))
+        assertEquals("I've", engine.displayForm("i've"))
+        assertEquals("I'd", engine.displayForm("i'd"))
+    }
+
+    @Test
+    fun mixedUpRealWordsUseThePreviousWord() {
+        fun fix(word: String, prev: String?) = engine.suggest(word, prev, true, false).correction
+        assertEquals("than", fix("then", "better"))
+        assertEquals("than", fix("then", "more"))
+        assertEquals("from", fix("form", "away"))
+        assertEquals("lose", fix("loose", "to"))
+        // Correct uses stay alone.
+        assertNull(fix("then", "and"))
+        assertNull(fix("then", null))
+        assertNull(fix("form", "the"))
+        assertNull(fix("loose", "very"))
     }
 }

@@ -30,12 +30,12 @@ is changed; releases get automatic notes and a signing-key script.
 
 The biggest everyday improvement.
 
-- [ ] **Context-aware autocorrect (L).** Add a compact word-pair model so a typo that spells another real word
+- [~] **Context-aware autocorrect (L).** *First step done: a short, careful list of real-word mix-ups fixed by the previous word (then/than, form/from, loose/lose). The full word-pair model is still to do.* Add a compact word-pair model so a typo that spells another real word
   ("form" for "from", "wnat" for "want") is resolved by the previous word. Needs a bundled, permissively licensed
   pair table and a size budget for the APK. Measured against the typo test list from Milestone 1.
-- [ ] **Bigger vocabulary (M).** A tech, app and texting-slang list, plus names the user types often, so real
+- [x] **Bigger vocabulary (M).** A tech, app and texting-slang list, plus names the user types often, so real
   words are not treated as mistakes.
-- [ ] **Smarter capitalization and punctuation (S).** "i" to "I", sentence-start rules, and edge cases around
+- [x] **Smarter capitalization and punctuation (S).** "i" to "I", sentence-start rules, and edge cases around
   quotes, parentheses and abbreviations.
 
 ## Milestone 3: Look and feel
