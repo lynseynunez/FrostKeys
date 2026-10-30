@@ -69,6 +69,9 @@ android {
     lint {
         abortOnError = false
         checkReleaseBuilds = false
+        // Plain-text report so CI can print problems like calls that need a newer Android.
+        textReport = true
+        textOutput = file("build/reports/lint-results.txt")
     }
 
     testOptions {

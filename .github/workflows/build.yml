@@ -35,6 +35,16 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+      - name: Lint (report only, for Android version problems)
+        continue-on-error: true
+        run: |
+          gradle lintDebug --stacktrace || true
+          echo "=== Lint results (errors and warnings about newer-Android calls first) ==="
+          if [ -f app/build/reports/lint-results.txt ]; then
+            grep -E "NewApi|InlinedApi|Overdraw|MissingPermission|UnprotectedSMSBroadcastReceiver|ExportedService|Recycle|ClickableViewAccessibility" -B1 -A3 app/build/reports/lint-results.txt | head -200 || true
+            tail -5 app/build/reports/lint-results.txt
+          fi
+
       - name: Upload build reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
