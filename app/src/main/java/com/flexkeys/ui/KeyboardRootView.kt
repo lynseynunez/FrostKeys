@@ -552,7 +552,12 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         1 -> 0.85f
         2 -> 0.70f
         3 -> 0.55f
-        else -> if (resources.configuration.smallestScreenWidthDp >= 600) 0.70f else 1f
+        else -> when {
+            resources.configuration.smallestScreenWidthDp >= 600 -> 0.70f
+            // A phone turned sideways: full-width keys end up far apart, so keep the keyboard narrower.
+            resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE -> 0.75f
+            else -> 1f
+        }
     }
 
     /** Sets the side padding that gives the keyboard its width and position, and the bottom padding for the nav bar. */

@@ -539,7 +539,9 @@ class KeyboardView(context: Context) : View(context) {
         if (hint != null) {
             hintPaint.textSize = rowHeight * 0.19f * t.fontScale
             hintPaint.color = t.secondaryTextColor
-            canvas.drawText(hint, v.right - t.dp(5f), v.top + t.dp(3f) + hintPaint.textSize, hintPaint)
+            // On wide keys (a phone turned sideways) the hint stays next to its letter instead of drifting to the key's corner.
+            val nearLetter = cx + textPaint.measureText(label) / 2f + hintPaint.measureText(hint) + t.dp(8f)
+            canvas.drawText(hint, minOf(v.right - t.dp(5f), nearLetter), v.top + t.dp(3f) + hintPaint.textSize, hintPaint)
         }
     }
 
@@ -570,7 +572,9 @@ class KeyboardView(context: Context) : View(context) {
 
         val popup = pointers.values.firstNotNullOfOrNull { it.popup }
         if (popup != null) {
-            h.painter.draw(canvas, popup.rect, t.cornerRadiusPx + t.dp(2f), h.backdrop, offset.x, offset.y, bubbleFill)
+            // Same frosted glass as the emoji panel, a little denser so the keys behind don't fight the characters.
+            val popupFill = GlassTheme.withAlpha(if (t.dark) Color.BLACK else Color.WHITE, 0.5f + 0.3f * t.glassOpacity)
+            h.painter.draw(canvas, popup.rect, t.cornerRadiusPx + t.dp(2f), h.backdrop, offset.x, offset.y, popupFill)
             textPaint.textSize = rowHeight * 0.38f * t.fontScale
             popup.options.forEachIndexed { i, option ->
                 val left = popup.rect.left + (i % popup.cols) * popup.cellWidth
