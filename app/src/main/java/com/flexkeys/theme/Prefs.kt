@@ -138,6 +138,14 @@ class Prefs private constructor(context: Context) {
     var shimmerStrength by int(KEY_SHIMMER_STRENGTH, 50)
     /** The live keyboard preview docked at the bottom of settings is expanded. */
     var previewOpen by bool(KEY_PREVIEW_OPEN, true)
+    /** How wide the keyboard is: -1 auto (narrower on tablets), 0 full, 1 wide 85%, 2 medium 70%, 3 compact 55%. */
+    var keyboardWidth by int(KEY_KEYBOARD_WIDTH, -1)
+    /** Where a narrower keyboard sits: 0 center, 1 left, 2 right. */
+    var keyboardPosition by int(KEY_KEYBOARD_POSITION, 0)
+    /** Split the letter rows into two halves with a gap, for thumbs on a tablet. */
+    var splitKeys by bool(KEY_SPLIT_KEYS, false)
+    /** Width of the gap in a split keyboard, in percent of the keyboard width. */
+    var splitGap by int(KEY_SPLIT_GAP, 18)
     /** Color a pressed key lights up in: 0 white, 1 accent, 2 gradient, 3 photo color. */
     var pressStyle by int(KEY_PRESS_STYLE, 0)
     /** The last fancy text style picked (index into FancyText.Style). */
@@ -216,6 +224,10 @@ class Prefs private constructor(context: Context) {
         const val KEY_PUNCTUATION = "punctuation_keys"
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
+        const val KEY_KEYBOARD_WIDTH = "keyboard_width"
+        const val KEY_KEYBOARD_POSITION = "keyboard_position"
+        const val KEY_SPLIT_KEYS = "split_keys"
+        const val KEY_SPLIT_GAP = "split_gap"
         const val KEY_PRESS_STYLE = "press_style"
         const val KEY_PREVIEW_OPEN = "settings_preview_open"
         const val KEY_DIAGNOSTICS = "diagnostics"
@@ -253,7 +265,8 @@ class Prefs private constructor(context: Context) {
          * every other setting is simply read the next time it is used.
          */
         val THEME_KEYS: Set<String> = setOf(
-            KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_SUGGESTION_FONT, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
+            KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_SUGGESTION_FONT, KEY_KEYBOARD_WIDTH, KEY_KEYBOARD_POSITION,
+            KEY_SPLIT_KEYS, KEY_SPLIT_GAP, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
             KEY_SPACE_GLASS, KEY_SPACE_STYLE, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
             KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,

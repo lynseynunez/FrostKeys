@@ -65,7 +65,7 @@ All use the user's own free API key (Groq or Gemini), are off by default, and ar
 
 ## Milestone 6: Platform
 
-- [ ] **Tablet and foldable layouts (L).** Split keyboard and floating mode, with sizing that suits a tablet.
+- [~] **Tablet and foldable layouts (L).** *First version done: keyboard width (auto narrower on tablets, wide, medium, compact), position (center, left, right) and split keys with an adjustable gap. Floating mode and foldable posture handling are still to do.* Split keyboard and floating mode, with sizing that suits a tablet.
   Needs testing on the owner's tablet.
 - [ ] **Android version coverage (M).** Check the older-Android fallbacks (blur, the glass sheet, sensors,
   window setup) so nothing breaks off the newest version.

@@ -198,13 +198,30 @@ class KeyboardView(context: Context) : View(context) {
         rowHeight = computeRowHeight(t, def.rows.size)
         val hPad = t.dp(3f)
         val vPad = t.dp(VERTICAL_PAD_DP)
-        val unit = (width - 2 * hPad) / LayoutDef.UNITS
+        val fullUnit = (width - 2 * hPad) / LayoutDef.UNITS
         val insetX = t.keySpacingPx / 2f
         val insetY = t.keySpacingPx / 2f + t.dp(3.5f)
+        // A split keyboard leaves a gap down the middle of the letter rows, as on a tablet keyboard.
+        val gap = if (prefs.splitKeys && layer == Layer.LETTERS) width * prefs.splitGap.coerceIn(8, 30) / 100f else 0f
         def.rows.forEachIndexed { r, row ->
+            val half = row.units / 2f
+            // The first key boundary at (or just before) the middle; a wide key across the middle
+            // (the space bar) keeps its row whole.
+            var run = 0f
+            var splitAfter = -1
+            var found = false
+            row.keys.forEachIndexed { i, k ->
+                run += k.width
+                if (!found && run >= half - 0.5f) {
+                    found = true
+                    if (run <= half + 0.75f) splitAfter = i
+                }
+            }
+            val splittable = gap > 0f && splitAfter >= 0 && splitAfter < row.keys.size - 1
+            val unit = if (splittable) (width - 2 * hPad - gap) / LayoutDef.UNITS else fullUnit
             var x = hPad + (LayoutDef.UNITS - row.units) / 2f * unit
             val top = vPad + r * rowHeight
-            for (k in row.keys) {
+            row.keys.forEachIndexed { i, k ->
                 val w = k.width * unit
                 if (k.type != KeyType.SPACER) {
                     val cell = RectF(x, top, x + w, top + rowHeight)
@@ -212,6 +229,7 @@ class KeyboardView(context: Context) : View(context) {
                     keys.add(Key(k, cell, visual))
                 }
                 x += w
+                if (splittable && i == splitAfter) x += gap
             }
         }
     }

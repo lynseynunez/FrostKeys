@@ -574,6 +574,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
         slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
         slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
+        picker("Keyboard width", listOf("Auto (narrower on tablets)", "Full", "Wide (85%)", "Medium (70%)", "Compact (55%)"), prefs.keyboardWidth + 1) { prefs.keyboardWidth = it - 1 }
+        picker("Keyboard position", listOf("Center", "Left", "Right"), prefs.keyboardPosition) { prefs.keyboardPosition = it }
+        toggle("Split keys", "Leaves a gap down the middle of the letter rows for thumb typing on a tablet", prefs::splitKeys)
+        slider("Split gap", 8, 30, prefs::splitGap) { "$it%" }
         picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }

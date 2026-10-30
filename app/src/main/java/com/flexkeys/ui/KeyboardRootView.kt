@@ -233,7 +233,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
                 @Suppress("DEPRECATION")
                 insets.systemWindowInsetBottom
             }
-            setPadding(0, 0, 0, bottom)
+            bottomPadding = bottom
+            applyPaddings()
             insets
         }
     }
@@ -471,6 +472,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         aiBar.restyle()
         lookBar.restyle()
         textToolsBar.restyle()
+        applyPaddings()
         keyboardView.onThemeChanged()
         strip.requestLayout()
         invalidateTree(this)
@@ -503,8 +505,34 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         if (view is ViewGroup) for (i in 0 until view.childCount) invalidateTree(view.getChildAt(i))
     }
 
+    // ---- keyboard width and position (useful on tablets and foldables) ----
+    private var bottomPadding = 0
+    private val layoutPrefs = Prefs.get(context)
+
+    /** The share of the screen width the keyboard uses. Auto means narrower on a tablet. */
+    private fun widthFraction(): Float = when (layoutPrefs.keyboardWidth) {
+        0 -> 1f
+        1 -> 0.85f
+        2 -> 0.70f
+        3 -> 0.55f
+        else -> if (resources.configuration.smallestScreenWidthDp >= 600) 0.70f else 1f
+    }
+
+    /** Sets the side padding that gives the keyboard its width and position, and the bottom padding for the nav bar. */
+    private fun applyPaddings() {
+        val extra = (width * (1f - widthFraction())).toInt().coerceAtLeast(0)
+        val left = when (layoutPrefs.keyboardPosition) {
+            1 -> 0
+            2 -> extra
+            else -> extra / 2
+        }
+        val right = extra - left
+        if (paddingLeft != left || paddingRight != right || paddingBottom != bottomPadding) setPadding(left, 0, right, bottomPadding)
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+        applyPaddings()
         backdrop.setSize(w, h)
         rebuildGradient()
         invalidateTree(this)
@@ -513,7 +541,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     /** The whole keyboard is one sheet of frosted glass with rounded top corners. */
     override fun onDraw(canvas: Canvas) {
         val radius = theme.dp(SHEET_RADIUS_DP)
-        sheetRect.set(0f, 0f, width.toFloat(), height + radius)
+        sheetRect.set(paddingLeft.toFloat(), 0f, (width - paddingRight).toFloat(), height + radius)
         sheetPath.reset()
         sheetPath.addRoundRect(sheetRect, radius, radius, Path.Direction.CW)
         canvas.save()
