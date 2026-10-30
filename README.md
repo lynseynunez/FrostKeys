@@ -113,8 +113,8 @@ For a release signed with a key only you hold:
    `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`.
 3. Publish a release as above. The workflow now signs with your key.
 
-Each release's notes are written automatically from the commit titles since the last release, and the app's
-**Check for updates** shows them.
+Each release's notes come from `release-notes/<version>.md` if you wrote one, otherwise they are written
+automatically from the commit titles since the last release. The app's **Check for updates** shows them.
 
 Heads up: a release signed with your own key differs from the debug builds, so Android will not install it over
 one. Export a backup first (Settings → Backup & sharing), uninstall the debug build, install the release, then
