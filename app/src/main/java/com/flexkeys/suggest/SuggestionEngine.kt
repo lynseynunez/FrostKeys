@@ -92,7 +92,7 @@ class SuggestionEngine private constructor(context: Context) {
 
     private class Candidate(val display: String, val score: Double, val cost: Double)
 
-    fun isKnown(word: String): Boolean = dictionary.contains(word) || word.lowercase(Locale.ROOT) in protectedWords || user.count(word) >= learnedThreshold(word)
+    fun isKnown(word: String): Boolean = dictionary.contains(word) || word.lowercase(Locale.ROOT) in protectedWords || isLearned(word)
 
     /**
      * A word that isn't in the dictionary but is one slip away from a common word is probably a typo
@@ -154,6 +154,12 @@ class SuggestionEngine private constructor(context: Context) {
 
     private fun learnedThreshold(word: String): Int = if (looksLikeTypo(word)) TYPO_LEARNED_THRESHOLD else LEARNED_THRESHOLD
 
+    /** Typed often enough to count as a real word. The typo check only runs for words typed at least once. */
+    private fun isLearned(word: String): Boolean {
+        val count = user.count(word)
+        return count > 0 && count >= learnedThreshold(word)
+    }
+
     /**
      * Forgets learned words that look like typos and were typed only a few times. Returns how many
      * were removed. Runs by itself after the dictionary loads, and from settings.
@@ -203,7 +209,7 @@ class SuggestionEngine private constructor(context: Context) {
             add(word, score(word, freq, prev) - if (extra > 0) COMPLETION_PENALTY + 0.12 * extra else 0.0, COMPLETION_COST)
         }
         for ((word, _) in user.withPrefix(lower)) {
-            if (user.count(word) < learnedThreshold(word) && word != lower) continue
+            if (!isLearned(word) && word != lower) continue
             val extra = word.length - lower.length
             add(word, score(word, dictionary.frequency(word), prev) - if (extra > 0) COMPLETION_PENALTY + 0.12 * extra else 0.0, COMPLETION_COST)
         }
@@ -215,7 +221,7 @@ class SuggestionEngine private constructor(context: Context) {
             var bestEdit = Double.NEGATIVE_INFINITY
             forEachEdit(lower) { edit, cost ->
                 val freq = dictionary.frequency(edit)
-                if (freq > 0 || user.count(edit) >= learnedThreshold(edit)) {
+                if (freq > 0 || isLearned(edit)) {
                     val s = score(edit, freq, prev) - EDIT_WEIGHT * cost
                     if (s > bestEdit) bestEdit = s
                     add(dictionary.displayForm(edit) ?: edit, s, cost)
@@ -245,7 +251,7 @@ class SuggestionEngine private constructor(context: Context) {
 
         var correction: String? = null
         // A known misspelling ("teh", "definately") is fixed straight away, unless the user taught us the word.
-        val typoFix = if (correctable && user.count(lower) < learnedThreshold(lower)) PHRASE_FIXES[lower] ?: contractionFor(lower) ?: typos[lower] else null
+        val typoFix = if (correctable && !isLearned(lower)) PHRASE_FIXES[lower] ?: contractionFor(lower) ?: typos[lower] else null
         if (typoFix != null) {
             correction = applyCase(typoFix, typed)
         } else if (correctable) {

@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 class UserDictionary(context: Context) {
 
     private val file = File(context.filesDir, FILE_NAME)
-    private val words = HashMap<String, Int>()
+    private val words = java.util.TreeMap<String, Int>()
     private val bigrams = HashMap<String, HashMap<String, Int>>()
     private var dirty = 0
     @Volatile private var loaded = false
@@ -65,7 +65,7 @@ class UserDictionary(context: Context) {
 
     /** Learned words starting with [prefix] (lowercase). */
     fun withPrefix(prefix: String): List<Pair<String, Int>> =
-        words.entries.filter { it.key.startsWith(prefix) }.map { it.key to it.value }
+        words.subMap(prefix, prefix + Char.MAX_VALUE).entries.map { it.key to it.value }
 
     fun learn(word: String, prev: String?, weight: Int = 1) {
         val k = key(word)

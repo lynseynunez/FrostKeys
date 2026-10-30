@@ -567,8 +567,13 @@ class KeyboardView(context: Context) : View(context) {
         return keys.minByOrNull { hypot(x - it.cell.centerX(), y - it.cell.centerY()) }
     }
 
+    /** When a key last went down; lets heavy animations rest while the user is typing. */
+    @Volatile var lastKeyDownAt = 0L
+        private set
+
     private fun onPointerDown(id: Int, x: Float, y: Float) {
         if (pointers.values.any { it.popup != null }) return
+        lastKeyDownAt = SystemClock.uptimeMillis()
         // Rolling over to a new key while the previous one is still held types the previous one.
         for ((otherId, other) in pointers.entries.toList()) {
             if (other.key.def.type == KeyType.CHAR && !other.handled) onPointerUp(otherId)
@@ -678,7 +683,7 @@ class KeyboardView(context: Context) : View(context) {
             return
         }
         if (p.key.def.type == KeyType.SPACE) {
-            if (!p.cursorMode && abs(x - p.downX) > t.dp(16f)) {
+            if (!p.cursorMode && abs(x - p.downX) > t.dp(CURSOR_SWIPE_DP)) {
                 p.cursorMode = true
                 p.handled = true
                 p.cursorAnchorX = x
@@ -701,7 +706,7 @@ class KeyboardView(context: Context) : View(context) {
         if (p.key.def.type != KeyType.CHAR) return
         // A swipe down on a key types the symbol shown in its corner.
         val hint = p.key.def.hint
-        if (hint != null && !p.handled && y - p.downY > t.dp(24f) && y - p.downY > abs(x - p.downX)) {
+        if (hint != null && !p.handled && y - p.downY > t.dp(SWIPE_DOWN_DP) && y - p.downY > 1.5f * abs(x - p.downX)) {
             p.handled = true
             p.longPress?.let { handler.removeCallbacks(it) }
             setPreview(null)
@@ -709,7 +714,11 @@ class KeyboardView(context: Context) : View(context) {
             return
         }
         val k = keyAt(x, y) ?: return
-        if (k !== p.key && k.def.type == KeyType.CHAR && !p.key.cell.contains(x, y)) {
+        // Fast typing makes the thumb roll sideways a little while it lifts, so a press only moves to the
+        // next key after a deliberate pause and a clear distance past the edge of the first one.
+        val margin = p.key.cell.width() * SLIDE_MARGIN
+        val pastEdge = x < p.key.cell.left - margin || x > p.key.cell.right + margin
+        if (k !== p.key && k.def.type == KeyType.CHAR && pastEdge && SystemClock.uptimeMillis() - p.downTime > SLIDE_AFTER_MS) {
             release(p.key)
             p.key = k
             press(k)
@@ -774,6 +783,12 @@ class KeyboardView(context: Context) : View(context) {
         const val PRESS_MS = 70f
         const val RELEASE_MS = 200f
         const val LONG_PRESS_MS = 380L
+        /** How far down a swipe on a key must go to type its corner symbol. */
+        const val SWIPE_DOWN_DP = 40f
+        /** How far a space bar drag goes before it starts moving the cursor. */
+        const val CURSOR_SWIPE_DP = 22f
+        const val SLIDE_MARGIN = 0.3f
+        const val SLIDE_AFTER_MS = 140L
         const val SPACE_LONG_PRESS_MS = 750L
         /** Resting this long on the space bar before dragging starts selecting. */
         const val SELECT_DWELL_MS = 300L

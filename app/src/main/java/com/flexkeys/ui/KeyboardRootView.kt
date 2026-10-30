@@ -138,9 +138,14 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     // ---- tilt shimmer: a soft highlight that slides across the glass as the phone moves ----
     private val shimmerPrefs = Prefs.get(context)
+    /** True for a moment after each key press: heavy redraws wait so typing stays smooth. */
+    private val typingBusy get() = android.os.SystemClock.uptimeMillis() - keyboardView.lastKeyDownAt < 450L
+
     private val tilt = TiltSensor(context) {
-        invalidate()
-        keyboardView.invalidate()
+        if (!typingBusy) {
+            invalidate()
+            keyboardView.invalidate()
+        }
     }
     private val glassAnimation = GlassAnimation()
 
@@ -494,7 +499,10 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             sheetPaint.shader = null
         }
         val animStyle = shimmerPrefs.glassAnimation
-        if (animStyle != GlassAnimation.OFF && isShown && !saving) {
+        if (animStyle != GlassAnimation.OFF && isShown && !saving && typingBusy) {
+            // Resume shortly after the last key.
+            postInvalidateDelayed(150L)
+        } else if (animStyle != GlassAnimation.OFF && isShown && !saving) {
             glassAnimation.tick(android.os.SystemClock.uptimeMillis(), shimmerPrefs.animationSpeed.coerceIn(0, 100) / 100f)
             glassAnimation.draw(canvas, animStyle, width.toFloat(), height.toFloat(),
                 shimmerPrefs.animationIntensity.coerceIn(0, 100) / 100f, theme,

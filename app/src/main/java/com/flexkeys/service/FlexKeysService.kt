@@ -278,7 +278,19 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         return WordContext(previous, sentenceStart, afterSpace)
     }
 
+    private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val suggestionRunnable = Runnable { updateSuggestionsNow() }
+
+    /**
+     * Looks up suggestions a moment after the last key, not on every key, so fast typing isn't slowed
+     * down by the dictionary work and the extra calls into the text field.
+     */
     private fun updateSuggestions() {
+        uiHandler.removeCallbacks(suggestionRunnable)
+        uiHandler.postDelayed(suggestionRunnable, SUGGESTION_DELAY_MS)
+    }
+
+    private fun updateSuggestionsNow() {
         val r = root ?: return
         r.refreshTools()
         val strip = r.strip
@@ -918,6 +930,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     companion object {
+        /** Wait this long after a key before refreshing suggestions. */
+        private const val SUGGESTION_DELAY_MS = 40L
+
         /** How much text before the cursor a backspace swipe can select back through. */
         private const val SWIPE_CONTEXT = 500
         /** Most text a tool (AI rewrite) reads from the field. */
