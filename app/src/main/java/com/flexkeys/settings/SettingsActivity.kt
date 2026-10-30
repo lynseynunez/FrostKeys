@@ -189,8 +189,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         }
 
         // The dock must exist before the home list is built, because showing a page shows or hides it.
-        showHome()
         column.addView(previewDockView())
+        showHome()
         return page
     }
 
