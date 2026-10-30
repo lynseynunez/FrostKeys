@@ -49,6 +49,22 @@ class ClipboardStore private constructor(context: Context) {
         return newest to code
     }
 
+    private var dismissedId = -1L
+
+    /** The newest clip if it is, in full, a fresh code, email, phone number or link worth offering as a one-tap paste. */
+    fun freshSmart(): Pair<Item, com.flexkeys.suggest.SmartClip.Found>? {
+        prune()
+        val newest = items.maxByOrNull { it.time } ?: return null
+        if (newest.id == dismissedId) return null
+        val found = com.flexkeys.suggest.SmartClip.find(newest.text) ?: return null
+        val limit = if (found.kind == com.flexkeys.suggest.SmartClip.Kind.CODE) OTP_OFFER_MS else SMART_OFFER_MS
+        if (System.currentTimeMillis() - newest.time > limit) return null
+        return newest to found
+    }
+
+    /** Stops offering [id] (after it was pasted). */
+    fun dismissOffer(id: Long) { dismissedId = id }
+
     /** Forgets clips that have outlived their time: codes after [OTP_KEEP_MS], the rest per the setting. */
     private fun prune() {
         val now = System.currentTimeMillis()
@@ -156,6 +172,7 @@ class ClipboardStore private constructor(context: Context) {
         private const val FILE_NAME = "clipboard.json"
         private const val MAX_UNPINNED = 30
         private const val OTP_OFFER_MS = 3 * 60_000L
+        private const val SMART_OFFER_MS = 2 * 60_000L
         private const val OTP_KEEP_MS = 10 * 60_000L
         /** Auto-delete choices in the same order as the setting: never, 1 hour, 1 day, 1 week. */
         private val EXPIRY_MS = longArrayOf(0L, 3_600_000L, 86_400_000L, 604_800_000L)

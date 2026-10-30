@@ -21,7 +21,12 @@ data class Suggestions(
     val emojiIndex: Int = -1,
     /** Slot index holding a one-time code copied from a message, or -1. */
     val clipIndex: Int = -1,
+    /** Slot index holding a calculator or unit answer, or -1. */
+    val calcIndex: Int = -1,
 ) {
+    /** A sum or conversion answer alone in the middle slot. */
+    fun withCalc(label: String): Suggestions = Suggestions(listOf("", label, ""), calcIndex = 1)
+
     /** Puts a copied one-time [code] in the left-hand slot. */
     fun withCode(code: String): Suggestions {
         val list = slots.toMutableList()

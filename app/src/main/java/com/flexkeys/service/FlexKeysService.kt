@@ -39,6 +39,9 @@ import com.flexkeys.phrases.SnippetStore
 import com.flexkeys.settings.PhrasesActivity
 import com.flexkeys.settings.SettingsActivity
 import com.flexkeys.settings.StickersActivity
+import com.flexkeys.suggest.CalcHit
+import com.flexkeys.suggest.SmartClip
+import com.flexkeys.suggest.SmartText
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.suggest.Suggestions
@@ -312,6 +315,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
 
     private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val suggestionRunnable = Runnable { updateSuggestionsNow() }
+    private var calcHit: CalcHit? = null
 
     /**
      * Looks up suggestions a moment after the last key, not on every key, so fast typing isn't slowed
@@ -344,24 +348,56 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 else -> Suggestions.EMPTY
             }.let { withOtp(it) }
         }
+        suggestions = withCalc(suggestions)
         strip.suggestions = suggestions
     }
 
-    /** A fresh verification code from a message offers itself as a one-tap paste (never in password fields). */
+    /**
+     * A fresh verification code (never in password fields), or a copied email, phone number or link when you are
+     * at the start of a field or after a space, offers itself as a one-tap paste.
+     */
     private fun withOtp(s: Suggestions): Suggestions {
         if (composing.isNotEmpty() || passwordField || !prefs.clipboardHistory) return s
-        val code = ClipboardStore.get(this).freshOtp()?.second ?: return s
-        return s.withCode(code)
+        val (_, found) = ClipboardStore.get(this).freshSmart() ?: return s
+        if (found.kind != SmartClip.Kind.CODE) {
+            if (!prefs.smartClips) return s
+            val last = currentInputConnection?.getTextBeforeCursor(1, 0)?.toString().orEmpty()
+            if (last.isNotEmpty() && !last.last().isWhitespace()) return s
+        }
+        return s.withCode(found.value)
+    }
+
+    /** The answer to a sum or unit just typed, as a chip in the middle of the strip. */
+    private fun withCalc(s: Suggestions): Suggestions {
+        calcHit = null
+        if (!prefs.calculator || composing.isNotEmpty() || passwordField || root?.panel != KeyboardRootView.Panel.NONE) return s
+        val before = currentInputConnection?.getTextBeforeCursor(60, 0)?.toString() ?: return s
+        val hit = SmartText.findCalc(before) ?: return s
+        calcHit = hit
+        return s.withCalc(hit.label)
     }
 
     override fun onSuggestionPicked(index: Int, text: String) {
         val ic = currentInputConnection ?: return
         feedback.keyPress(KeyType.CHAR)
+        if (text.isEmpty()) return
+        if (index == suggestions.calcIndex) {
+            val hit = calcHit ?: return
+            commitPending(ic)
+            if (hit.replaceLength > 0) ic.deleteSurroundingText(hit.replaceLength, 0)
+            ic.commitText(hit.insert, 1)
+            updateShiftState()
+            updateSuggestions()
+            return
+        }
         if (index == suggestions.clipIndex) {
-            // Paste the code, then forget the clip so the offer goes away.
+            // Paste it, then stop offering it (a code is forgotten altogether).
             commitPending(ic)
             ic.commitText(text, 1)
-            ClipboardStore.get(this).freshOtp()?.let { ClipboardStore.get(this).delete(it.first.id) }
+            val store = ClipboardStore.get(this)
+            store.freshSmart()?.let { (item, found) ->
+                if (found.kind == SmartClip.Kind.CODE) store.delete(item.id) else store.dismissOffer(item.id)
+            }
             updateShiftState()
             updateSuggestions()
             return

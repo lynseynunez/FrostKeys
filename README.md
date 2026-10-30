@@ -18,6 +18,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Double-space for ". "
 - Swipe left on backspace to select word by word and delete on release; swipe down on a letter to type the symbol in its corner
 - Voice typing: the mic button uses your phone's own speech recognizer (no microphone permission needed)
+- Smart paste (a copied email, phone number or link appears in the suggestion bar for a few minutes) and calculator and unit chips (type 12*8 or 5 km and tap the answer), both switchable in Typing
 - Phrases can include {date}, {time}, {day}, {month}, {year} and {clipboard}
 - Phrases: save text you type often, optionally with a shortcut ("omw" becomes "On my way!") that expands on space, and insert phrases from a panel
 - Add your own characters to any key's long-press popup

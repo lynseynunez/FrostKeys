@@ -320,6 +320,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Learn my words", "typing", "Typing", "dictionary"),
         Hit("Auto-capitalization", "typing", "Typing", "capital"),
         Hit("Double-space period", "typing", "Typing"),
+        Hit("Smart paste", "typing", "Typing", "email phone link clipboard suggestion"),
+        Hit("Calculator and unit chips", "typing", "Typing", "math convert km miles kg lb temperature"),
         Hit("Autocorrect list", "typing", "My words & tools", "protected always change"),
         Hit("Learned words", "typing", "My words & tools", "manage"),
         Hit("Phrases & extra keys", "typing", "My words & tools", "snippets shortcuts"),
@@ -1120,6 +1122,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Learn my words", "Improve suggestions from what you type, on-device only", prefs::learnWords)
         toggle("Auto-capitalization", null, prefs::autoCapitalize)
         toggle("Double-space period", "Tap space twice for \". \"", prefs::doubleSpacePeriod)
+        toggle("Smart paste", "Offer a copied email, phone number or link as a one-tap paste", prefs::smartClips)
+        toggle("Calculator and unit chips", "Type 12*8 or 5 km and tap the answer in the suggestion bar", prefs::calculator)
     }
 
     private fun typingToolsCard() = card("My words & tools") {

@@ -72,6 +72,9 @@ class Prefs private constructor(context: Context) {
     var doubleSpacePeriod by bool(KEY_DOUBLE_SPACE, true)
     var learnWords by bool(KEY_LEARN, true)
     var clipboardHistory by bool(KEY_CLIPBOARD, true)
+    /** Offer a copied email, phone number or link as a one-tap paste, and answers for sums and unit conversions. */
+    var smartClips by bool(KEY_SMART_CLIPS, true)
+    var calculator by bool(KEY_CALCULATOR, true)
     /** Delete unpinned clipboard history after: 0 never, 1 an hour, 2 a day, 3 a week. */
     var clipboardExpiry by int(KEY_CLIPBOARD_EXPIRY, 0)
 
@@ -254,6 +257,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_KLIPY_KEY = "klipy_key"
         const val KEY_KLIPY_CUSTOMER = "klipy_customer_id"
         const val KEY_PUNCTUATION = "punctuation_keys"
+        const val KEY_SMART_CLIPS = "smart_clips"
+        const val KEY_CALCULATOR = "calculator"
         const val KEY_MY_LOOKS = "my_looks"
         const val KEY_ACCENT_POPUPS = "accent_popups"
         const val KEY_ACCENT_SETS = "accent_sets"
