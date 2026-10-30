@@ -11,7 +11,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI, SLIDERS, STICKER,
+    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI, SLIDERS, STICKER, TEXT_TOOLS,
 }
 
 object Icons {
@@ -118,6 +118,14 @@ object Icons {
                 paint.textSize = oldSize
                 paint.style = Paint.Style.STROKE
                 canvas.restoreToCount(layer)
+            }
+            Icon.TEXT_TOOLS -> {
+                // A capital T and a small t side by side, joined by a baseline.
+                line(-0.44f, -0.30f, 0.02f, -0.30f)
+                line(-0.21f, -0.30f, -0.21f, 0.34f)
+                line(0.18f, -0.04f, 0.46f, -0.04f)
+                line(0.32f, -0.04f, 0.32f, 0.34f)
+                line(-0.44f, 0.44f, 0.46f, 0.44f)
             }
             Icon.STICKER -> {
                 // A square sticker with a peeling corner and a smile.

@@ -36,6 +36,7 @@ class SuggestionStripView(context: Context) : View(context) {
         FANCY(Icon.FANCY, "Fancy text"),
         AI(Icon.AI, "AI rewrite"),
         STICKERS(Icon.STICKER, "Stickers"),
+        TEXT_TOOLS(Icon.TEXT_TOOLS, "Text tools"),
         LOOK(Icon.SLIDERS, "Appearance"),
         SETTINGS(Icon.SETTINGS, "Settings"),
         HIDE(Icon.HIDE, "Hide"),

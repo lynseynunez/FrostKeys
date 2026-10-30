@@ -40,7 +40,7 @@ The biggest everyday improvement.
 
 ## Milestone 3: Look and feel
 
-- [ ] **Per-key glints on tilt (S).** Each key catches its own small highlight as the phone tilts, building on
+- [x] **Per-key glints on tilt (S).** Each key catches its own small highlight as the phone tilts, building on
   tilt shimmer.
 - [ ] **More glass animations and effects (S each).** New typing effects and glass animations in the spirit of
   the Keys Cafe ones, chosen after trying the current set. A place to try ideas quickly.
@@ -53,15 +53,15 @@ The biggest everyday improvement.
 
 All use the user's own free API key (Groq or Gemini), are off by default, and are disabled in password fields.
 
-- [ ] **AI reply helper (S).** Write a reply to text the user copied, in a chosen tone.
-- [ ] **Voice cleanup (S).** After dictating, tidy punctuation and remove filler words.
-- [ ] **Editable rewrite presets (S).** The user's own styles, such as "make it sound like me".
-- [ ] **Smarter emoji suggestions (M).** Suggest emoji for a whole sentence, not a single word.
+- [x] **AI reply helper (S).** Write a reply to text the user copied, in a chosen tone.
+- [x] **Voice cleanup (S).** After dictating, tidy punctuation and remove filler words.
+- [x] **Editable rewrite presets (S).** The user's own styles, such as "make it sound like me".
+- [x] **Smarter emoji suggestions (M).** Suggest emoji for a whole sentence, not a single word.
 
 ## Milestone 5: Productivity
 
-- [ ] **Text tools (S).** Change case, remove extra spaces, turn lines into a list, from the selection.
-- [ ] **Snippet variables (S).** Phrases that can include today's date, the time or the clipboard.
+- [x] **Text tools (S).** Change case, remove extra spaces, turn lines into a list, from the selection.
+- [x] **Snippet variables (S).** Phrases that can include today's date, the time or the clipboard.
 
 ## Milestone 6: Platform
 

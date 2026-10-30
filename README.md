@@ -18,6 +18,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Double-space for ". "
 - Swipe left on backspace to select word by word and delete on release; swipe down on a letter to type the symbol in its corner
 - Voice typing: the mic button uses your phone's own speech recognizer (no microphone permission needed)
+- Phrases can include {date}, {time}, {day}, {month}, {year} and {clipboard}
 - Phrases: save text you type often, optionally with a shortcut ("omw" becomes "On my way!") that expands on space, and insert phrases from a panel
 - Add your own characters to any key's long-press popup
 
@@ -38,7 +39,9 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Tap the four dots at the top left for a tools menu; use Edit there to choose which tools show in the top row, and hold and drag to reorder them
 - Your own stickers: add images from the gallery and send them as images (apps that can't take images get a copy to paste)
 - Kaomoji and symbols tabs in the emoji panel
+- Text tools: UPPERCASE, Title Case, Sentence case, tidy spaces, bullets, number lines, sort and more, on the selection or the whole field (nothing leaves the phone)
 - Fancy text: 16 styles (bold, italic, script, gothic, circled, small caps, strikethrough...) with a live preview
+- AI reply helper, your own rewrite styles and dictation cleanup (all through the AI service you set up)
 - AI rewrite (optional, bring your own free Groq or Gemini key): fix, friendlier, professional, shorter, longer, casual, add emoji, rephrase, or your own instruction
 
 **Liquid glass theme**

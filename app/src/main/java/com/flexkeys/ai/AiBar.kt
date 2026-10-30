@@ -14,6 +14,7 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
@@ -52,8 +53,12 @@ class AiBar(
     private val handler = Handler(Looper.getMainLooper())
     private var host: GlassHost? = null
 
-    private val modes = GeminiClient.Mode.values()
-    private val chips = modes.map { chip(it.label) } + chip("Custom")
+    /** One chip: a built-in style, "Reply", one of the user's own styles, or "Custom". */
+    private class Style(val label: String, val instruction: String, val kind: Int)
+
+    private var styles: List<Style> = emptyList()
+    private var chips: List<TextView> = emptyList()
+    private val chipRow = LinearLayout(context)
     private val chipScroll = HorizontalScrollView(context)
     private val sourceView = TextView(context)
     private val instructionView = TextView(context)
@@ -80,13 +85,10 @@ class AiBar(
 
         val header = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         header.addView(GlassButton(context, icon = Icon.ARROW_LEFT).apply { onClick = { onClose() } }, LayoutParams(dp(44f), dp(40f)))
-        val row = LinearLayout(context).apply { orientation = HORIZONTAL }
-        chips.forEachIndexed { i, c ->
-            c.setOnClickListener { if (i < modes.size) run(i) else toggleInstruction() }
-            row.addView(c, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36f)).apply { marginEnd = dp(6f) })
-        }
+        chipRow.orientation = HORIZONTAL
+        rebuildChips()
         chipScroll.isHorizontalScrollBarEnabled = false
-        chipScroll.addView(row)
+        chipScroll.addView(chipRow)
         header.addView(chipScroll, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(4f) })
         addView(header)
 
@@ -116,6 +118,21 @@ class AiBar(
         copyChip.setOnClickListener { copyResult() }
     }
 
+    /** Built-in styles, then Reply, then the user's own styles, then Custom. Read again each time the bar opens. */
+    private fun rebuildChips() {
+        styles = GeminiClient.Mode.values().map { Style(it.label, it.instruction, KIND_NORMAL) } +
+            Style("Reply", REPLY_INSTRUCTION, KIND_REPLY) +
+            AiPresets.parse(prefs.aiPresets).map { Style(it.name, it.instruction, KIND_NORMAL) } +
+            Style("Custom", "", KIND_CUSTOM)
+        chipRow.removeAllViews()
+        chips = styles.mapIndexed { i, s ->
+            chip(s.label).also { c ->
+                c.setOnClickListener { if (s.kind == KIND_CUSTOM) toggleInstruction() else runStyle(i) }
+                chipRow.addView(c, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36f)).apply { marginEnd = dp(6f) })
+            }
+        }
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         host = findGlassHost()
@@ -129,6 +146,8 @@ class AiBar(
 
     /** Opens on [text]: the selection, or the whole field when nothing is selected. */
     fun start(text: String, isSelection: Boolean) {
+        rebuildChips()
+        restyle()
         source = text
         wholeField = !isSelection
         render()
@@ -145,7 +164,7 @@ class AiBar(
     private fun toggleInstruction() {
         instructionMode = !instructionMode
         if (!instructionMode) query = ""
-        selectedMode = if (instructionMode) modes.size else -1
+        selectedMode = if (instructionMode) styles.lastIndex else -1
         render()
     }
 
@@ -187,16 +206,32 @@ class AiBar(
 
     private fun ready() = result.isNotEmpty() && status == null
 
-    private fun run(index: Int) {
+    private fun runStyle(index: Int) {
         instructionMode = false
         query = ""
-        send(modes[index].instruction, index)
+        send(styles[index].instruction, index)
     }
+
+    /** The message to answer: the latest thing the user copied. */
+    private fun copiedMessage(): String =
+        ClipboardStore.get(context).newest()?.text?.take(1500).orEmpty()
 
     private fun send(instruction: String, modeIndex: Int) {
         selectedMode = modeIndex
         refreshSource()
-        if (source.isBlank()) {
+        var text = source
+        val reply = styles.getOrNull(modeIndex)?.kind == KIND_REPLY
+        if (reply) {
+            val message = copiedMessage()
+            if (message.isBlank()) {
+                status = "Copy the message you want to reply to first, then tap Reply."
+                result = ""
+                render()
+                return
+            }
+            // The field's text, if any, is the user's own draft or idea for the reply.
+            text = "Message I received:\n$message\n\nMy draft or idea for the reply (may be empty):\n$source"
+        } else if (source.isBlank()) {
             status = "Type something in the field first, or select the text to rewrite."
             result = ""
             render()
@@ -212,10 +247,10 @@ class AiBar(
         status = "Writing…"
         result = ""
         render()
-        AiClient.rewrite(prefs, instruction, source) { text, error ->
+        AiClient.rewrite(prefs, instruction, text) { out, error ->
             if (gen != generation) return@rewrite
             status = error
-            result = text ?: ""
+            result = out ?: ""
             render()
         }
     }
@@ -253,5 +288,14 @@ class AiBar(
         cm.setPrimaryClip(ClipData.newPlainText("rewrite", result))
         copyChip.text = "Copied"
         handler.postDelayed({ copyChip.text = "Copy" }, 1200L)
+    }
+
+    private companion object {
+        const val KIND_NORMAL = 0
+        const val KIND_REPLY = 1
+        const val KIND_CUSTOM = 2
+        const val REPLY_INSTRUCTION = "Write a reply I can send to the message I received. If I gave a draft or idea, use its meaning " +
+            "and my voice; otherwise write a natural, short reply that matches the tone of the message. " +
+            "Reply with only the message to send."
     }
 }

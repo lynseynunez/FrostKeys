@@ -34,6 +34,7 @@ import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
 import com.flexkeys.phrases.CustomKeys
+import com.flexkeys.phrases.SnippetVariables
 import com.flexkeys.phrases.SnippetStore
 import com.flexkeys.settings.PhrasesActivity
 import com.flexkeys.settings.SettingsActivity
@@ -181,6 +182,16 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
 
     /** Types what the speech recognizer heard, with a space in front when it follows other text. */
     private fun insertSpoken(spoken: String) {
+        if (prefs.voiceCleanup && prefs.aiEnabled && AiClient.hasKey(prefs) && !passwordField) {
+            Toast.makeText(this, "Cleaning up…", Toast.LENGTH_SHORT).show()
+            // If the AI service fails, the plain dictation is typed instead.
+            AiClient.rewrite(prefs, VOICE_CLEANUP_INSTRUCTION, spoken) { cleaned, _ -> commitSpoken(cleaned ?: spoken) }
+        } else {
+            commitSpoken(spoken)
+        }
+    }
+
+    private fun commitSpoken(spoken: String) {
         val ic = currentInputConnection ?: return
         val before = ic.getTextBeforeCursor(1, 0)?.toString().orEmpty()
         val lead = if (before.isNotEmpty() && !before.last().isWhitespace()) " " else ""
@@ -266,7 +277,13 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
 
     // ---- suggestions -------------------------------------------------------------------------------
 
-    private class WordContext(val previous: String?, val sentenceStart: Boolean, val afterSpace: Boolean)
+    private class WordContext(
+        val previous: String?,
+        val sentenceStart: Boolean,
+        val afterSpace: Boolean,
+        /** The last few words typed, even across punctuation, for emoji suggestions about the whole sentence. */
+        val recent: List<String> = emptyList(),
+    )
 
     /** Looks at the text before the composing word to find the previous word. */
     private fun readContext(ic: InputConnection): WordContext {
@@ -277,7 +294,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         if (trimmed.isEmpty()) return WordContext(null, true, false)
         val sentenceStart = trimmed.last() in ".!?" || text.substring(trimmed.length).contains('\n')
         val previous = if (sentenceStart) null else WORD_AT_END.find(trimmed)?.value
-        return WordContext(previous, sentenceStart, afterSpace)
+        val recent = RECENT_WORDS.findAll(trimmed.takeLast(48)).map { it.value.lowercase() }.toList().takeLast(3)
+        return WordContext(previous, sentenceStart, afterSpace, recent)
     }
 
     private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -309,7 +327,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                     EmojiIndex.forWord(composing.toString()).firstOrNull()?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
                 }
                 ctx.afterSpace -> engine.predict(ctx.previous, ctx.sentenceStart).let { s ->
-                    ctx.previous?.let { EmojiIndex.forWord(it).firstOrNull() }?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
+                    ctx.recent.asReversed().firstNotNullOfOrNull { EmojiIndex.forWord(it).firstOrNull() }?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
                 }
                 else -> Suggestions.EMPTY
             }.let { withOtp(it) }
@@ -419,6 +437,14 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 passwordField -> Toast.makeText(this, "AI rewrite is off in password fields", Toast.LENGTH_SHORT).show()
                 else -> {
                     root?.startAi(toolSource(wholeField = true))
+                    updateShiftState()
+                }
+            }
+            SuggestionStripView.Action.TEXT_TOOLS -> {
+                if (passwordField) {
+                    Toast.makeText(this, "Text tools are off in password fields", Toast.LENGTH_SHORT).show()
+                } else {
+                    root?.startTextTools(toolSource(wholeField = true))
                     updateShiftState()
                 }
             }
@@ -793,7 +819,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     /** Commits the composing word, autocorrecting it if asked, and learns it. */
     private fun commitComposing(ic: InputConnection, autocorrect: Boolean, expand: Boolean = false) {
         val typed = composing.toString()
-        val phrase = if (expand) snippets.expansion(typed) else null
+        val phrase = if (expand) snippets.expansion(typed)?.let { SnippetVariables.expand(it, clipboard = latestClipText()) } else null
         if (phrase != null) {
             ic.commitText(phrase, 1)
             composing.clear()
@@ -816,6 +842,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         composing.clear()
         if (learningOn) engine.learn(final, previous)
     }
+
+    /** The newest clipboard text, for the {clipboard} placeholder in saved phrases. */
+    private fun latestClipText(): String = ClipboardStore.get(this).newest()?.text.orEmpty()
 
     private fun onSpace() {
         val ic = currentInputConnection ?: return
@@ -945,6 +974,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     companion object {
+        private const val VOICE_CLEANUP_INSTRUCTION = "Clean up this dictated text: add punctuation and capitalization, " +
+            "remove filler words like um and uh and false starts, and fix obvious mishearings. Do not change the meaning or add anything."
+
         /** Wait this long after a key before refreshing suggestions. */
         private const val SUGGESTION_DELAY_MS = 40L
 
@@ -958,6 +990,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         /** ClipDescription.EXTRA_IS_SENSITIVE, also set by some apps before Android 13. */
         private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
+        private val RECENT_WORDS = Regex("[\\p{L}']+")
         private val WORD_AT_END = Regex("[\\p{L}\\p{N}'’]+$")
         private val CORRECTING_PUNCTUATION = setOf(".", ",", "!", "?", ":", ";", ")")
         private val ATTACHING_PUNCTUATION = setOf(".", ",", "!", "?", ":", ";")

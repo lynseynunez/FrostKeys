@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
 import com.flexkeys.clipboard.ClipboardPanel
+import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassPanelLayout
@@ -103,7 +104,10 @@ class PhrasesPanel(context: Context, private val listener: Listener) : GlassPane
                     setColor(t?.keyFill ?: 0x55FFFFFF)
                     setStroke(dp(1f), t?.borderBottom ?: 0x22FFFFFF)
                 }
-                setOnClickListener { listener.onPaste(item.text) }
+                setOnClickListener {
+                    val clip = ClipboardStore.get(context).newest()?.text.orEmpty()
+                    listener.onPaste(SnippetVariables.expand(item.text, clipboard = clip))
+                }
             }
             if (item.shortcut.isNotEmpty()) {
                 row.addView(TextView(context).apply {

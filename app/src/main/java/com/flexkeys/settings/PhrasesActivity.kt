@@ -60,7 +60,8 @@ class PhrasesActivity : Activity() {
         column.addView(label("Phrases", 30f, palette.text).apply { typeface = Typeface.create("sans-serif", Typeface.BOLD) })
         column.addView(label(
             "Save text you type often. Give a phrase a shortcut and it appears when you type the shortcut and press space; " +
-                "press backspace right after to undo. Open all phrases from the bubble button on the keyboard.",
+                "press backspace right after to undo. Open all phrases from the bubble button on the keyboard. " +
+                "Phrases can include {date}, {time}, {day}, {month}, {year} and {clipboard}, which are filled in when used.",
             14f, palette.secondary,
         ).apply { setPadding(0, dp(2f), 0, dp(12f)) })
 

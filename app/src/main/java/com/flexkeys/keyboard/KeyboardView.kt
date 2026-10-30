@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
@@ -239,8 +240,11 @@ class KeyboardView(context: Context) : View(context) {
             canvas.save()
             if (KeyMotion.apply(canvas, prefs.keyMotion, key.visual, key.pressed, key.pressedAt, key.releasedAt, p, now, width)) animating = true
             // With the tilt shimmer on, lettering drifts a hair against the glass for a sense of depth.
-            if (h.shimmerX != 0f || h.shimmerY != 0f) canvas.translate(h.shimmerX * t.dp(1.8f), h.shimmerY * t.dp(1.4f))
+            if (prefs.shimmer && (h.shimmerX != 0f || h.shimmerY != 0f)) {
+                canvas.translate(h.shimmerX * t.dp(1.8f), h.shimmerY * t.dp(1.4f))
+            }
             drawKeyContent(canvas, key, t)
+            if (prefs.keyGlints && key.def.type != KeyType.SPACER) drawGlint(canvas, key, t, h.shimmerX, h.shimmerY)
             canvas.restore()
         }
         if (animating) postInvalidateOnAnimation()
@@ -367,6 +371,32 @@ class KeyboardView(context: Context) : View(context) {
             fillPaint.color = GlassTheme.withAlpha(press, (press ushr 24) / 255f * p)
             canvas.drawRoundRect(key.visual, t.cornerRadiusPx, t.cornerRadiusPx, fillPaint)
         }
+    }
+
+    // ---- key glints: a soft band of light that crosses each key at a different moment as the phone tilts ----
+    private val glintMatrix = Matrix()
+    private val glintPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val glintShader = LinearGradient(-0.5f, 0f, 0.5f, 0f,
+        intArrayOf(0x00FFFFFF, 0xFFFFFFFF.toInt(), 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+
+    private fun drawGlint(canvas: Canvas, key: Key, t: GlassTheme, tiltX: Float, tiltY: Float) {
+        val v = key.visual
+        // Where the band is along the keyboard, as the phone tilts; each key is at its own place along it.
+        val phase = tiltX * 0.9f + tiltY * 0.5f + v.centerX() / width.coerceAtLeast(1) * 1.0f + v.centerY() / height.coerceAtLeast(1) * 0.4f
+        val wrapped = phase - Math.floor(phase.toDouble()).toFloat()
+        val strength = (1f - abs(wrapped - 0.5f) * 4.5f).coerceIn(0f, 1f)
+        if (strength <= 0.02f) return
+        canvas.save()
+        canvas.clipRect(v)
+        glintMatrix.setScale(v.width() * 0.9f, v.width() * 0.9f)
+        glintMatrix.postRotate(28f)
+        glintMatrix.postTranslate(v.centerX(), v.centerY())
+        glintShader.setLocalMatrix(glintMatrix)
+        glintPaint.shader = glintShader
+        glintPaint.alpha = (255f * strength * (if (t.dark) 0.30f else 0.50f)).toInt().coerceIn(0, 255)
+        canvas.drawRect(v, glintPaint)
+        glintPaint.shader = null
+        canvas.restore()
     }
 
     private fun emblem(): Bitmap? {

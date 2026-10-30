@@ -570,6 +570,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Animation speed", 0, 100, prefs::animationSpeed) { "$it%" }
         slider("Animation intensity", 0, 100, prefs::animationIntensity) { "$it%" }
         toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
+        toggle("Key glints", "Each key catches its own flash of light as you tilt the phone", prefs::keyGlints)
         toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
         slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
         slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
@@ -791,6 +792,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         })
         inputField("Paste your Gemini API key", prefs.geminiKey, password = true) { prefs.geminiKey = it }
         inputField("Gemini model", prefs.geminiModel, password = false) { prefs.geminiModel = it.ifEmpty { GeminiClient.DEFAULT_MODEL } }
+        buttons(Triple("My rewrite styles", false) {
+            startActivity(Intent(this@SettingsActivity, AiStylesActivity::class.java))
+        })
+        toggle("Clean up dictation", "After voice typing, add punctuation and drop filler words (uses the service above)", prefs::voiceCleanup)
         buttons(Triple("Test the selected service", false) {
             if (!AiClient.hasKey(prefs)) {
                 toast("Paste the key for the selected service first")

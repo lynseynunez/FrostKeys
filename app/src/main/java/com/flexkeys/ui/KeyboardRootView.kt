@@ -19,6 +19,7 @@ import java.util.concurrent.Executors
 import com.flexkeys.clipboard.ClipboardPanel
 import com.flexkeys.phrases.PhrasesPanel
 import com.flexkeys.stickers.StickerPanel
+import com.flexkeys.texttools.TextToolsBar
 import com.flexkeys.suggest.MenuPanel
 import com.flexkeys.gif.GifPanel
 import com.flexkeys.ai.AiBar
@@ -91,6 +92,16 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     private val lookBar = LookBar(context) { endTool() }
 
+    private val textToolsBar = TextToolsBar(
+        context,
+        sourceProvider = { panelListener?.toolSource(wholeField = true) ?: ToolSource("", false) },
+        onReplace = { text, whole ->
+            panelListener?.onToolReplace(text, whole)
+            endTool()
+        },
+        onClose = { endTool() },
+    )
+
     private val aiBar = AiBar(
         context,
         sourceProvider = { panelListener?.toolSource(wholeField = true) ?: ToolSource("", false) },
@@ -162,16 +173,20 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     /** True when animations should rest to save battery. */
     private val saving get() = shimmerPrefs.batterySaver && PowerState.isLow(context)
 
+    /** The sheet's sliding highlight and the lettering drift. */
     private val shimmerOn get() = shimmerPrefs.shimmer && !saving
+
+    /** Anything that needs the tilt readings. */
+    private val tiltWanted get() = (shimmerPrefs.shimmer || shimmerPrefs.keyGlints) && !saving
     private val shimmerAmount get() = shimmerPrefs.shimmerStrength.coerceIn(0, 100) / 100f
 
-    override val shimmerX: Float get() = if (shimmerOn) tilt.x * shimmerAmount else 0f
-    override val shimmerY: Float get() = if (shimmerOn) tilt.y * shimmerAmount else 0f
+    override val shimmerX: Float get() = if (tiltWanted) tilt.x * shimmerAmount else 0f
+    override val shimmerY: Float get() = if (tiltWanted) tilt.y * shimmerAmount else 0f
 
     /** The sensor only runs while the keyboard is on screen and the setting is on. */
     private fun syncShimmer() {
         val animationFollowsTilt = shimmerPrefs.glassAnimation != GlassAnimation.OFF && shimmerPrefs.animationTilt && !saving
-        if ((shimmerOn || animationFollowsTilt) && isShown) tilt.start() else tilt.stop()
+        if ((tiltWanted || animationFollowsTilt) && isShown) tilt.start() else tilt.stop()
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
@@ -197,6 +212,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         translateBar.visibility = View.GONE
         addView(fancyBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         fancyBar.visibility = View.GONE
+        addView(textToolsBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        textToolsBar.visibility = View.GONE
         addView(lookBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         lookBar.visibility = View.GONE
         addView(aiBar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -342,6 +359,13 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     /** Called after the text field changed, so AI rewrite can pick up what was typed. */
     fun refreshTools() {
         if (activeTool === aiBar) aiBar.refreshSource()
+        if (activeTool === textToolsBar) textToolsBar.refreshSource()
+    }
+
+    /** Opens the text tools on [source]: the selection, or the whole field when nothing is selected. */
+    fun startTextTools(source: ToolSource) {
+        startTool(textToolsBar)
+        textToolsBar.start(source.text, source.isSelection)
     }
 
     /** Opens AI rewrite on [source]: the selection, or the whole field when nothing is selected. */
@@ -446,6 +470,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         fancyBar.restyle()
         aiBar.restyle()
         lookBar.restyle()
+        textToolsBar.restyle()
         keyboardView.onThemeChanged()
         strip.requestLayout()
         invalidateTree(this)

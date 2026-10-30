@@ -96,6 +96,10 @@ class Prefs private constructor(context: Context) {
     var klipyCustomerId by string(KEY_KLIPY_CUSTOMER, "")
     /** AI rewrite is off until the user turns it on and adds their own Gemini key. */
     var aiEnabled by bool(KEY_AI_ENABLED, false)
+    /** The user's own rewrite styles, one "name<TAB>instruction" per line (see AiPresets). */
+    var aiPresets by string(KEY_AI_PRESETS, "")
+    /** After dictating, tidy the text with the AI service (needs AI rewrite set up). */
+    var voiceCleanup by bool(KEY_VOICE_CLEANUP, false)
     /** The user's own free Gemini API key. Stored only on this device and never backed up. */
     var geminiKey by string(KEY_GEMINI_KEY, "")
     var geminiModel by string(KEY_GEMINI_MODEL, "gemini-flash-latest")
@@ -128,6 +132,8 @@ class Prefs private constructor(context: Context) {
     var customFixes by string(KEY_CUSTOM_FIXES, "")
     /** Highlights on the glass shift slightly as the phone is tilted. */
     var shimmer by bool(KEY_SHIMMER, false)
+    /** Each key catches its own small glint of light as the phone tilts. */
+    var keyGlints by bool(KEY_KEY_GLINTS, false)
     /** How strong the tilt shimmer is, 0..100. */
     var shimmerStrength by int(KEY_SHIMMER_STRENGTH, 50)
     /** The live keyboard preview docked at the bottom of settings is expanded. */
@@ -220,6 +226,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_ANIMATION_SPEED = "animation_speed"
         const val KEY_ANIMATION_TILT = "animation_tilt"
         const val KEY_ANIMATION_INTENSITY = "animation_intensity"
+        const val KEY_KEY_GLINTS = "key_glints"
         const val KEY_SHIMMER = "shimmer"
         const val KEY_SHIMMER_STRENGTH = "shimmer_strength"
         const val KEY_EFFECT_STRENGTH = "effect_strength"
@@ -227,6 +234,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_TYPING_EFFECT = "typing_effect"
         const val KEY_TOOLBAR_ITEMS = "toolbar_items"
         const val KEY_AI_ENABLED = "ai_enabled"
+        const val KEY_AI_PRESETS = "ai_presets"
+        const val KEY_VOICE_CLEANUP = "voice_cleanup"
         const val KEY_GEMINI_KEY = "gemini_key"
         const val KEY_GEMINI_MODEL = "gemini_model"
         const val KEY_AI_PROVIDER = "ai_provider"
