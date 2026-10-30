@@ -142,7 +142,13 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         }
         // If the system leaves a sliver below our view (seen after a restart), let the window's own
         // background match the glass instead of showing the app underneath.
-        root?.let { w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(it.theme.baseBottom)) }
+        // The color starts below the sheet's rounded top corners (and inside any side margins) so it never fills them.
+        root?.let {
+            val top = (it.theme.dp(KeyboardRootView.SHEET_RADIUS_DP) * 2f).toInt()
+            w.setBackgroundDrawable(android.graphics.drawable.InsetDrawable(
+                android.graphics.drawable.ColorDrawable(it.theme.baseBottom), it.paddingLeft, top, it.paddingRight, 0,
+            ))
+        }
         w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         root?.requestApplyInsets()
     }
