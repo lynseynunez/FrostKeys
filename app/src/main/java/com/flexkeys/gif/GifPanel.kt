@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.flexkeys.theme.Prefs
+import com.flexkeys.ui.GlassTiles
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassPanelLayout
 import java.util.UUID
@@ -125,16 +126,10 @@ class GifPanel(
 
     override fun onHostAttached() {
         val t = host?.theme ?: return
-        searchBox.background = GradientDrawable().apply {
-            cornerRadius = dp(20f).toFloat()
-            setColor(t.keyFill)
-        }
+        searchBox.background = GlassTiles.tile(host, GlassTiles.neutral(t), dp(20f).toFloat())
         status.setTextColor(t.secondaryTextColor)
         settingsButton.setTextColor(t.onAccent)
-        settingsButton.background = GradientDrawable().apply {
-            cornerRadius = dp(20f).toFloat()
-            setColor(t.accentFill)
-        }
+        settingsButton.background = GlassTiles.tile(host, GlassTiles.accent(t), dp(20f).toFloat())
         (getChildAt(childCount - 1) as? TextView)?.setTextColor(t.secondaryTextColor)
         updateSearchBox()
         buildChips()
@@ -160,10 +155,7 @@ class GifPanel(
                 setTextColor(if (selected) t.onAccent else t.textColor)
                 gravity = Gravity.CENTER
                 setPadding(dp(14f), 0, dp(14f), 0)
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(17f).toFloat()
-                    setColor(if (selected) t.accentFill else t.keyFill)
-                }
+                background = GlassTiles.tile(host, if (selected) GlassTiles.accent(t) else GlassTiles.neutral(t), dp(17f).toFloat())
                 setOnClickListener {
                     query = value
                     updateSearchBox()

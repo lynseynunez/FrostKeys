@@ -15,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.flexkeys.clipboard.ClipboardStore
+import com.flexkeys.ui.GlassTiles
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
@@ -171,12 +172,12 @@ class AiBar(
     override fun restyle() {
         val t = host?.theme ?: return
         fun pill(color: Int, radius: Float) = GradientDrawable().apply { cornerRadius = radius; setColor(color) }
-        copyChip.background = pill(t.keyFill, dp(17f).toFloat())
+        copyChip.background = GlassTiles.tile(host, GlassTiles.neutral(t), dp(17f).toFloat())
         copyChip.setTextColor(t.textColor)
-        replaceChip.background = pill(t.accentFill, dp(17f).toFloat())
+        replaceChip.background = GlassTiles.tile(host, GlassTiles.accent(t), dp(17f).toFloat())
         replaceChip.setTextColor(t.onAccent)
-        inputBox.background = pill(t.keyFill, dp(20f).toFloat())
-        resultScroll.background = pill(t.keyFill, dp(20f).toFloat())
+        inputBox.background = GlassTiles.tile(host, GlassTiles.neutral(t), dp(20f).toFloat())
+        resultScroll.background = GlassTiles.tile(host, GlassTiles.neutral(t), dp(20f).toFloat())
         render()
     }
 
@@ -272,10 +273,7 @@ class AiBar(
         resultView.setTextColor(if (status != null || result.isEmpty()) secondary else primary)
         chips.forEachIndexed { i, c ->
             val on = i == selectedMode
-            c.background = GradientDrawable().apply {
-                cornerRadius = dp(17f).toFloat()
-                setColor(if (on) t?.accentFill ?: 0x66FFFFFF else t?.keyFill ?: 0x33FFFFFF)
-            }
+            c.background = GlassTiles.tile(host, if (on) t?.let { GlassTiles.accent(it) } ?: 0x66FFFFFF else t?.let { GlassTiles.neutral(it) } ?: 0x33FFFFFF, dp(17f).toFloat())
             c.setTextColor(if (on) t?.onAccent ?: 0xFFFFFFFF.toInt() else primary)
         }
         replaceChip.alpha = if (ready()) 1f else 0.4f

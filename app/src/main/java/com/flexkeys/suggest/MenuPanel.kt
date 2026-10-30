@@ -15,6 +15,7 @@ import android.widget.GridView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.flexkeys.keyboard.Icons
+import com.flexkeys.ui.GlassTiles
 import com.flexkeys.suggest.SuggestionStripView.Action
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassPanelLayout
@@ -108,15 +109,9 @@ class MenuPanel(
         editChip.text = if (editing) "Done" else "Edit"
         for (c in listOf(resetChip, editChip)) {
             c.setTextColor(t?.textColor ?: Color.BLACK)
-            c.background = GradientDrawable().apply {
-                cornerRadius = dp(17f).toFloat()
-                setColor(t?.keyFill ?: 0x33FFFFFF)
-            }
+            c.background = GlassTiles.tile(host, t?.let { GlassTiles.neutral(it) } ?: 0x33FFFFFF, dp(17f).toFloat())
         }
-        editChip.background = GradientDrawable().apply {
-            cornerRadius = dp(17f).toFloat()
-            setColor(if (editing) t?.accentFill ?: 0x66FFFFFF else t?.keyFill ?: 0x33FFFFFF)
-        }
+        editChip.background = GlassTiles.tile(host, if (editing) t?.let { GlassTiles.accent(it) } ?: 0x66FFFFFF else t?.let { GlassTiles.neutral(it) } ?: 0x33FFFFFF, dp(17f).toFloat())
         if (editing) editChip.setTextColor(t?.onAccent ?: Color.WHITE)
         adapter.notifyDataSetChanged()
     }

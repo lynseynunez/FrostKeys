@@ -23,3 +23,17 @@ class GlassTileDrawable(private val painter: GlassPainter, private val fill: Int
     @Suppress("OVERRIDE_DEPRECATION")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 }
+
+/** Shared tints for glass tiles, so every panel's chips, fields and buttons look like the same glass. */
+object GlassTiles {
+    /** A light veil of black (or white on a light theme): the blurred sheet shows through. */
+    fun neutral(t: com.flexkeys.theme.GlassTheme): Int =
+        com.flexkeys.theme.GlassTheme.withAlpha(if (t.dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE, 0.22f)
+
+    /** The accent as a pane of glass: translucent, not a flat fill. */
+    fun accent(t: com.flexkeys.theme.GlassTheme): Int = com.flexkeys.theme.GlassTheme.withAlpha(t.accentFill, 0.62f)
+
+    fun tile(host: GlassHost?, color: Int, radiusPx: Float): Drawable =
+        if (host != null) GlassTileDrawable(host.painter, color, radiusPx)
+        else android.graphics.drawable.GradientDrawable().apply { cornerRadius = radiusPx; setColor(color) }
+}

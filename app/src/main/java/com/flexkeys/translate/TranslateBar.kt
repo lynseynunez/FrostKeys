@@ -13,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.flexkeys.clipboard.ClipboardStore
+import com.flexkeys.ui.GlassTiles
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
@@ -131,13 +132,13 @@ class TranslateBar(
         val t = host?.theme ?: return
         fun pill(color: Int, radius: Float) = GradientDrawable().apply { cornerRadius = radius; setColor(color) }
         for (c in listOf(fromChip, toChip, pasteChip, copyChip)) {
-            c.background = pill(t.keyFill, dp(17f).toFloat())
+            c.background = GlassTiles.tile(host, GlassTiles.neutral(t), dp(17f).toFloat())
             c.setTextColor(t.textColor)
         }
-        insertChip.background = pill(t.accentFill, dp(17f).toFloat())
+        insertChip.background = GlassTiles.tile(host, GlassTiles.accent(t), dp(17f).toFloat())
         insertChip.setTextColor(t.onAccent)
-        inputView.background = pill(t.keyFill, dp(20f).toFloat())
-        resultScroll.background = pill(t.keyFill, dp(20f).toFloat())
+        inputView.background = GlassTiles.tile(host, GlassTiles.neutral(t), dp(20f).toFloat())
+        resultScroll.background = GlassTiles.tile(host, GlassTiles.neutral(t), dp(20f).toFloat())
         render()
     }
 
@@ -272,10 +273,7 @@ class TranslateBar(
                 setTextColor(if (selected) t?.onAccent ?: 0xFFFFFFFF.toInt() else t?.textColor ?: 0xFF000000.toInt())
                 setPadding(dp(16f), 0, dp(16f), 0)
                 gravity = Gravity.CENTER_VERTICAL
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(16f).toFloat()
-                    setColor(if (selected) t?.accentFill ?: 0x66FFFFFF else 0x00000000)
-                }
+                background = GlassTiles.tile(host, if (selected) t?.let { GlassTiles.accent(it) } ?: 0x66FFFFFF else 0x00000000, dp(16f).toFloat())
                 setOnClickListener {
                     if (source) prefs.translateFrom = language.code else prefs.translateTo = language.code
                     hidePicker()

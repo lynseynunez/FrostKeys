@@ -10,6 +10,7 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.flexkeys.keyboard.Icon
+import com.flexkeys.ui.GlassTiles
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassHost
@@ -77,10 +78,7 @@ class EmojiSearchBar(
 
     private fun render() {
         val t = host?.theme
-        queryView.background = GradientDrawable().apply {
-            cornerRadius = dp(20f).toFloat()
-            setColor(t?.keyFill ?: 0x33FFFFFF)
-        }
+        queryView.background = GlassTiles.tile(host, t?.let { GlassTiles.neutral(it) } ?: 0x33FFFFFF, dp(20f).toFloat())
         queryView.setTextColor(if (query.isEmpty()) t?.secondaryTextColor ?: 0x99000000.toInt() else t?.textColor ?: 0xFF000000.toInt())
         queryView.text = if (query.isEmpty()) (if (gifMode) "Search GIFs, then press return" else "Search emoji") else query
         results.removeAllViews()
