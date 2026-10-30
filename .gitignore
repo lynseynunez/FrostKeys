@@ -9,3 +9,4 @@ captures/
 # Signing keys must never be committed
 *.jks
 *.keystore.bak
+app/src/main/assets/build_id.txt

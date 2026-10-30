@@ -28,6 +28,9 @@ jobs:
       - name: Run unit tests
         run: gradle testDebugUnitTest --stacktrace
 
+      - name: Stamp the build with its commit (shown in Settings > About)
+        run: echo "$GITHUB_SHA" > app/src/main/assets/build_id.txt
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 

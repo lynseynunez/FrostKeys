@@ -1377,6 +1377,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun aboutCard() = card("About") {
         text("SakuriKey ${UpdateChecker.currentVersion(this@SettingsActivity)}", secondary = true)
+        // CI writes the commit into assets/build_id.txt, so you can tell which build is installed.
+        val build = try { assets.open("build_id.txt").bufferedReader().use { it.readText().trim().take(7) } } catch (e: Exception) { "local" }
+        text("Build $build", secondary = true)
         buttons(Triple("Check for updates", false) {
             toast("Checking…")
             UpdateChecker.check(this@SettingsActivity) { r ->
