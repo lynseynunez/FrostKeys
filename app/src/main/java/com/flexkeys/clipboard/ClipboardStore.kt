@@ -79,6 +79,20 @@ class ClipboardStore private constructor(context: Context) {
         changed()
     }
 
+    /** Adds [text] as a pinned item (or pins it if it is already in the history). Returns false if it is blank. */
+    fun pinText(text: String): Boolean {
+        val clean = text.take(MAX_LENGTH)
+        if (clean.isBlank()) return false
+        val existing = items.indexOfFirst { it.text == clean }
+        if (existing >= 0) {
+            items[existing] = items[existing].copy(pinned = true)
+        } else {
+            items.add(Item(nextId++, clean, System.currentTimeMillis(), true))
+        }
+        changed()
+        return true
+    }
+
     fun togglePin(id: Long) {
         val i = items.indexOfFirst { it.id == id }
         if (i < 0) return

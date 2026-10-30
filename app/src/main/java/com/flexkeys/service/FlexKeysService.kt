@@ -538,6 +538,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         return ToolSource(before + after, false)
     }
 
+    // Never read a password field into the pinned list.
+    override fun fieldTextForPin(): String = if (passwordField) "" else toolSource(true).text
+
     override fun onToolInsert(text: String) = onTranslateInsert(text)
 
     override fun onToolReplace(text: String, wholeField: Boolean) {

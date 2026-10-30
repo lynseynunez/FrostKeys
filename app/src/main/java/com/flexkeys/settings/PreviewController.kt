@@ -128,6 +128,7 @@ class PreviewController(
     // Panels and toolbar work in the preview too.
     override fun onEmoji(emoji: String) = type(emoji)
     override fun onPaste(text: String) = type(text)
+    override fun fieldTextForPin(): String = ""
     override fun onPanelBackspace() = onKey(KeyDef("backspace", KeyType.BACKSPACE))
     override fun onPanelClosed() = root.showPanel(KeyboardRootView.Panel.NONE)
     override fun onEmojiSearch() = root.setEmojiSearch(true)

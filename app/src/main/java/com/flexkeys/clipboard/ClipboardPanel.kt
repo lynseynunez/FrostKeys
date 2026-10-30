@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
 import com.flexkeys.keyboard.Icon
+import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassPanelLayout
@@ -26,13 +27,20 @@ class ClipboardPanel(context: Context, private val listener: Listener) : GlassPa
     interface Listener {
         fun onPaste(text: String)
         fun onPanelClosed()
+
+        /** The selected text, or else the whole text field, for "pin what I typed". Empty if there is none. */
+        fun fieldTextForPin(): String = ""
     }
 
     private val store = ClipboardStore.get(context)
     private val prefs = Prefs.get(context)
     private val list = ListView(context)
     private val empty = TextView(context)
-    private val title = TextView(context)
+    private val recentTab = TextView(context)
+    private val pinnedTab = TextView(context)
+    private val pinField = TextView(context)
+    private val trash = GlassButton(context, icon = Icon.TRASH)
+    private var showPinned = false
     private val adapter = ClipAdapter()
     private val onStoreChanged: () -> Unit = { refresh() }
 
@@ -44,12 +52,38 @@ class ClipboardPanel(context: Context, private val listener: Listener) : GlassPa
         }
         header.addView(GlassButton(context, icon = Icon.KEYBOARD).apply { onClick = listener::onPanelClosed },
             LayoutParams(dp(48f), dp(44f)))
-        title.text = "Clipboard"
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-        header.addView(title, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        header.addView(GlassButton(context, icon = Icon.TRASH).apply { onClick = { store.clearUnpinned() } },
-            LayoutParams(dp(48f), dp(44f)))
+        val tabs = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        for ((tab, label, pinned) in listOf(Triple(recentTab, "Recent", false), Triple(pinnedTab, "Pinned", true))) {
+            tab.text = label
+            tab.gravity = Gravity.CENTER
+            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            tab.setPadding(dp(16f), dp(6f), dp(16f), dp(6f))
+            tab.setOnClickListener {
+                showPinned = pinned
+                refresh()
+            }
+            tabs.addView(tab, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6f) })
+        }
+        header.addView(tabs, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        trash.onClick = { store.clearUnpinned() }
+        header.addView(trash, LayoutParams(dp(48f), dp(44f)))
         addView(header)
+
+        pinField.text = "＋  Pin the text in the field"
+        pinField.gravity = Gravity.CENTER_VERTICAL
+        pinField.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        pinField.setPadding(dp(14f), dp(8f), dp(14f), dp(8f))
+        pinField.setOnClickListener {
+            val text = listener.fieldTextForPin()
+            if (!store.pinText(text)) {
+                pinField.text = "Nothing to pin. Type or select some text first."
+                pinField.postDelayed({ pinField.text = "＋  Pin the text in the field" }, 2000)
+            }
+        }
+        addView(pinField, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(4f) })
 
         val body = FrameLayout(context)
         list.adapter = adapter
@@ -78,15 +112,30 @@ class ClipboardPanel(context: Context, private val listener: Listener) : GlassPa
     private fun refresh() {
         val t = host?.theme
         if (t != null) {
-            title.setTextColor(t.textColor)
             empty.setTextColor(t.secondaryTextColor)
+            for ((tab, active) in listOf(recentTab to !showPinned, pinnedTab to showPinned)) {
+                tab.setTextColor(if (active) t.onAccent else t.textColor)
+                tab.background = GradientDrawable().apply {
+                    cornerRadius = dp(20f).toFloat()
+                    setColor(if (active) GlassTheme.withAlpha(t.accentFill, 0.62f) else t.keyFill)
+                }
+            }
+            pinField.setTextColor(t.textColor)
+            pinField.background = GradientDrawable().apply {
+                cornerRadius = t.cornerRadiusPx
+                setColor(t.keyFill)
+                setStroke(dp(1f), t.borderBottom)
+            }
         }
-        adapter.items = store.items()
+        val all = store.items()
+        adapter.items = if (showPinned) all.filter { it.pinned } else all.filter { !it.pinned }
         adapter.notifyDataSetChanged()
-        empty.text = if (prefs.clipboardHistory) {
-            "Text you copy shows up here.\nPin items to keep them."
-        } else {
-            "Clipboard history is off.\nTurn it on in SakuriKey settings."
+        pinField.visibility = if (showPinned) View.VISIBLE else View.GONE
+        trash.visibility = if (showPinned) View.GONE else View.VISIBLE
+        empty.text = when {
+            showPinned -> "Pinned items stay until you delete them.\nPin one from Recent, or pin the text in the field."
+            prefs.clipboardHistory -> "Text you copy shows up here.\nPin items to keep them."
+            else -> "Clipboard history is off.\nTurn it on in SakuriKey settings."
         }
         empty.visibility = if (adapter.items.isEmpty()) View.VISIBLE else View.GONE
     }
