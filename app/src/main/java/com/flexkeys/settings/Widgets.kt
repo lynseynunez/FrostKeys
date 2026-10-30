@@ -304,3 +304,121 @@ class BackdropView(context: Context) : View(context) {
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
     }
 }
+
+/** A thumbnail of a look: its tint, glass, accent and key shape, with its name. A ring marks the one in use. */
+@SuppressLint("ViewConstructor")
+class LookTile(context: Context, private val look: com.flexkeys.theme.Look, var active: Boolean, private val palette: SettingsPalette) :
+    View(context) {
+
+    var onClick: (() -> Unit)? = null
+    var onLongClick: (() -> Unit)? = null
+
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private var pressed = false
+
+    private val dark: Boolean = when (look.mode) {
+        com.flexkeys.theme.Prefs.THEME_DARK -> true
+        com.flexkeys.theme.Prefs.THEME_LIGHT -> false
+        else -> palette.dark
+    }
+
+    init {
+        setOnLongClickListener {
+            onLongClick?.invoke()
+            onLongClick != null
+        }
+        isClickable = true
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val r = dp(18f)
+        rect.set(0f, 0f, w, h)
+        canvas.save()
+        val clip = android.graphics.Path().apply { addRoundRect(rect, r, r, android.graphics.Path.Direction.CW) }
+        canvas.clipPath(clip)
+
+        // Base tint, then a soft wash of the accent whose strength follows the look's gradient glow.
+        val top = if (dark) 0xFF1D1F2B.toInt() else 0xFFE9EDF7.toInt()
+        val bottom = if (dark) 0xFF0C0D11.toInt() else 0xFFCDD4E4.toInt()
+        paint.shader = android.graphics.LinearGradient(0f, 0f, 0f, h, top, bottom, android.graphics.Shader.TileMode.CLAMP)
+        canvas.drawRect(rect, paint)
+        val glow = (look.gradient / 100f * 0.55f).coerceIn(0f, 0.55f)
+        paint.shader = android.graphics.RadialGradient(
+            w * 0.85f, h * 0.15f, w * 0.9f,
+            GlassTheme.withAlpha(look.accent, glow), GlassTheme.withAlpha(look.accent, 0f), android.graphics.Shader.TileMode.CLAMP,
+        )
+        canvas.drawRect(rect, paint)
+        paint.shader = null
+
+        // A few keys: glass fill follows the look's glass opacity, one key shows the accent.
+        val keyAlpha = if (dark) 0.08f + look.glass / 100f * 0.30f else 0.30f + look.glass / 100f * 0.45f
+        val keyColor = if (dark) Color.WHITE else Color.WHITE
+        val kr = dp(2f) + dp(look.corner.coerceIn(0, 30) / 30f * 6f)
+        val gap = dp(3f)
+        val rows = intArrayOf(6, 5, 4)
+        val area = RectF(dp(10f), dp(10f), w - dp(10f), h - dp(28f))
+        val rowH = (area.height() - gap * (rows.size - 1)) / rows.size
+        rows.forEachIndexed { ri, n ->
+            val keyW = (area.width() - gap * (n - 1)) / n
+            for (i in 0 until n) {
+                val left = area.left + i * (keyW + gap)
+                val tp = area.top + ri * (rowH + gap)
+                val accentKey = ri == 1 && i == n / 2
+                paint.color = if (accentKey) GlassTheme.withAlpha(look.accent, 0.9f) else GlassTheme.withAlpha(keyColor, keyAlpha)
+                canvas.drawRoundRect(left, tp, left + keyW, tp + rowH, kr, kr, paint)
+            }
+        }
+
+        paint.color = if (dark) 0xFFF2F4F8.toInt() else 0xFF111318.toInt()
+        paint.textSize = dp(13f)
+        paint.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        canvas.drawText(look.name, dp(12f), h - dp(9f), paint)
+        canvas.restore()
+
+        if (active) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(2.5f)
+            paint.color = palette.accent
+            rect.inset(dp(1.2f), dp(1.2f))
+            canvas.drawRoundRect(rect, r, r, paint)
+            paint.style = Paint.Style.FILL
+        } else {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(1f)
+            paint.color = palette.cardBorder
+            rect.inset(dp(0.5f), dp(0.5f))
+            canvas.drawRoundRect(rect, r, r, paint)
+            paint.style = Paint.Style.FILL
+        }
+        if (pressed) {
+            paint.color = 0x22000000
+            rect.set(0f, 0f, w, h)
+            canvas.drawRoundRect(rect, r, r, paint)
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { pressed = true; invalidate() }
+            MotionEvent.ACTION_UP -> {
+                val inside = event.x in 0f..width.toFloat() && event.y in 0f..height.toFloat()
+                pressed = false
+                invalidate()
+                // A long press is handled by the view's own listener; a short tap inside the tile applies the look.
+                if (inside && event.eventTime - event.downTime < android.view.ViewConfiguration.getLongPressTimeout()) {
+                    performClick()
+                    onClick?.invoke()
+                }
+            }
+            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_MOVE -> {
+                val inside = event.x in 0f..width.toFloat() && event.y in 0f..height.toFloat()
+                if (event.actionMasked == MotionEvent.ACTION_CANCEL || !inside) { pressed = false; invalidate() }
+            }
+        }
+        return super.onTouchEvent(event) || true
+    }
+}

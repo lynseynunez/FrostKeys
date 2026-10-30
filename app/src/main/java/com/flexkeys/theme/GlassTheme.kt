@@ -110,8 +110,22 @@ class GlassTheme(
     }
 
     companion object {
+        /**
+         * Share of the normal keyboard height used when the screen is sideways, where a full-height keyboard
+         * would cover most of the screen. [option] is Prefs.landscapeHeight: 0 auto, 1 short, 2 medium, 3 normal.
+         */
+        fun landscapeFactor(option: Int, tablet: Boolean): Float = when (option) {
+            1 -> 0.5f
+            2 -> 0.7f
+            3 -> 1f
+            else -> if (tablet) 0.85f else 0.6f
+        }
+
         fun from(context: Context, prefs: Prefs): GlassTheme {
             val dm = context.resources.displayMetrics
+            val config = context.resources.configuration
+            val sideways = config.orientation == Configuration.ORIENTATION_LANDSCAPE
+            val heightFactor = if (sideways) landscapeFactor(prefs.landscapeHeight, config.smallestScreenWidthDp >= 600) else 1f
             val adaptive = prefs.adaptTint && prefs.photoLuma >= 0 && prefs.backgroundOpacity > 0
             val dark = when {
                 adaptive -> prefs.photoLuma < 55
@@ -130,7 +144,7 @@ class GlassTheme(
                 cornerRadiusPx = prefs.cornerRadiusDp.coerceIn(0, 30) * dm.density,
                 keySpacingPx = prefs.keySpacingDp.coerceIn(0, 16) * dm.density,
                 fontScale = prefs.fontPercent.coerceIn(60, 160) / 100f,
-                heightScale = prefs.heightPercent.coerceIn(60, 150) / 100f,
+                heightScale = prefs.heightPercent.coerceIn(60, 150) / 100f * heightFactor,
                 density = dm.density,
                 gradientStrength = prefs.gradientStrength.coerceIn(0, 100) / 100f,
                 glassKeys = prefs.keyStyle == Prefs.KEY_STYLE_GLASS,

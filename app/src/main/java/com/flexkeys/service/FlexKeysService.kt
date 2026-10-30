@@ -125,6 +125,15 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
 
     override fun onEvaluateFullscreenMode(): Boolean = false
 
+    /** Turning the phone changes the keyboard's height and width, so rebuild the look for the new orientation. */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        root?.let {
+            it.applyTheme(GlassTheme.from(this, prefs))
+            it.requestLayout()
+        }
+    }
+
     /**
      * Lets the keyboard's glass continue under the navigation bar, as Gboard does. The root view
      * pads itself by the navigation bar height so keys stay above the system buttons.
@@ -248,6 +257,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         state.numberRow = prefs.numberRow
         state.punctuationKeys = prefs.punctuationKeys
         state.customKeys = CustomKeys.parse(prefs.customKeys)
+        state.popupSettings = prefs.popupSettings()
         kv.layer = state.layer
         kv.layout = state.layout
         kv.shiftState = state.shift
@@ -963,7 +973,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         val r = root ?: return
         when (key) {
-            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS -> refreshKeyboard()
+            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS, in Prefs.POPUP_KEYS -> refreshKeyboard()
             Prefs.KEY_BG_VERSION -> r.reloadPhoto()
             null -> { // All settings were reset.
                 r.applyTheme(GlassTheme.from(this, prefs))

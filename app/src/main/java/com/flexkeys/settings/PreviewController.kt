@@ -43,6 +43,7 @@ class PreviewController(
         state.numberRow = prefs.numberRow
         state.punctuationKeys = prefs.punctuationKeys
         state.customKeys = CustomKeys.parse(prefs.customKeys)
+        state.popupSettings = prefs.popupSettings()
         val kv = root.keyboardView
         kv.layer = state.layer
         kv.layout = state.layout

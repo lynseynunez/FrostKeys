@@ -91,7 +91,19 @@ class KeyboardView(context: Context) : View(context) {
         var longPress: Runnable? = null
     }
 
-    private class Popup(val options: List<String>, val rect: RectF, val cellWidth: Float, var selected: Int)
+    /** A long-press menu laid out as [cols] columns; more than [POPUP_ONE_ROW_MAX] options wrap to a second row. */
+    private class Popup(
+        val options: List<String>, val rect: RectF, val cellWidth: Float, val cellHeight: Float, val cols: Int, var selected: Int,
+    ) {
+        val rows: Int get() = (options.size + cols - 1) / cols
+
+        /** The option under ([x], [y]); a finger above or below the menu counts as its top or bottom row. */
+        fun indexAt(x: Float, y: Float): Int {
+            val col = floor((x - rect.left) / cellWidth).toInt().coerceIn(0, cols - 1)
+            val row = floor((y - rect.top) / cellHeight).toInt().coerceIn(0, rows - 1)
+            return (row * cols + col).coerceAtMost(options.size - 1)
+        }
+    }
 
     var listener: Listener? = null
 
@@ -561,8 +573,9 @@ class KeyboardView(context: Context) : View(context) {
             h.painter.draw(canvas, popup.rect, t.cornerRadiusPx + t.dp(2f), h.backdrop, offset.x, offset.y, bubbleFill)
             textPaint.textSize = rowHeight * 0.38f * t.fontScale
             popup.options.forEachIndexed { i, option ->
-                val left = popup.rect.left + i * popup.cellWidth
-                tmpRect.set(left, popup.rect.top, left + popup.cellWidth, popup.rect.bottom)
+                val left = popup.rect.left + (i % popup.cols) * popup.cellWidth
+                val top = popup.rect.top + (i / popup.cols) * popup.cellHeight
+                tmpRect.set(left, top, left + popup.cellWidth, top + popup.cellHeight)
                 tmpRect.inset(t.dp(3f), t.dp(4f))
                 if (i == popup.selected) {
                     fillPaint.color = t.accentFill
@@ -709,17 +722,21 @@ class KeyboardView(context: Context) : View(context) {
             if (shiftState != ShiftState.OFF && layer == Layer.LETTERS) it.uppercase() else it
         }
         val n = options.size
+        val cols = if (n <= POPUP_ONE_ROW_MAX) n else (n + 1) / 2
+        val rows = (n + cols - 1) / cols
         var cellWidth = maxOf(v.width(), t.dp(34f))
         val maxWidth = width - t.dp(8f)
-        if (cellWidth * n > maxWidth) cellWidth = maxWidth / n
-        val w = cellWidth * n
+        if (cellWidth * cols > maxWidth) cellWidth = maxWidth / cols
+        val w = cellWidth * cols
         val ph = rowHeight * 0.95f
         var left = v.centerX() - cellWidth / 2f
         if (left + w > width - t.dp(4f)) left = width - t.dp(4f) - w
         if (left < t.dp(4f)) left = t.dp(4f)
-        val top = maxOf(v.top - ph - t.dp(6f), -offset.y + t.dp(2f))
-        val selected = floor((v.centerX() - left) / cellWidth).toInt().coerceIn(0, n - 1)
-        p.popup = Popup(options, RectF(left, top, left + w, top + ph), cellWidth, selected)
+        val top = maxOf(v.top - ph * rows - t.dp(6f), -offset.y + t.dp(2f))
+        // Start on the option right above the key, in the bottom row, so a plain release picks it.
+        val col = floor((v.centerX() - left) / cellWidth).toInt().coerceIn(0, cols - 1)
+        val selected = ((rows - 1) * cols + col).coerceAtMost(n - 1)
+        p.popup = Popup(options, RectF(left, top, left + w, top + ph * rows), cellWidth, ph, cols, selected)
         previewKey = null
         host?.invalidateOverlay()
     }
@@ -728,7 +745,7 @@ class KeyboardView(context: Context) : View(context) {
         val p = pointers[id] ?: return
         val popup = p.popup
         if (popup != null) {
-            val idx = floor((x - popup.rect.left) / popup.cellWidth).toInt().coerceIn(0, popup.options.size - 1)
+            val idx = popup.indexAt(x, y)
             if (idx != popup.selected) {
                 popup.selected = idx
                 host?.invalidateOverlay()
@@ -847,6 +864,8 @@ class KeyboardView(context: Context) : View(context) {
         const val PRESS_MS = 70f
         const val RELEASE_MS = 200f
         const val LONG_PRESS_MS = 380L
+        /** Long-press menus with more options than this wrap to two rows. */
+        const val POPUP_ONE_ROW_MAX = 8
         /** How far down a swipe on a key must go to type its corner symbol. */
         const val SWIPE_DOWN_DP = 40f
         const val SPACE_CARD = 0

@@ -81,3 +81,4 @@ of day, accessibility modes, Play Store publishing. Any of these can be added ba
 ## Done outside the milestones
 - Settings redesigned: home list with icons and live summaries, search, recently changed, grouped cards, collapsed Advanced sections, quick looks, and a preview only on appearance pages.
 - Rain, fireflies and waves glass animations.
+- Looks gallery (14 built-in looks as thumbnails, save and delete your own), long-press accent and symbol popups you can tune (accent languages, order, corner symbols, two-row menus), and a landscape keyboard height.

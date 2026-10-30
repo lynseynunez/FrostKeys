@@ -39,6 +39,8 @@ import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.Fonts
 import com.flexkeys.theme.GlassTheme
+import com.flexkeys.theme.Look
+import com.flexkeys.theme.Looks
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.KeyboardRootView
 import kotlin.reflect.KMutableProperty0
@@ -100,7 +102,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         if (key != RECENT_KEY) currentPage?.let { noteRecent(it) }
         when (key) {
-            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS -> previewController.refresh()
+            Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS, in Prefs.POPUP_KEYS -> previewController.refresh()
             Prefs.KEY_BG_VERSION -> {
                 preview.reloadPhoto()
                 loadPagePhoto()
@@ -211,6 +213,12 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private fun onOff(value: Boolean) = if (value) "on" else "off"
 
     private fun topics(): List<Topic> = listOf(
+        Topic("looks", "🖼️", "Looks",
+            summary = {
+                val active = (Looks.builtIn + Looks.parse(prefs.myLooks)).firstOrNull { Looks.isActive(prefs, it) }
+                if (active != null) "${active.name} · ${Looks.builtIn.size} built in, ${Looks.parse(prefs.myLooks).size} of yours" else "Custom · ${Looks.builtIn.size} built in"
+            },
+            cards = { listOf(builtInLooksCard(), myLooksCard()) }, showsPreview = true),
         Topic("colors", "🎨", "Colors & photo",
             summary = {
                 val tint = listOf("Auto", "Light", "Dark").getOrElse(prefs.themeMode) { "Auto" }
@@ -227,7 +235,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 val layouts = Layouts.letterLayouts
                 "${layouts.firstOrNull { it.id == prefs.layoutId }?.name ?: "QWERTY"} · height ${prefs.heightPercent}%"
             },
-            cards = { listOf(layoutStyleCard(), layoutSizeCard(), layoutKeysCard()) },
+            cards = { listOf(layoutStyleCard(), layoutSizeCard(), layoutKeysCard(), layoutPopupsCard()) },
             advancedHint = "Width, position, split keys", advanced = { listOf(widthCard()) }, showsPreview = true),
         Topic("typing", "✍️", "Typing",
             summary = { "Autocorrect ${onOff(prefs.autocorrect)} · suggestions ${onOff(prefs.suggestions)}" },
@@ -258,7 +266,13 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private class Hit(val label: String, val topic: String, val card: String, val words: String = "")
 
     private val searchIndex = listOf(
-        Hit("Presets", "colors", "Colors", "theme look frost midnight aurora sunset clear graphite"),
+        Hit("Looks gallery", "looks", "Built-in looks", "themes presets frost midnight aurora sunset sakura ocean mint candy"),
+        Hit("Save current look", "looks", "My looks", "theme save custom"),
+        Hit("Accent languages", "layout", "Long-press characters", "accents é ñ ü popups"),
+        Hit("Accents", "layout", "Long-press characters", "popup long press"),
+        Hit("Symbols and digits", "layout", "Long-press characters", "popup long press"),
+        Hit("Small symbols on keys", "layout", "Long-press characters", "corner hints"),
+        Hit("Height when sideways", "layout", "Size & shape", "landscape rotate wide"),
         Hit("Tint", "colors", "Colors", "light dark auto theme mode"),
         Hit("Accent color", "colors", "Colors", "colour hue"),
         Hit("Background photo", "colors", "Background photo", "wallpaper image picture"),
@@ -846,47 +860,78 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun showImePicker() = (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
 
-    /** A one-tap look: tint, accent, glass and blur. */
-    private class Preset(val name: String, val mode: Int, val accent: Int, val glass: Int, val blur: Int)
+    // ---- looks gallery ----
 
-    private val presets = listOf(
-        Preset("Frost", Prefs.THEME_LIGHT, 0xFF5B8CFF.toInt(), 30, 60),
-        Preset("Midnight", Prefs.THEME_DARK, 0xFF7C5CFF.toInt(), 35, 50),
-        Preset("Aurora", Prefs.THEME_DARK, 0xFF20C997.toInt(), 25, 70),
-        Preset("Sunset", Prefs.THEME_LIGHT, 0xFFFF6B6B.toInt(), 40, 50),
-        Preset("Clear", Prefs.THEME_AUTO, 0xFF22B8CF.toInt(), 8, 30),
-        Preset("Graphite", Prefs.THEME_DARK, 0xFF8A93A6.toInt(), 55, 40),
-    )
-
-    private fun LinearLayout.presetRow() {
-        text("Presets", topPad = 4f)
-        val row = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(6f), 0, dp(2f))
+    /** A grid of look thumbnails, two per row. Tap applies a look; long-press runs [onLongPress] if given. */
+    private fun LinearLayout.lookGrid(looks: List<Look>, onLongPress: ((Look) -> Unit)?) {
+        looks.chunked(2).forEach { pair ->
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, dp(10f), 0, 0)
+            }
+            pair.forEachIndexed { i, look ->
+                row.addView(LookTile(context, look, Looks.isActive(prefs, look), palette).apply {
+                    onClick = {
+                        Looks.apply(prefs, look)
+                        refreshPage()
+                    }
+                    if (onLongPress != null) this.onLongClick = { onLongPress(look) }
+                }, LinearLayout.LayoutParams(0, dp(112f), 1f).apply { if (i > 0) marginStart = dp(10f) })
+            }
+            if (pair.size == 1) row.addView(View(context), LinearLayout.LayoutParams(0, dp(112f), 1f).apply { marginStart = dp(10f) })
+            addView(row)
         }
-        presets.forEachIndexed { i, preset ->
-            row.addView(PillButton(context, preset.name, false, palette).apply {
-                onClick = {
-                    prefs.sp.edit()
-                        .putInt(Prefs.KEY_THEME_MODE, preset.mode)
-                        .putInt(Prefs.KEY_ACCENT, preset.accent)
-                        .putInt(Prefs.KEY_GLASS_OPACITY, preset.glass)
-                        .putInt(Prefs.KEY_BLUR, preset.blur)
-                        .apply()
-                    // Rebuild so every slider and picker shows the new values.
+    }
+
+    private fun builtInLooksCard() = card("Built-in looks") {
+        text("Tap a look to try it. Your background photo stays as it is.", secondary = true)
+        lookGrid(Looks.builtIn, null)
+    }
+
+    private fun myLooksCard() = card("My looks") {
+        val mine = Looks.parse(prefs.myLooks)
+        if (mine.isEmpty()) {
+            text("Set the keyboard up the way you like it, then save it here to come back to it in one tap.", secondary = true)
+        } else {
+            lookGrid(mine) { look ->
+                confirm("Delete the look \"${look.name}\"?") {
+                    prefs.myLooks = Looks.format(Looks.parse(prefs.myLooks).filter { it.name != look.name })
                     refreshPage()
                 }
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                .apply { if (i > 0) marginStart = dp(8f) })
+            }
+            text("Long-press one of your looks to delete it.", secondary = true)
         }
-        addView(HorizontalScrollView(context).apply {
-            isHorizontalScrollBarEnabled = false
-            addView(row)
-        })
+        buttons(Triple("Save current look", true) { askLookName() })
+    }
+
+    private fun askLookName() {
+        val input = EditText(this).apply {
+            hint = "Name"
+            inputType = InputType.TYPE_CLASS_TEXT
+            isSingleLine = true
+            filters = arrayOf(android.text.InputFilter.LengthFilter(24))
+            setPadding(dp(24f), dp(16f), dp(24f), dp(8f))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Name this look")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isEmpty()) {
+                    toast("Give it a name first")
+                    return@setPositiveButton
+                }
+                val others = Looks.parse(prefs.myLooks).filter { it.name != name }
+                prefs.myLooks = Looks.format(others + Looks.capture(prefs, name))
+                refreshPage()
+                toast("Saved \"$name\"")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun colorsCard() = card("Colors") {
-        presetRow()
+        buttons(Triple("Browse looks", false) { topics().firstOrNull { it.id == "looks" }?.let { showTopic(it) } })
         segmented("Tint", listOf("Auto", "Light", "Dark"), prefs.themeMode) { prefs.themeMode = it }
         text("Accent", topPad = 14f)
         addView(ColorPickerView(context).apply {
@@ -991,6 +1036,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun layoutSizeCard() = card("Size & shape") {
         slider("Keyboard height", 60, 150, prefs::heightPercent) { "$it%" }
+        segmented("Height when sideways", listOf("Auto", "Short", "Medium", "Normal"), prefs.landscapeHeight) { prefs.landscapeHeight = it }
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
         slider("Corner radius", 0, 30, prefs::cornerRadiusDp) { "$it dp" }
         slider("Font size", 60, 160, prefs::fontPercent) { "$it%" }
@@ -1001,6 +1047,31 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Comma & period keys", "Show , and . beside the space bar, like Gboard", prefs::punctuationKeys)
         toggle("Number row", "Always show 1–0 above the letters", prefs::numberRow)
         toggle("Key preview", "Pop up a bubble above keys as you type", prefs::keyPreview)
+    }
+
+    private fun layoutPopupsCard() = card("Long-press characters") {
+        text("Hold a letter to pick an accent, a symbol or a digit.", secondary = true)
+        toggle("Accents", "é, ñ, ü and friends", prefs::accentPopups)
+        buttons(Triple("Accent languages", false) { showAccentLanguages() })
+        toggle("Symbols and digits", "The extra symbol under each letter, like Gboard", prefs::symbolPopups)
+        toggle("Accents before symbols", "Put accents first in the menu", prefs::accentsFirst)
+        toggle("Small symbols on keys", "The tiny corner symbol; swipe down on a key to type it", prefs::cornerHints)
+        text("Add your own characters to any key under Typing > Phrases & extra keys.", secondary = true)
+    }
+
+    private fun showAccentLanguages() {
+        val groups = com.flexkeys.layout.AccentSets.names
+        val chosen = prefs.accentSets.split(',').map { it.trim() }.toMutableSet()
+        AlertDialog.Builder(this)
+            .setTitle("Accent languages")
+            .setMultiChoiceItems(groups.map { it.second }.toTypedArray(), BooleanArray(groups.size) { groups[it].first in chosen }) { _, i, on ->
+                if (on) chosen.add(groups[i].first) else chosen.remove(groups[i].first)
+            }
+            .setPositiveButton("Done") { _, _ ->
+                prefs.accentSets = groups.map { it.first }.filter { it in chosen }.joinToString(",")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private class EffectLook(val name: String, val typing: Int, val glass: Int)

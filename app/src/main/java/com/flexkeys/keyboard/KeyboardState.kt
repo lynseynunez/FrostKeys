@@ -3,6 +3,7 @@ package com.flexkeys.keyboard
 import com.flexkeys.layout.Layer
 import com.flexkeys.layout.LayoutDef
 import com.flexkeys.layout.Layouts
+import com.flexkeys.layout.PopupSettings
 import com.flexkeys.phrases.CustomKeys
 
 enum class ShiftState { OFF, ONCE, LOCKED }
@@ -29,6 +30,8 @@ class KeyboardState {
     var punctuationKeys: Boolean = true
     /** Extra long-press characters the user added, by key. */
     var customKeys: Map<String, List<String>> = emptyMap()
+    /** Which accents and symbols letter keys offer on long-press. */
+    var popupSettings: PopupSettings = PopupSettings.DEFAULT
 
     /** True when the user pressed shift themselves, so auto-capitalization leaves it alone. */
     private var manualShift = false
@@ -37,7 +40,7 @@ class KeyboardState {
     val layout: LayoutDef
         get() {
             val base = Layouts.forLayer(layer, lettersId, numberRow, punctuationKeys)
-            return if (layer == Layer.LETTERS) CustomKeys.apply(base, customKeys) else base
+            return if (layer == Layer.LETTERS) CustomKeys.apply(popupSettings.apply(base), customKeys) else base
         }
     val isShifted: Boolean get() = shift != ShiftState.OFF && layer == Layer.LETTERS
 

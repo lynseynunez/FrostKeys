@@ -163,6 +163,24 @@ class Prefs private constructor(context: Context) {
     var fancyStyle by int(KEY_FANCY_STYLE, 0)
     /** Extra long-press characters per key, one "a:äå" line per key (see CustomKeys). */
     var customKeys by string(KEY_CUSTOM_KEYS, "")
+    /** Long-press accents on letter keys, the language groups to draw them from (comma separated), and symbols/digits. */
+    var accentPopups by bool(KEY_ACCENT_POPUPS, true)
+    var accentSets by string(KEY_ACCENT_SETS, "western")
+    var symbolPopups by bool(KEY_SYMBOL_POPUPS, true)
+    var accentsFirst by bool(KEY_ACCENTS_FIRST, false)
+    var cornerHints by bool(KEY_CORNER_HINTS, true)
+    /** The user's saved looks (see Looks.parse). */
+    var myLooks by string(KEY_MY_LOOKS, "")
+    /** Keyboard height when the phone is sideways: 0 auto, 1 short, 2 medium, 3 normal. */
+    var landscapeHeight by int(KEY_LANDSCAPE_HEIGHT, 0)
+
+    fun popupSettings() = com.flexkeys.layout.PopupSettings(
+        accents = accentPopups,
+        accentSets = accentSets.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
+        symbols = symbolPopups,
+        accentsFirst = accentsFirst,
+        cornerHints = cornerHints,
+    )
     /** Comma and period keys next to the space bar, as on Gboard. */
     var punctuationKeys by bool(KEY_PUNCTUATION, true)
 
@@ -233,6 +251,15 @@ class Prefs private constructor(context: Context) {
         const val KEY_KLIPY_KEY = "klipy_key"
         const val KEY_KLIPY_CUSTOMER = "klipy_customer_id"
         const val KEY_PUNCTUATION = "punctuation_keys"
+        const val KEY_MY_LOOKS = "my_looks"
+        const val KEY_ACCENT_POPUPS = "accent_popups"
+        const val KEY_ACCENT_SETS = "accent_sets"
+        const val KEY_SYMBOL_POPUPS = "symbol_popups"
+        const val KEY_ACCENTS_FIRST = "accents_first"
+        const val KEY_CORNER_HINTS = "corner_hints"
+        const val KEY_LANDSCAPE_HEIGHT = "landscape_height"
+        /** Settings that change what the letter keys offer on long-press. */
+        val POPUP_KEYS: Set<String> = setOf(KEY_ACCENT_POPUPS, KEY_ACCENT_SETS, KEY_SYMBOL_POPUPS, KEY_ACCENTS_FIRST, KEY_CORNER_HINTS)
         const val KEY_CUSTOM_KEYS = "custom_keys"
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_KEYBOARD_WIDTH = "keyboard_width"
@@ -282,7 +309,7 @@ class Prefs private constructor(context: Context) {
          * every other setting is simply read the next time it is used.
          */
         val THEME_KEYS: Set<String> = setOf(
-            KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_SUGGESTION_FONT, KEY_KEYBOARD_WIDTH, KEY_KEYBOARD_POSITION,
+            KEY_HEIGHT, KEY_LANDSCAPE_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_SUGGESTION_FONT, KEY_KEYBOARD_WIDTH, KEY_KEYBOARD_POSITION,
             KEY_SPLIT_KEYS, KEY_SPLIT_GAP, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
             KEY_SPACE_GLASS, KEY_SPACE_STYLE, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
