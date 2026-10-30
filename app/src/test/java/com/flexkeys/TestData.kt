@@ -31,11 +31,15 @@ object TestData {
         map
     }
 
+    val bigrams: com.flexkeys.suggest.BigramTable by lazy {
+        File(assetDir, "bigrams.txt").useLines { com.flexkeys.suggest.BigramTable.parse(it) }
+    }
+
     /** A fresh engine with nothing learned. */
     fun engine(): SuggestionEngine {
         val file = File.createTempFile("user_words", ".tsv").apply { delete(); deleteOnExit() }
         val user = UserDictionary(file)
         user.install(emptyMap<String, Int>() to emptyMap())
-        return SuggestionEngine(user).also { it.setData(dictionary, typos) }
+        return SuggestionEngine(user).also { it.setData(dictionary, typos, bigrams) }
     }
 }

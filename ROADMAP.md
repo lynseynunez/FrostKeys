@@ -30,7 +30,7 @@ is changed; releases get automatic notes and a signing-key script.
 
 The biggest everyday improvement.
 
-- [~] **Context-aware autocorrect (L).** *First step done: a short, careful list of real-word mix-ups fixed by the previous word (then/than, form/from, loose/lose). The full word-pair model is still to do.* Add a compact word-pair model so a typo that spells another real word
+- [x] **Context-aware autocorrect (L).** *Done: about 80,000 common word pairs rank suggestions by the previous word, fix mix-ups like "away form", and improve next-word prediction. Checked by tests on ordinary messages so correct text is left alone.*
   ("form" for "from", "wnat" for "want") is resolved by the previous word. Needs a bundled, permissively licensed
   pair table and a size budget for the APK. Measured against the typo test list from Milestone 1.
 - [x] **Bigger vocabulary (M).** A tech, app and texting-slang list, plus names the user types often, so real

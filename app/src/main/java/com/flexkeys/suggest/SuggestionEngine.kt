@@ -57,6 +57,10 @@ class SuggestionEngine internal constructor(
     var dictionary: WordDictionary = WordDictionary.EMPTY
         private set
 
+    /** How often words follow each other in everyday English, from assets/bigrams.txt. */
+    @Volatile
+    private var bigrams: BigramTable = BigramTable.EMPTY
+
     /** Common misspellings with their fix ("teh" -> "the"), from assets/typos.tsv. */
     @Volatile
     private var typos: Map<String, String> = emptyMap()
@@ -68,9 +72,10 @@ class SuggestionEngine internal constructor(
     }
 
     /** Supplies the word data directly instead of loading it from assets. Used by tests. */
-    internal fun setData(dictionary: WordDictionary, typos: Map<String, String>) {
+    internal fun setData(dictionary: WordDictionary, typos: Map<String, String>, bigrams: BigramTable = BigramTable.EMPTY) {
         this.dictionary = dictionary
         this.typos = typos + PERSONAL_TYPOS
+        this.bigrams = bigrams
     }
 
     /** Reads the bundled word lists and the learned words in the background and installs them. */
@@ -80,14 +85,22 @@ class SuggestionEngine internal constructor(
         Executors.newSingleThreadExecutor().execute {
             val dict = WordDictionary.load(app)
             val typoMap = loadTypos(app)
+            val pairs = loadBigrams(app)
             val learned = user.loadBlocking()
             main.post {
                 dictionary = dict
+                bigrams = pairs
                 typos = typoMap + PERSONAL_TYPOS
                 user.install(learned)
                 cleanLearned()
             }
         }
+    }
+
+    private fun loadBigrams(app: Context): BigramTable = try {
+        app.assets.open("bigrams.txt").bufferedReader().useLines { BigramTable.parse(it) }
+    } catch (e: java.io.IOException) {
+        BigramTable.EMPTY // Without the pairs the keyboard still works from words alone.
     }
 
     private fun loadTypos(app: Context): Map<String, String> {
@@ -198,7 +211,8 @@ class SuggestionEngine internal constructor(
         val userCount = user.count(word)
         return ln(freq + 1.0) +
             1.6 * ln(1.0 + userCount) +
-            2.2 * ln(1.0 + user.bigramCount(prev, word))
+            2.2 * ln(1.0 + user.bigramCount(prev, word)) +
+            PAIR_WEIGHT * ln(1.0 + bigrams.count(prev, word))
     }
 
     /**
@@ -354,6 +368,11 @@ class SuggestionEngine internal constructor(
     fun predict(prev: String?, sentenceStart: Boolean): Suggestions {
         val words = LinkedHashSet<String>()
         if (prev != null) user.nextWords(prev, 3).forEach { words.add(dictionary.displayForm(it) ?: it) }
+        // Then what usually follows this word in everyday English.
+        if (prev != null) for (w in bigrams.next(prev, 6)) {
+            if (words.size >= 3) break
+            words.add(dictionary.displayForm(w) ?: w)
+        }
         val fallback = if (sentenceStart) START_WORDS else COMMON_WORDS
         for (w in fallback) {
             if (words.size >= 3) break
@@ -427,6 +446,8 @@ class SuggestionEngine internal constructor(
         private const val COMPLETION_PENALTY = 0.6
         private const val EDIT_WEIGHT = 3.0
         private const val CORRECTION_THRESHOLD = 5.0
+        /** How much a common word pair counts in the ranking (the counts are in the billions, so this is small). */
+        private const val PAIR_WEIGHT = 0.45
         private const val KNOWN_WORD_MAX_COST = 0.5
         private const val KNOWN_WORD_LIKELY_SLIP_COST = 0.7
         /** Swapped neighboring letters are the most common phone typo. */

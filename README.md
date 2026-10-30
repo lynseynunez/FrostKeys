@@ -26,6 +26,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Word completions and next-word predictions in a glass suggestion strip
 - Simple autocorrect (keyboard-proximity edit distance) applied on space or punctuation. Press backspace right after to undo it.
 - Your own autocorrect list (Settings > Typing): words to leave alone (like gpu) and fixes that always apply (gpu becomes GPU)
+- Knows which words usually follow each other (about 80,000 common pairs), so "away form" becomes "away from" and next-word suggestions are better
 - Learns the words and word pairs you type, stored only on your device. Long-press a suggestion to forget a learned word.
 - No learning in password fields or in apps that ask for incognito input
 
@@ -219,6 +220,8 @@ contractions by `tools/make_words.py`.
 The misspelling list (`typos.tsv`) is filtered from the [codespell](https://github.com/codespell-project/codespell)
 dictionary, a derivative of English Wikipedia's lists of common misspellings, licensed
 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), by `tools/make_typos.py`.
+The word-pair list (`bigrams.txt`) is filtered from SymSpell's English bigram dictionary (MIT License), which is
+derived from Google Books Ngram data ([CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)), by `tools/make_bigrams.py`.
 The bundled fonts [Inter](https://github.com/rsms/inter) and [Manrope](https://github.com/googlefonts/manrope)
 are licensed under the SIL Open Font License 1.1 (see `app/src/main/assets/fonts`).
 Emoji keywords and skin tone data come from [gemoji](https://github.com/github/gemoji)

@@ -183,3 +183,78 @@ class VocabularyTest {
         assertNull(fix("loose", "very"))
     }
 }
+
+class ContextTest {
+
+    private val engine = TestData.engine()
+
+    private fun fix(word: String, prev: String?) = engine.suggest(word, prev, true, false).correction
+
+    @Test
+    fun theWordBeforeDecidesBetweenRealWords() {
+        assertEquals("from", fix("form", "away"))
+        assertEquals("from", fix("form", "come"))
+        assertEquals("than", fix("then", "better"))
+    }
+
+    @Test
+    fun correctPairsAreLeftAlone() {
+        val pairs = listOf(
+            "the" to "form", "see" to "you", "i" to "love", "love" to "you", "and" to "then", "what" to "then",
+            "back" to "then", "very" to "loose", "thank" to "you", "good" to "morning", "how" to "are", "are" to "you",
+            "at" to "home", "right" to "now", "come" to "here", "to" to "go", "going" to "to", "want" to "to",
+            "a" to "lot", "kind" to "of", "out" to "of", "this" to "is", "that" to "is", "it" to "was",
+        )
+        val changed = pairs.filter { (prev, word) -> fix(word, prev) != null }
+        assertTrue("Correct pairs that were changed: $changed", changed.isEmpty())
+    }
+
+    @Test
+    fun nextWordPredictionUsesCommonPairs() {
+        val next = engine.predict("thank", false).slots
+        assertTrue("expected 'you' among $next", next.contains("you"))
+        val afterGood = engine.predict("good", false).slots
+        assertTrue("expected predictions after 'good', got $afterGood", afterGood.size == 3)
+    }
+
+    @Test
+    fun pairTableLoads() {
+        assertTrue(TestData.bigrams.size > 1_000)
+        assertTrue(TestData.bigrams.count("away", "from") > TestData.bigrams.count("away", "form"))
+    }
+}
+
+class NaturalTextTest {
+
+    private val engine = TestData.engine()
+
+    @Test
+    fun ordinaryMessagesAreNotChanged() {
+        val messages = listOf(
+            "Are you coming to bed soon",
+            "Yup on my way",
+            "Don't waste your awake time",
+            "Did logan fall asleep yet",
+            "I think we should get dinner tonight and then watch a movie",
+            "Can you send me the form before the meeting",
+            "She is taller than her brother but he runs faster",
+            "Thanks so much for the help I really appreciate it",
+            "What time does the store open tomorrow morning",
+            "I will call you back when I get home from work",
+            "We were going to the park but it started to rain",
+            "Please let me know if you need anything else",
+            "Good morning how did you sleep last night",
+            "The new keyboard looks great and feels really smooth",
+        )
+        val changed = ArrayList<String>()
+        for (m in messages) {
+            var prev: String? = null
+            for (w in m.split(" ")) {
+                val c = engine.suggest(w, prev, true, prev == null).correction
+                if (c != null) changed.add("$prev $w -> $c")
+                prev = w.lowercase()
+            }
+        }
+        assertTrue("Words changed in ordinary text: $changed", changed.isEmpty())
+    }
+}
