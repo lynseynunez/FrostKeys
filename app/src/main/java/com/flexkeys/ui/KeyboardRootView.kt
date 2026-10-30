@@ -141,8 +141,13 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     /** True for a moment after each key press: heavy redraws wait so typing stays smooth. */
     private val typingBusy get() = android.os.SystemClock.uptimeMillis() - keyboardView.lastKeyDownAt < 450L
 
+    private var lastTiltDraw = 0L
+
     private val tilt = TiltSensor(context) {
-        if (!typingBusy) {
+        // While typing, effects keep moving but redraw about half as often, so keys stay responsive.
+        val now = android.os.SystemClock.uptimeMillis()
+        if (!typingBusy || now - lastTiltDraw >= 66L) {
+            lastTiltDraw = now
             invalidate()
             keyboardView.invalidate()
         }
@@ -499,16 +504,13 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             sheetPaint.shader = null
         }
         val animStyle = shimmerPrefs.glassAnimation
-        if (animStyle != GlassAnimation.OFF && isShown && !saving && typingBusy) {
-            // Resume shortly after the last key.
-            postInvalidateDelayed(150L)
-        } else if (animStyle != GlassAnimation.OFF && isShown && !saving) {
+        if (animStyle != GlassAnimation.OFF && isShown && !saving) {
             glassAnimation.tick(android.os.SystemClock.uptimeMillis(), shimmerPrefs.animationSpeed.coerceIn(0, 100) / 100f)
             glassAnimation.draw(canvas, animStyle, width.toFloat(), height.toFloat(),
                 shimmerPrefs.animationIntensity.coerceIn(0, 100) / 100f, theme,
                 if (shimmerPrefs.animationTilt) tilt.x else 0f, if (shimmerPrefs.animationTilt) tilt.y else 0f)
-            // About 30 frames a second is smooth enough for slow motion and easy on the battery.
-            postInvalidateDelayed(33L)
+            // About 30 frames a second is smooth enough for slow motion and easy on the battery; about 15 while typing.
+            postInvalidateDelayed(if (typingBusy) 66L else 33L)
         } else {
             glassAnimation.pause()
         }
