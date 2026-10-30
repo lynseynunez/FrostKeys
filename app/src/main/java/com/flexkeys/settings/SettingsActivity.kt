@@ -43,6 +43,8 @@ import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.KeyboardRootView
 import kotlin.reflect.KMutableProperty0
 
+private const val RECENT_KEY = "recent_topics"
+
 /**
  * The launcher screen: setup, every customization option on frosted cards over a blurred
  * backdrop, and a live keyboard preview docked at the bottom where the real keyboard sits.
@@ -96,6 +98,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     }
 
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
+        if (key != RECENT_KEY) currentPage?.let { noteRecent(it) }
         when (key) {
             Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS -> previewController.refresh()
             Prefs.KEY_BG_VERSION -> {
@@ -191,43 +194,257 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     // ---- navigation: a short home list, and one page per topic ----
 
-    private class Topic(val id: String, val title: String, val summary: String, val cards: () -> List<View>)
+    private class Topic(
+        val id: String,
+        val icon: String,
+        val title: String,
+        val summary: () -> String,
+        val cards: () -> List<View>,
+        val advancedHint: String = "",
+        val advanced: () -> List<View> = { emptyList() },
+        val showsPreview: Boolean = false,
+    )
+
+    private val typingEffectNames = listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight")
+    private val glassAnimationNames = listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight", "Rain", "Fireflies", "Waves")
+
+    private fun onOff(value: Boolean) = if (value) "on" else "off"
 
     private fun topics(): List<Topic> = listOf(
-        Topic("colors", "Colors & photo", "Tint, accent, background photo, glass and blur") {
-            listOf(colorsCard(), photoCard(), glassCard())
-        },
-        Topic("effects", "Effects & animation", "Typing effects, glass animation, tilt and motion") {
-            listOf(typingEffectsCard(), glassAnimationCard(), motionCard())
-        },
-        Topic("layout", "Keyboard layout", "Layout, size, fonts, space bar, width and position") {
-            listOf(layoutCard(), widthCard())
-        },
-        Topic("typing", "Typing", "Suggestions, autocorrect, learned words, phrases") { listOf(typingCard()) },
-        Topic("feedback", "Sound & vibration", "Haptics and key sounds") { listOf(feedbackCard()) },
-        Topic("extras", "GIFs & translator", "Klipy GIF search and the translator") { listOf(gifCard(), translatorCard()) },
-        Topic("ai", "AI rewrite", "Groq or Gemini, your own rewrite styles") { listOf(aiCard()) },
-        Topic("clipboard", "Clipboard", "History, codes and auto-delete") { listOf(clipboardCard()) },
-        Topic("backup", "Backup & sharing", "Save and restore settings, share your look") { listOf(backupCard()) },
-        Topic("about", "About & privacy", "Privacy, diagnostics, updates") { listOf(privacyCard(), diagnosticsCard(), aboutCard()) },
+        Topic("colors", "🎨", "Colors & photo",
+            summary = {
+                val tint = listOf("Auto", "Light", "Dark").getOrElse(prefs.themeMode) { "Auto" }
+                val photo = if (BackgroundImageStore.exists(this)) "photo on" else "no photo"
+                "$tint tint · $photo · glass ${prefs.glassOpacity}%"
+            },
+            cards = { listOf(colorsCard(), photoCard(), glassCard()) }, showsPreview = true),
+        Topic("effects", "✨", "Effects & animation",
+            summary = { "${typingEffectNames[prefs.typingEffect.coerceIn(0, typingEffectNames.size - 1)]} · glass ${glassAnimationNames[prefs.glassAnimation.coerceIn(0, glassAnimationNames.size - 1)].lowercase()}" },
+            cards = { listOf(effectLooksCard(), typingEffectsCard(), glassAnimationCard()) },
+            advancedHint = "Tilt, reduce motion, battery", advanced = { listOf(motionCard()) }, showsPreview = true),
+        Topic("layout", "⌨️", "Keyboard layout",
+            summary = {
+                val layouts = Layouts.letterLayouts
+                "${layouts.firstOrNull { it.id == prefs.layoutId }?.name ?: "QWERTY"} · height ${prefs.heightPercent}%"
+            },
+            cards = { listOf(layoutStyleCard(), layoutSizeCard(), layoutKeysCard()) },
+            advancedHint = "Width, position, split keys", advanced = { listOf(widthCard()) }, showsPreview = true),
+        Topic("typing", "✍️", "Typing",
+            summary = { "Autocorrect ${onOff(prefs.autocorrect)} · suggestions ${onOff(prefs.suggestions)}" },
+            cards = { listOf(typingCard(), typingToolsCard()) },
+            advancedHint = "Clean up or clear learned words", advanced = { listOf(typingCleanupCard()) }, showsPreview = true),
+        Topic("feedback", "📳", "Sound & vibration",
+            summary = { "Vibration ${onOff(prefs.haptics)} · sound ${onOff(prefs.sound)}" },
+            cards = { listOf(feedbackCard()) }),
+        Topic("extras", "🌐", "GIFs & translator",
+            summary = { "GIFs ${onOff(prefs.gifsEnabled)} · translator ${onOff(prefs.translatorEnabled)}" },
+            cards = { listOf(gifCard(), translatorCard()) }),
+        Topic("ai", "🤖", "AI rewrite",
+            summary = { if (prefs.aiEnabled) "On · ${AiClient.providerNames.getOrElse(prefs.aiProvider) { "Groq" }}" else "Off" },
+            cards = { listOf(aiCard()) }),
+        Topic("clipboard", "📋", "Clipboard",
+            summary = { "History ${onOff(prefs.clipboardHistory)}" },
+            cards = { listOf(clipboardCard()) }),
+        Topic("backup", "💾", "Backup & sharing",
+            summary = { "Save and restore settings, share your look" },
+            cards = { listOf(backupCard()) }),
+        Topic("about", "ℹ️", "About & privacy",
+            summary = { "Privacy, updates, version" },
+            cards = { listOf(privacyCard(), aboutCard()) },
+            advancedHint = "Diagnostics", advanced = { listOf(diagnosticsCard()) }),
     )
+
+    /** One entry per setting people look for. [card] is the title of the card that holds it. */
+    private class Hit(val label: String, val topic: String, val card: String, val words: String = "")
+
+    private val searchIndex = listOf(
+        Hit("Presets", "colors", "Colors", "theme look frost midnight aurora sunset clear graphite"),
+        Hit("Tint", "colors", "Colors", "light dark auto theme mode"),
+        Hit("Accent color", "colors", "Colors", "colour hue"),
+        Hit("Background photo", "colors", "Background photo", "wallpaper image picture"),
+        Hit("Adjust photo position", "colors", "Background photo", "crop zoom"),
+        Hit("Adapt tint to photo", "colors", "Background photo"),
+        Hit("Photo opacity", "colors", "Background photo", "transparency"),
+        Hit("Glass opacity", "colors", "Glass", "transparency see through"),
+        Hit("Blur", "colors", "Glass", "frosted"),
+        Hit("Gradient glow", "colors", "Glass"),
+        Hit("Liquid refraction", "colors", "Glass", "bend beta lens"),
+        Hit("Quick looks", "effects", "Quick looks", "preset combo"),
+        Hit("Key press color", "effects", "Typing effects", "highlight"),
+        Hit("Key motion", "effects", "Typing effects", "sink pop bounce tilt float"),
+        Hit("Typing animation", "effects", "Typing effects", "sparkles ripple warp bloom ink firecracker paint spotlight"),
+        Hit("Animation strength", "effects", "Typing effects"),
+        Hit("Key spotlight colors", "effects", "Typing effects", "palette custom"),
+        Hit("Glass animation", "effects", "Glass animation", "aurora light flow bubbles starlight rain fireflies waves background"),
+        Hit("Animation speed", "effects", "Glass animation"),
+        Hit("Animation intensity", "effects", "Glass animation"),
+        Hit("Tilt shimmer", "effects", "Tilt & motion", "sensor shine"),
+        Hit("Reduce motion", "effects", "Tilt & motion", "accessibility animations off"),
+        Hit("Pause on low battery", "effects", "Tilt & motion", "battery saver"),
+        Hit("Keyboard layout", "layout", "Layout & style", "qwerty azerty dvorak colemak"),
+        Hit("Key style", "layout", "Layout & style", "glass tiles"),
+        Hit("Font", "layout", "Layout & style", "typeface"),
+        Hit("Space bar emblem", "layout", "Layout & style", "logo flower"),
+        Hit("Space bar style", "layout", "Layout & style", "card outline underline clear"),
+        Hit("Space bar glass", "layout", "Layout & style"),
+        Hit("Keyboard height", "layout", "Size & shape", "taller shorter"),
+        Hit("Key spacing", "layout", "Size & shape", "gap"),
+        Hit("Corner radius", "layout", "Size & shape", "round"),
+        Hit("Font size", "layout", "Size & shape", "text bigger"),
+        Hit("Suggestion word size", "layout", "Size & shape", "strip"),
+        Hit("Comma & period keys", "layout", "Keys", "punctuation"),
+        Hit("Number row", "layout", "Keys", "digits"),
+        Hit("Key preview", "layout", "Keys", "popup bubble"),
+        Hit("Keyboard width", "layout", "Width & position", "tablet compact wide"),
+        Hit("Keyboard position", "layout", "Width & position", "left right center one hand"),
+        Hit("Split keys", "layout", "Width & position", "tablet thumbs"),
+        Hit("Skin tone", "typing", "Typing", "emoji"),
+        Hit("Suggestions", "typing", "Typing", "predictions completions"),
+        Hit("Autocorrect", "typing", "Typing", "typo fix"),
+        Hit("Learn my words", "typing", "Typing", "dictionary"),
+        Hit("Auto-capitalization", "typing", "Typing", "capital"),
+        Hit("Double-space period", "typing", "Typing"),
+        Hit("Autocorrect list", "typing", "My words & tools", "protected always change"),
+        Hit("Learned words", "typing", "My words & tools", "manage"),
+        Hit("Phrases & extra keys", "typing", "My words & tools", "snippets shortcuts"),
+        Hit("Stickers", "typing", "My words & tools"),
+        Hit("Clear learned words", "typing", "Cleanup", "forget reset"),
+        Hit("Vibrate on key press", "feedback", "Sound & vibration", "haptics buzz"),
+        Hit("Haptic style", "feedback", "Sound & vibration", "tick click heavy strength"),
+        Hit("Sound on key press", "feedback", "Sound & vibration", "volume click"),
+        Hit("GIF search", "extras", "GIFs", "klipy api key"),
+        Hit("Translator", "extras", "Translator", "mymemory language"),
+        Hit("AI rewrite", "ai", "AI rewrite", "groq gemini key fix reword"),
+        Hit("Rewrite styles", "ai", "AI rewrite", "presets tone"),
+        Hit("Clean up dictation", "ai", "AI rewrite", "voice"),
+        Hit("Clipboard history", "clipboard", "Clipboard", "paste copy"),
+        Hit("Delete clipboard after", "clipboard", "Clipboard", "expiry"),
+        Hit("Export backup", "backup", "Backup & sharing", "save restore import"),
+        Hit("Share my theme", "backup", "Backup & sharing", "code"),
+        Hit("Privacy", "about", "Privacy", "reset all settings data"),
+        Hit("Check for updates", "about", "About", "version"),
+        Hit("Diagnostics", "about", "Diagnostics", "timing report lag"),
+    )
+
+    private fun noteRecent(topicId: String) {
+        val current = (prefs.sp.getString(RECENT_KEY, "") ?: "").split(',').filter { it.isNotEmpty() }
+        if (current.firstOrNull() == topicId) return
+        val next = (listOf(topicId) + current.filter { it != topicId }).take(3)
+        prefs.sp.edit().putString(RECENT_KEY, next.joinToString(",")).apply()
+    }
+
+    private fun dockVisibility(): Int =
+        if (topics().firstOrNull { it.id == currentPage }?.showsPreview == true) View.VISIBLE else View.GONE
 
     private fun showHome() {
         currentPage = null
         accentViews.clear()
         list.removeAllViews()
+        previewDock.visibility = View.GONE
         list.addView(header())
+
+        val all = topics()
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val results = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+        }
+
+        list.addView(searchField { query ->
+            val words = query.lowercase().split(' ').filter { it.isNotEmpty() }
+            results.removeAllViews()
+            body.visibility = if (words.isEmpty()) View.VISIBLE else View.GONE
+            results.visibility = if (words.isEmpty()) View.GONE else View.VISIBLE
+            if (words.isEmpty()) return@searchField
+            val hits = searchIndex.filter { hit ->
+                val haystack = "${hit.label} ${hit.words} ${hit.card}".lowercase()
+                words.all { haystack.contains(it) }
+            }
+            if (hits.isEmpty()) {
+                results.addView(card().apply { text("Nothing matches \"$query\".", secondary = true) })
+            }
+            for (hit in hits.take(12)) {
+                val topic = all.first { it.id == hit.topic }
+                results.addView(card().apply {
+                    setPadding(dp(20f), dp(12f), dp(20f), dp(12f))
+                    addView(TextView(context).apply {
+                        text = hit.label
+                        setTextColor(palette.text)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    })
+                    addView(TextView(context).apply {
+                        text = "${topic.title}  ›  ${hit.card}"
+                        setTextColor(palette.secondary)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    })
+                    isClickable = true
+                    setOnClickListener { showTopic(topic, hit.card) }
+                })
+            }
+        })
+        list.addView(results)
+        list.addView(body)
+
         setupCard = card()
-        list.addView(setupCard)
+        body.addView(setupCard)
         buildSetupCard()
-        for (topic in topics()) list.addView(topicRow(topic))
+
+        val recent = (prefs.sp.getString(RECENT_KEY, "") ?: "").split(',').mapNotNull { id -> all.firstOrNull { it.id == id } }
+        if (recent.isNotEmpty()) {
+            body.addView(sectionLabel("Recently changed"))
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            recent.forEachIndexed { i, topic ->
+                row.addView(PillButton(this, topic.title, false, palette).apply { onClick = { showTopic(topic) } },
+                    LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                        .apply { if (i > 0) marginStart = dp(8f) })
+            }
+            body.addView(HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false
+                setPadding(0, dp(4f), 0, 0)
+                addView(row)
+            })
+        }
+        body.addView(sectionLabel("All settings"))
+        for (topic in all) body.addView(topicRow(topic))
         scroll.scrollTo(0, 0)
     }
 
-    private fun showTopic(topic: Topic) {
+    private fun sectionLabel(label: String): View = TextView(this).apply {
+        text = label.uppercase()
+        setTextColor(palette.secondary)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        letterSpacing = 0.08f
+        setPadding(dp(8f), dp(20f), 0, dp(2f))
+    }
+
+    private fun searchField(onQuery: (String) -> Unit): View = EditText(this).apply {
+        hint = "Search settings"
+        setTextColor(palette.text)
+        setHintTextColor(palette.secondary)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        inputType = InputType.TYPE_CLASS_TEXT
+        isSingleLine = true
+        setPadding(dp(20f), dp(12f), dp(20f), dp(12f))
+        background = GradientDrawable().apply {
+            cornerRadius = dp(26f).toFloat()
+            setColor(palette.card)
+            setStroke(dp(1f), palette.cardBorder)
+        }
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(10f) }
+        addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: android.text.Editable?) = onQuery(s?.toString()?.trim() ?: "")
+        })
+    }
+
+    /** Opens a topic. [focus] is the title of a card to scroll to (and unfold if it is under Advanced). */
+    private fun showTopic(topic: Topic, focus: String? = null) {
         currentPage = topic.id
         accentViews.clear()
         list.removeAllViews()
+        previewDock.visibility = dockVisibility()
         list.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(6f), dp(12f), dp(6f), dp(4f))
@@ -246,25 +463,100 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             })
         })
         for (c in topic.cards()) list.addView(c)
+
+        val advancedCards = topic.advanced()
+        var advancedBox: LinearLayout? = null
+        if (advancedCards.isNotEmpty()) {
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
+            }
+            advancedCards.forEach { box.addView(it) }
+            advancedBox = box
+            val arrow = TextView(this).apply {
+                text = "⌄"
+                setTextColor(palette.secondary)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            }
+            list.addView(card().apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+                texts.addView(TextView(context).apply {
+                    text = "Advanced"
+                    setTextColor(palette.text)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+                })
+                texts.addView(TextView(context).apply {
+                    text = topic.advancedHint
+                    setTextColor(palette.secondary)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                })
+                addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(arrow)
+                isClickable = true
+                setOnClickListener {
+                    val open = box.visibility != View.VISIBLE
+                    box.visibility = if (open) View.VISIBLE else View.GONE
+                    arrow.text = if (open) "⌃" else "⌄"
+                }
+            })
+            list.addView(box)
+        }
+
         scroll.scrollTo(0, 0)
+        if (focus != null) {
+            val target = list.findViewWithTag<View>(focus)
+            if (target != null) {
+                if (advancedBox != null && target.parent === advancedBox) advancedBox.visibility = View.VISIBLE
+                list.postDelayed({
+                    var y = 0
+                    var v: View = target
+                    while (v !== list) {
+                        y += v.top
+                        v = v.parent as? View ?: break
+                    }
+                    scroll.smoothScrollTo(0, (y - dp(24f)).coerceAtLeast(0))
+                }, 80)
+            }
+        }
+    }
+
+    /** Rebuilds the open page after values changed in bulk (a preset), keeping the scroll position. */
+    private fun refreshPage() {
+        val topic = topics().firstOrNull { it.id == currentPage } ?: return
+        val y = scroll.scrollY
+        showTopic(topic)
+        scroll.post { scroll.scrollTo(0, y) }
     }
 
     /** A big tappable row on the home list. Only a tap on the row opens the page, so scrolling past is safe. */
     private fun topicRow(topic: Topic): View = card().apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(20f), dp(16f), dp(16f), dp(16f))
+        setPadding(dp(16f), dp(14f), dp(16f), dp(14f))
+        addView(TextView(context).apply {
+            text = topic.icon
+            gravity = Gravity.CENTER
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+            background = GradientDrawable().apply {
+                cornerRadius = dp(14f).toFloat()
+                setColor(palette.tonal)
+            }
+        }, LinearLayout.LayoutParams(dp(44f), dp(44f)).apply { marginEnd = dp(14f) })
         val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         texts.addView(TextView(context).apply {
             text = topic.title
             setTextColor(palette.text)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         })
         texts.addView(TextView(context).apply {
-            text = topic.summary
+            text = topic.summary()
             setTextColor(palette.secondary)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
             setPadding(0, dp(2f), 0, 0)
         })
         addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -361,6 +653,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     /** A card with a title. Each topic page shows its cards open, so nothing needs unfolding. */
     private fun card(title: String, build: LinearLayout.() -> Unit): View = card().apply {
+        tag = title
         addView(TextView(context).apply {
             text = title
             setTextColor(palette.text)
@@ -536,7 +829,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                     setColor(palette.tonal)
                 }
                 // The real keyboard takes the preview's place while typing here.
-                setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else View.VISIBLE }
+                setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else dockVisibility() }
             }
             setupCard.addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 .apply { topMargin = dp(12f) })
@@ -581,7 +874,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                         .putInt(Prefs.KEY_BLUR, preset.blur)
                         .apply()
                     // Rebuild so every slider and picker shows the new values.
-                    recreate()
+                    refreshPage()
                 }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 .apply { if (i > 0) marginStart = dp(8f) })
@@ -645,7 +938,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private fun typingEffectsCard() = card("Typing effects") {
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }
-        picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight"), prefs.typingEffect) { prefs.typingEffect = it }
+        picker("Typing animation", typingEffectNames, prefs.typingEffect) { prefs.typingEffect = it }
         slider("Animation strength", 0, 100, prefs::effectStrength) { "$it%" }
         picker("Key spotlight colors", SpotlightPalettes.names, prefs.spotlightPalette) {
             prefs.spotlightPalette = it
@@ -657,7 +950,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     }
 
     private fun glassAnimationCard() = card("Glass animation") {
-        picker("Glass animation", listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight", "Rain", "Fireflies", "Waves"), prefs.glassAnimation) { prefs.glassAnimation = it }
+        picker("Glass animation", glassAnimationNames, prefs.glassAnimation) { prefs.glassAnimation = it }
         slider("Animation speed", 0, 100, prefs::animationSpeed) { "$it%" }
         slider("Animation intensity", 0, 100, prefs::animationIntensity) { "$it%" }
         toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
@@ -678,7 +971,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Split gap", 8, 30, prefs::splitGap) { "$it%" }
     }
 
-    private fun layoutCard() = card("Layout & size") {
+    private fun layoutStyleCard() = card("Layout & style") {
         val layouts = Layouts.letterLayouts
         segmented("Layout", layouts.map { it.name }, layouts.indexOfFirst { it.id == prefs.layoutId }.coerceAtLeast(0)) {
             prefs.layoutId = layouts[it].id
@@ -693,15 +986,54 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         }
         slider("Emblem size", 50, 160, prefs::emblemSize) { "$it%" }
         slider("Space bar glass", 0, 100, prefs::spaceGlass) { "$it%" }
+        picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
+    }
+
+    private fun layoutSizeCard() = card("Size & shape") {
         slider("Keyboard height", 60, 150, prefs::heightPercent) { "$it%" }
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
         slider("Corner radius", 0, 30, prefs::cornerRadiusDp) { "$it dp" }
         slider("Font size", 60, 160, prefs::fontPercent) { "$it%" }
+        slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
+    }
+
+    private fun layoutKeysCard() = card("Keys") {
         toggle("Comma & period keys", "Show , and . beside the space bar, like Gboard", prefs::punctuationKeys)
         toggle("Number row", "Always show 1–0 above the letters", prefs::numberRow)
         toggle("Key preview", "Pop up a bubble above keys as you type", prefs::keyPreview)
-        slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
-        picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
+    }
+
+    private class EffectLook(val name: String, val typing: Int, val glass: Int)
+
+    private val effectLooks = listOf(
+        EffectLook("Calm", 0, 0),
+        EffectLook("Sparkle", 1, 4),
+        EffectLook("Dreamy", 2, 1),
+        EffectLook("Rainy night", 4, 5),
+        EffectLook("Fireflies", 8, 6),
+        EffectLook("Ocean", 2, 7),
+    )
+
+    private fun effectLooksCard() = card("Quick looks") {
+        text("One tap sets the typing animation and glass animation together. Fine-tune below.", secondary = true)
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(8f), 0, dp(2f))
+        }
+        effectLooks.forEachIndexed { i, look ->
+            row.addView(PillButton(context, look.name, false, palette).apply {
+                onClick = {
+                    prefs.typingEffect = look.typing
+                    prefs.glassAnimation = look.glass
+                    refreshPage()
+                }
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { if (i > 0) marginStart = dp(8f) })
+        }
+        addView(HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(row)
+        })
     }
 
     private fun typingCard() = card("Typing") {
@@ -712,6 +1044,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Learn my words", "Improve suggestions from what you type, on-device only", prefs::learnWords)
         toggle("Auto-capitalization", null, prefs::autoCapitalize)
         toggle("Double-space period", "Tap space twice for \". \"", prefs::doubleSpacePeriod)
+    }
+
+    private fun typingToolsCard() = card("My words & tools") {
         buttons(Triple("Autocorrect list (leave alone / always fix)", true) {
             startActivity(Intent(this@SettingsActivity, CorrectionsActivity::class.java))
         })
@@ -723,6 +1058,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         buttons(Triple("Stickers", false) {
             startActivity(Intent(this@SettingsActivity, StickersActivity::class.java))
         })
+    }
+
+    private fun typingCleanupCard() = card("Cleanup") {
         buttons(Triple("Clean up typos in learned words", false) {
             val removed = SuggestionEngine.get(this@SettingsActivity).cleanLearned()
             toast(if (removed == 0) "No typos found in your learned words" else "Removed $removed learned typo${if (removed == 1) "" else "s"}")
@@ -771,7 +1109,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 setColor(palette.tonal)
             }
             // The real keyboard takes the preview's place while typing here.
-            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else View.VISIBLE }
+            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else dockVisibility() }
             addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -819,7 +1157,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 setColor(palette.tonal)
             }
             // The real keyboard takes the preview's place while typing here.
-            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else View.VISIBLE }
+            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else dockVisibility() }
             addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -849,7 +1187,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 setColor(palette.tonal)
             }
             // The real keyboard takes the preview's place while typing here.
-            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else View.VISIBLE }
+            setOnFocusChangeListener { _, focused -> previewDock.visibility = if (focused) View.GONE else dockVisibility() }
             addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit

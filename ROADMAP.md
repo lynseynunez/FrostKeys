@@ -79,5 +79,5 @@ Multiple languages, per-app profiles, an incognito toggle, theme packs with the 
 of day, accessibility modes, Play Store publishing. Any of these can be added back later.
 
 ## Done outside the milestones
-- Settings redesigned as a short home list with one page per topic, safer toggles and sliders.
+- Settings redesigned: home list with icons and live summaries, search, recently changed, grouped cards, collapsed Advanced sections, quick looks, and a preview only on appearance pages.
 - Rain, fireflies and waves glass animations.
