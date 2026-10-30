@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Used only for GIF search, and only after the user turns it on and adds a Klipy key. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lets "Check for updates" install a newer build you chose to download. Android still asks you to confirm. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Lets the keyboard find the phone's speech recognizer (Android 11+ package visibility). -->
     <queries>
@@ -83,5 +85,10 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+
+        <!-- Receives the result of installing an update, and shows Android's own install prompt. -->
+        <receiver
+            android:name=".settings.InstallResultReceiver"
+            android:exported="false" />
     </application>
 </manifest>

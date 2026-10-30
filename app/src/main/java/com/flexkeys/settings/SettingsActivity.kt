@@ -1456,12 +1456,33 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         // CI writes the commit into assets/build_id.txt, so you can tell which build is installed.
         val build = try { assets.open("build_id.txt").bufferedReader().use { it.readText().trim().take(7) } } catch (e: Exception) { "local" }
         text("Build $build", secondary = true)
-        buttons(Triple("Check for updates", false) {
-            toast("Checking…")
-            UpdateChecker.check(this@SettingsActivity) { r ->
+        buttons(Triple("Check for updates", true) { checkForUpdates(build) })
+    }
+
+    /** Looks for a newer test build first (installable right here), then for a newer numbered release. */
+    private fun checkForUpdates(installedBuild: String) {
+        toast("Checking…")
+        UpdateChecker.checkTestBuild { test ->
+            val commit = test.commit?.take(7)
+            val newTest = test.error == null && test.apkUrl != null && commit != null &&
+                installedBuild != "local" && !commit.equals(installedBuild, ignoreCase = true)
+            if (newTest) {
+                val mb = if (test.sizeBytes > 0) " (${"%.1f".format(test.sizeBytes / 1_048_576.0)} MB)" else ""
+                AlertDialog.Builder(this)
+                    .setTitle("A newer build is available")
+                    .setMessage("You have build $installedBuild. The newest is $commit$mb.\n\nSakuriKey will download it, then Android asks you to confirm the install.")
+                    .setPositiveButton("Download and install") { _, _ ->
+                        ApkInstaller.downloadAndInstall(this, test.apkUrl!!, { toast(it) }, { toast(it) })
+                    }
+                    .setNegativeButton("Later", null)
+                    .show()
+                return@checkTestBuild
+            }
+            UpdateChecker.check(this) { r ->
                 when {
+                    r.error != null && test.error == null && test.commit != null -> toast("You're up to date")
                     r.error != null -> toast(r.error)
-                    r.newer -> AlertDialog.Builder(this@SettingsActivity)
+                    r.newer -> AlertDialog.Builder(this)
                         .setMessage("Version ${r.latest} is available." + if (r.notes.isNotEmpty()) "\n\n${r.notes}" else "")
                         .setPositiveButton("Open download page") { _, _ ->
                             startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(r.url)))
@@ -1471,13 +1492,13 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                     else -> toast("You're up to date")
                 }
             }
-        })
+        }
     }
 
     private fun privacyCard() = card("Privacy") {
         text(
             "SakuriKey has no analytics. The only things that use the internet are GIF search and the " +
-                "translator, and only for the text you search or translate. Learned words, clipboard " +
+                "translator (only for the text you search or translate), and Check for updates when you tap it. Learned words, clipboard " +
                 "history and your photo never leave this phone.",
             secondary = true,
         )

@@ -17,6 +17,9 @@ object UpdateChecker {
 
     class Result(val latest: String?, val url: String?, val newer: Boolean, val error: String?, val notes: String = "")
 
+    /** The newest test build, published as the "latest" pre-release on every successful build. */
+    class TestBuild(val commit: String?, val apkUrl: String?, val sizeBytes: Long, val error: String?)
+
     private val pool = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
@@ -53,6 +56,41 @@ object UpdateChecker {
                 Result(null, null, false, "Couldn't reach GitHub. Check your connection.")
             } catch (e: JSONException) {
                 Result(null, null, false, "Unexpected reply from GitHub.")
+            }
+            main.post { onDone(result) }
+        }
+    }
+
+    fun checkTestBuild(onDone: (TestBuild) -> Unit) {
+        pool.execute {
+            val result = try {
+                val c = URL("https://api.github.com/repos/$REPO/releases/tags/latest").openConnection() as HttpURLConnection
+                try {
+                    c.connectTimeout = 10_000
+                    c.readTimeout = 10_000
+                    c.setRequestProperty("Accept", "application/vnd.github+json")
+                    c.setRequestProperty("User-Agent", "SakuriKey")
+                    when (val code = c.responseCode) {
+                        404 -> TestBuild(null, null, 0, null)
+                        in 200..299 -> {
+                            val o = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+                            val asset = o.optJSONArray("assets")?.optJSONObject(0)
+                            TestBuild(
+                                o.optString("target_commitish").takeIf { it.isNotEmpty() },
+                                asset?.optString("browser_download_url")?.takeIf { it.isNotEmpty() },
+                                asset?.optLong("size") ?: 0L,
+                                null,
+                            )
+                        }
+                        else -> TestBuild(null, null, 0, "GitHub returned error $code.")
+                    }
+                } finally {
+                    c.disconnect()
+                }
+            } catch (e: IOException) {
+                TestBuild(null, null, 0, "Couldn't reach GitHub. Check your connection.")
+            } catch (e: JSONException) {
+                TestBuild(null, null, 0, "Unexpected reply from GitHub.")
             }
             main.post { onDone(result) }
         }

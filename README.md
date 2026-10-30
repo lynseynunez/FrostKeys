@@ -53,7 +53,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Auto/light/dark tint and an accent color picker
 - Adjustable keyboard height, key spacing, corner radius and font size; haptic style and strength (or the phone's built-in tick, click and heavy effects)
 - Backup and restore (settings, learned words, phrases and optionally your photo) and shareable theme codes; API keys are never included
-- Check for updates from the app (only when you tap it)
+- Check for updates from the app (only when you tap it): finds the newest test build and installs it right there (Android asks you to confirm), or points to a new numbered release
 - Two key styles: bare translucent "glass letters" (default) or a glass tile behind each key
 - A blue/purple/pink gradient glow across the glass, with its own slider
 - Modern fonts (Inter, Manrope) or your system font
