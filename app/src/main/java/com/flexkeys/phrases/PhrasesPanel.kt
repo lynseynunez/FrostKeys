@@ -19,7 +19,9 @@ import com.flexkeys.clipboard.ClipboardPanel
 import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.keyboard.Icon
 import com.flexkeys.ui.GlassButton
+import com.flexkeys.theme.GlassTheme
 import com.flexkeys.ui.GlassPanelLayout
+import com.flexkeys.ui.GlassTileDrawable
 
 /** Saved phrases: tap one to insert it. */
 class PhrasesPanel(context: Context, private val listener: Listener) : GlassPanelLayout(context) {
@@ -99,10 +101,9 @@ class PhrasesPanel(context: Context, private val listener: Listener) : GlassPane
             val row = LinearLayout(context).apply {
                 orientation = VERTICAL
                 setPadding(dp(14f), dp(6f), dp(10f), dp(6f))
-                background = GradientDrawable().apply {
-                    cornerRadius = t?.cornerRadiusPx ?: dp(12f).toFloat()
-                    setColor(t?.keyFill ?: 0x55FFFFFF)
-                    setStroke(dp(1f), t?.borderBottom ?: 0x22FFFFFF)
+                val h = host
+                if (t != null && h != null) {
+                    background = GlassTileDrawable(h.painter, GlassTheme.withAlpha(if (t.dark) Color.BLACK else Color.WHITE, 0.22f), t.cornerRadiusPx)
                 }
                 setOnClickListener {
                     val clip = ClipboardStore.get(context).newest()?.text.orEmpty()

@@ -20,6 +20,7 @@ import com.flexkeys.theme.GlassTheme
 import com.flexkeys.theme.Prefs
 import com.flexkeys.ui.GlassButton
 import com.flexkeys.ui.GlassPanelLayout
+import com.flexkeys.ui.GlassTileDrawable
 
 /** Clipboard history: tap to paste, pin to keep, delete to forget. */
 class ClipboardPanel(context: Context, private val listener: Listener) : GlassPanelLayout(context) {
@@ -109,23 +110,20 @@ class ClipboardPanel(context: Context, private val listener: Listener) : GlassPa
         super.onDetachedFromWindow()
     }
 
+    /** The tint of a glass tile: a light veil of dark (or white) so the blurred sheet shows through. */
+    private fun tileFill(t: GlassTheme): Int = GlassTheme.withAlpha(if (t.dark) Color.BLACK else Color.WHITE, 0.22f)
+
     private fun refresh() {
         val t = host?.theme
         if (t != null) {
             empty.setTextColor(t.secondaryTextColor)
+            val h = host
             for ((tab, active) in listOf(recentTab to !showPinned, pinnedTab to showPinned)) {
                 tab.setTextColor(if (active) t.onAccent else t.textColor)
-                tab.background = GradientDrawable().apply {
-                    cornerRadius = dp(20f).toFloat()
-                    setColor(if (active) GlassTheme.withAlpha(t.accentFill, 0.62f) else t.keyFill)
-                }
+                tab.background = if (h != null) GlassTileDrawable(h.painter, if (active) GlassTheme.withAlpha(t.accentFill, 0.62f) else tileFill(t), dp(20f).toFloat()) else null
             }
             pinField.setTextColor(t.textColor)
-            pinField.background = GradientDrawable().apply {
-                cornerRadius = t.cornerRadiusPx
-                setColor(t.keyFill)
-                setStroke(dp(1f), t.borderBottom)
-            }
+            pinField.background = if (h != null) GlassTileDrawable(h.painter, tileFill(t), t.cornerRadiusPx) else null
         }
         val all = store.items()
         adapter.items = if (showPinned) all.filter { it.pinned } else all.filter { !it.pinned }
@@ -153,11 +151,8 @@ class ClipboardPanel(context: Context, private val listener: Listener) : GlassPa
                 orientation = HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(12f), dp(4f), dp(4f), dp(4f))
-                background = GradientDrawable().apply {
-                    cornerRadius = t?.cornerRadiusPx ?: dp(12f).toFloat()
-                    setColor(t?.keyFill ?: 0x55FFFFFF)
-                    setStroke(dp(1f), t?.borderBottom ?: 0x22FFFFFF)
-                }
+                val h = host
+                if (t != null && h != null) background = GlassTileDrawable(h.painter, tileFill(t), t.cornerRadiusPx)
             }
             val text = TextView(context).apply {
                 this.text = item.text
