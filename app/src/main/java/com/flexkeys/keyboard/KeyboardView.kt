@@ -574,7 +574,8 @@ class KeyboardView(context: Context) : View(context) {
         val popup = pointers.values.firstNotNullOfOrNull { it.popup }
         if (popup != null) {
             // A piece of the sheet itself (blurred photo and tint), then the same tile tint the emoji panel has.
-            val popupRadius = t.cornerRadiusPx + t.dp(2f)
+            // The same corner radius the painter ends up using (it caps at a full pill), so the highlighted option can sit concentric inside.
+            val popupRadius = (t.cornerRadiusPx + t.dp(2f)).coerceAtMost(minOf(popup.rect.width(), popup.rect.height()) / 2f)
             popupPath.reset()
             popupPath.addRoundRect(popup.rect, popupRadius, popupRadius, android.graphics.Path.Direction.CW)
             canvas.save()
@@ -583,13 +584,6 @@ class KeyboardView(context: Context) : View(context) {
             h.drawSheetBackground(canvas)
             canvas.restore()
             h.painter.draw(canvas, popup.rect, popupRadius, null, offset.x, offset.y, t.sheetTint, rim = false)
-            fillPaint.style = Paint.Style.STROKE
-            fillPaint.strokeWidth = t.dp(1f)
-            fillPaint.color = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.22f else 0.5f)
-            tmpRect.set(popup.rect)
-            tmpRect.inset(t.dp(0.5f), t.dp(0.5f))
-            canvas.drawRoundRect(tmpRect, popupRadius, popupRadius, fillPaint)
-            fillPaint.style = Paint.Style.FILL
             textPaint.textSize = rowHeight * 0.38f * t.fontScale
             popup.options.forEachIndexed { i, option ->
                 val left = popup.rect.left + (i % popup.cols) * popup.cellWidth
@@ -598,7 +592,9 @@ class KeyboardView(context: Context) : View(context) {
                 tmpRect.inset(t.dp(3f), t.dp(4f))
                 if (i == popup.selected) {
                     fillPaint.color = t.accentFill
-                    canvas.drawRoundRect(tmpRect, t.cornerRadiusPx, t.cornerRadiusPx, fillPaint)
+                    // Inset by the cell margin, so the highlight's corners follow the menu's own.
+                    val cellRadius = (popupRadius - t.dp(3.5f)).coerceAtLeast(t.dp(4f)).coerceAtMost(minOf(tmpRect.width(), tmpRect.height()) / 2f)
+                    canvas.drawRoundRect(tmpRect, cellRadius, cellRadius, fillPaint)
                 }
                 textPaint.color = if (i == popup.selected) t.onAccent else t.textColor
                 drawCentered(canvas, option, tmpRect.centerX(), tmpRect.centerY(), textPaint)
