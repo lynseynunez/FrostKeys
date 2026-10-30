@@ -142,13 +142,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         }
         // If the system leaves a sliver below our view (seen after a restart), let the window's own
         // background match the glass instead of showing the app underneath.
-        // The color starts below the sheet's rounded top corners (and inside any side margins) so it never fills them.
-        root?.let {
-            val top = (it.theme.dp(KeyboardRootView.SHEET_RADIUS_DP) * 2f).toInt()
-            w.setBackgroundDrawable(android.graphics.drawable.InsetDrawable(
-                android.graphics.drawable.ColorDrawable(it.theme.baseBottom), it.paddingLeft, top, it.paddingRight, 0,
-            ))
-        }
+        // Only a strip along the bottom is painted, never the area around the sheet's rounded top corners.
+        root?.let { w.setBackgroundDrawable(BottomStripDrawable(it.theme.baseBottom, it.theme.dp(48f))) }
         w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         root?.requestApplyInsets()
     }
@@ -1023,4 +1018,19 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             return if (start == BreakIterator.DONE) 1 else (s.length - start).coerceAtLeast(1)
         }
     }
+}
+
+/** A window background that paints only the bottom [heightPx], so the top corners stay see-through. */
+private class BottomStripDrawable(color: Int, private val heightPx: Float) : android.graphics.drawable.Drawable() {
+    private val paint = android.graphics.Paint().apply { this.color = color }
+
+    override fun draw(canvas: android.graphics.Canvas) {
+        val b = bounds
+        canvas.drawRect(b.left.toFloat(), maxOf(b.top.toFloat(), b.bottom - heightPx), b.right.toFloat(), b.bottom.toFloat(), paint)
+    }
+
+    override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+    override fun setColorFilter(filter: android.graphics.ColorFilter?) { paint.colorFilter = filter }
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
 }
