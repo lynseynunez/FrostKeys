@@ -30,6 +30,7 @@ import com.flexkeys.ai.AiClient
 import com.flexkeys.ai.GeminiClient
 import com.flexkeys.ai.GroqClient
 import com.flexkeys.clipboard.ClipboardStore
+import com.flexkeys.diagnostics.Diagnostics
 import com.flexkeys.gif.KlipyClient
 import com.flexkeys.layout.Layouts
 import com.flexkeys.service.Feedback
@@ -62,6 +63,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Diagnostics.installCrashHandler(this)
         prefs = Prefs.get(this)
         systemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         palette = SettingsPalette(systemDark, prefs.accentColor)
@@ -189,6 +191,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         list.addView(clipboardCard())
         list.addView(backupCard())
         list.addView(privacyCard())
+        list.addView(diagnosticsCard())
         list.addView(aboutCard())
 
         column.addView(previewDockView())
@@ -816,8 +819,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         text("Save your settings, learned words and phrases to a file, and restore them after reinstalling or on another phone. API keys are never included.", secondary = true)
         buttons(Triple("Export backup", true) {
             AlertDialog.Builder(this@SettingsActivity)
-                .setMessage("Include your background photo in the backup?")
-                .setPositiveButton("With photo") { _, _ -> startExport(true) }
+                .setMessage("Include your background photo and stickers in the backup? This can make the file large.")
+                .setPositiveButton("With images") { _, _ -> startExport(true) }
                 .setNegativeButton("Without") { _, _ -> startExport(false) }
                 .setNeutralButton("Cancel", null)
                 .show()
@@ -883,6 +886,27 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             .show()
     }
 
+    private fun diagnosticsCard() = card("Diagnostics") {
+        toggle("Record typing timing", "Measures how fast keys are handled, on this phone only", prefs::diagnostics)
+        text("Turn this on, type for a while, then open the report to see if lag comes from the keyboard or the phone. " +
+            "Crashes are always saved on this phone too. Nothing is ever sent anywhere.", secondary = true)
+        buttons(Triple("Show report", false) {
+            AlertDialog.Builder(this@SettingsActivity)
+                .setTitle("Typing report")
+                .setMessage(Diagnostics.report(this@SettingsActivity))
+                .setPositiveButton("Copy") { _, _ ->
+                    val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("SakuriKey report", Diagnostics.report(this@SettingsActivity)))
+                    toast("Report copied")
+                }
+                .setNegativeButton("Close", null)
+                .show()
+        }, Triple("Clear", false) {
+            Diagnostics.clear(this@SettingsActivity)
+            toast("Cleared")
+        })
+    }
+
     private fun aboutCard() = card("About") {
         text("SakuriKey ${UpdateChecker.currentVersion(this@SettingsActivity)}", secondary = true)
         buttons(Triple("Check for updates", false) {
@@ -891,7 +915,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 when {
                     r.error != null -> toast(r.error)
                     r.newer -> AlertDialog.Builder(this@SettingsActivity)
-                        .setMessage("Version ${r.latest} is available.")
+                        .setMessage("Version ${r.latest} is available." + if (r.notes.isNotEmpty()) "\n\n${r.notes}" else "")
                         .setPositiveButton("Open download page") { _, _ ->
                             startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(r.url)))
                         }

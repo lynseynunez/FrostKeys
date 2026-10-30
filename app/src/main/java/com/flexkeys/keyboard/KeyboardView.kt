@@ -20,6 +20,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
+import com.flexkeys.diagnostics.Diagnostics
 import com.flexkeys.layout.KeyDef
 import com.flexkeys.layout.KeyType
 import com.flexkeys.layout.Layer
@@ -543,7 +544,11 @@ class KeyboardView(context: Context) : View(context) {
     // ---- touch ----------------------------------------------------------------------------------
 
     @SuppressLint("ClickableViewAccessibility")
+    /** When the touch being handled actually happened, to measure how long it waited for the main thread. */
+    private var pointerEventTime = 0L
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        pointerEventTime = event.eventTime
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val i = event.actionIndex
@@ -574,6 +579,10 @@ class KeyboardView(context: Context) : View(context) {
     private fun onPointerDown(id: Int, x: Float, y: Float) {
         if (pointers.values.any { it.popup != null }) return
         lastKeyDownAt = SystemClock.uptimeMillis()
+        if (prefs.diagnostics) {
+            Diagnostics.recordInputDelay(lastKeyDownAt - pointerEventTime)
+            Diagnostics.noteTyping()
+        }
         // Rolling over to a new key while the previous one is still held types the previous one.
         for ((otherId, other) in pointers.entries.toList()) {
             if (other.key.def.type == KeyType.CHAR && !other.handled) onPointerUp(otherId)

@@ -3,6 +3,7 @@ package com.flexkeys.settings
 import android.content.Context
 import android.util.Base64
 import com.flexkeys.phrases.SnippetStore
+import com.flexkeys.stickers.StickerStore
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.Prefs
@@ -18,6 +19,8 @@ object BackupManager {
 
     private const val APP = "SakuriKey"
     private const val VERSION = 1
+    private const val MAX_STICKERS = 200
+    private const val MAX_STICKER_BYTES = 2_000_000
     private val SECRET_KEYS = setOf(Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATE_EMAIL, Prefs.KEY_GEMINI_KEY, Prefs.KEY_GROQ_KEY)
 
     /** Extra data (like phrases) that other parts of the app add to a backup. */
@@ -29,11 +32,10 @@ object BackupManager {
 
     private val sections: List<Section> = listOf(SnippetStore.BackupSection)
 
-    fun export(context: Context, includePhoto: Boolean): String {
-        val prefs = Prefs.get(context)
-        val root = JSONObject().put("app", APP).put("version", VERSION)
+    /** Settings as JSON, each with its type so it can be restored exactly. Secrets are left out. */
+    internal fun prefsToJson(all: Map<String, *>): JSONObject {
         val p = JSONObject()
-        for ((key, value) in prefs.sp.all) {
+        for ((key, value) in all) {
             if (key in SECRET_KEYS) continue
             val o = JSONObject()
             when (value) {
@@ -46,14 +48,43 @@ object BackupManager {
             }
             p.put(key, o)
         }
-        root.put("prefs", p)
+        return p
+    }
+
+    /** The settings in [p] with their original types. Secrets are skipped even if a file contains them. */
+    internal fun parsePrefs(p: JSONObject): Map<String, Any> {
+        val result = LinkedHashMap<String, Any>()
+        for (key in p.keys()) {
+            if (key in SECRET_KEYS) continue
+            val o = p.optJSONObject(key) ?: continue
+            when (o.optString("t")) {
+                "b" -> result[key] = o.getBoolean("v")
+                "i" -> result[key] = o.getInt("v")
+                "l" -> result[key] = o.getLong("v")
+                "f" -> result[key] = o.getDouble("v").toFloat()
+                "s" -> result[key] = o.getString("v")
+            }
+        }
+        return result
+    }
+
+    /** A sticker file name that is safe to write: plain letters, digits, dots and dashes, ending in .png. */
+    internal fun isSafeStickerName(name: String): Boolean = Regex("[A-Za-z0-9_-]{1,64}\\.png").matches(name)
+
+    fun export(context: Context, includeImages: Boolean): String {
+        val prefs = Prefs.get(context)
+        val root = JSONObject().put("app", APP).put("version", VERSION)
+        root.put("prefs", prefsToJson(prefs.sp.all))
         root.put("words", SuggestionEngine.get(context).user.exportText())
         val extra = JSONObject()
         for (s in sections) extra.put(s.id, s.export(context))
         root.put("sections", extra)
-        if (includePhoto) {
+        if (includeImages) {
             val f = BackgroundImageStore.file(context)
             if (f.isFile) root.put("photo", Base64.encodeToString(f.readBytes(), Base64.NO_WRAP))
+            val stickers = JSONObject()
+            for (file in StickerStore.list(context)) stickers.put(file.name, Base64.encodeToString(file.readBytes(), Base64.NO_WRAP))
+            if (stickers.length() > 0) root.put("stickers", stickers)
         }
         return root.toString()
     }
@@ -72,15 +103,13 @@ object BackupManager {
             val editor = prefs.sp.edit()
             val p = root.optJSONObject("prefs")
             if (p != null) {
-                for (key in p.keys()) {
-                    if (key in SECRET_KEYS) continue
-                    val o = p.optJSONObject(key) ?: continue
-                    when (o.optString("t")) {
-                        "b" -> editor.putBoolean(key, o.getBoolean("v"))
-                        "i" -> editor.putInt(key, o.getInt("v"))
-                        "l" -> editor.putLong(key, o.getLong("v"))
-                        "f" -> editor.putFloat(key, o.getDouble("v").toFloat())
-                        "s" -> editor.putString(key, o.getString("v"))
+                for ((key, value) in parsePrefs(p)) {
+                    when (value) {
+                        is Boolean -> editor.putBoolean(key, value)
+                        is Int -> editor.putInt(key, value)
+                        is Long -> editor.putLong(key, value)
+                        is Float -> editor.putFloat(key, value)
+                        is String -> editor.putString(key, value)
                     }
                 }
             }
@@ -88,6 +117,16 @@ object BackupManager {
             root.optString("words").takeIf { it.isNotEmpty() }?.let { SuggestionEngine.get(context).user.importText(it) }
             val extra = root.optJSONObject("sections")
             if (extra != null) for (s in sections) extra.optString(s.id).takeIf { it.isNotEmpty() }?.let { s.import(context, it) }
+            root.optJSONObject("stickers")?.let { stickers ->
+                var restored = 0
+                for (name in stickers.keys()) {
+                    if (restored >= MAX_STICKERS || !isSafeStickerName(name)) continue
+                    val bytes = Base64.decode(stickers.getString(name), Base64.DEFAULT)
+                    if (bytes.size > MAX_STICKER_BYTES) continue
+                    StickerStore.restore(context, name, bytes)
+                    restored++
+                }
+            }
             root.optString("photo").takeIf { it.isNotEmpty() }?.let {
                 BackgroundImageStore.file(context).writeBytes(Base64.decode(it, Base64.DEFAULT))
                 prefs.backgroundVersion = System.currentTimeMillis()

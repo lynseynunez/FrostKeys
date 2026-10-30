@@ -116,6 +116,8 @@ class Prefs private constructor(context: Context) {
     /** The glass animation follows the phone's tilt. */
     var animationTilt by bool(KEY_ANIMATION_TILT, true)
     var animationIntensity by int(KEY_ANIMATION_INTENSITY, 50)
+    /** Record typing timing on this phone (see Diagnostics). Off by default. */
+    var diagnostics by bool(KEY_DIAGNOSTICS, false)
     /** Words autocorrect must never change, one per line (lowercase). */
     var protectedWords by string(KEY_PROTECTED_WORDS, "")
     /** The user's own fixes, one "typed<TAB>replacement" per line: typed text is always changed to the replacement. */
@@ -204,6 +206,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_FANCY_STYLE = "fancy_style"
         const val KEY_PRESS_STYLE = "press_style"
         const val KEY_PREVIEW_OPEN = "settings_preview_open"
+        const val KEY_DIAGNOSTICS = "diagnostics"
         const val KEY_PROTECTED_WORDS = "protected_words"
         const val KEY_CUSTOM_FIXES = "custom_fixes"
         const val KEY_BATTERY_SAVER = "battery_saver"

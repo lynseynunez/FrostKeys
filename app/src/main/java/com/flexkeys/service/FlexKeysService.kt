@@ -22,6 +22,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import com.flexkeys.ai.AiClient
 import com.flexkeys.clipboard.ClipboardStore
+import com.flexkeys.diagnostics.Diagnostics
 import com.flexkeys.emoji.EmojiIndex
 import com.flexkeys.gif.GifItem
 import com.flexkeys.gif.GifLoader
@@ -89,6 +90,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs.get(this)
+        Diagnostics.installCrashHandler(this)
         feedback = Feedback(this, prefs)
         engine = SuggestionEngine.get(this)
         EmojiIndex.load(this)
@@ -620,6 +622,19 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onKeyDown(key: KeyDef) = feedback.keyPress(key.type)
 
     override fun onKey(key: KeyDef) {
+        if (!prefs.diagnostics) {
+            handleKey(key)
+            return
+        }
+        val start = System.nanoTime()
+        try {
+            handleKey(key)
+        } finally {
+            Diagnostics.recordKey(System.nanoTime() - start)
+        }
+    }
+
+    private fun handleKey(key: KeyDef) {
         if (root?.routeKeyToSearch(key, state.isShifted) == true) {
             if (key.type == KeyType.CHAR) {
                 state.onCharacterTyped()

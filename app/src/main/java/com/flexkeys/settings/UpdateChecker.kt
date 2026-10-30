@@ -15,7 +15,7 @@ object UpdateChecker {
 
     private const val REPO = "lynseynunez/FrostKeys"
 
-    class Result(val latest: String?, val url: String?, val newer: Boolean, val error: String?)
+    class Result(val latest: String?, val url: String?, val newer: Boolean, val error: String?, val notes: String = "")
 
     private val pool = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
@@ -42,7 +42,7 @@ object UpdateChecker {
                         in 200..299 -> {
                             val o = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
                             val tag = o.optString("tag_name")
-                            Result(tag, o.optString("html_url"), isNewer(tag, current), null)
+                            Result(tag, o.optString("html_url"), isNewer(tag, current), null, o.optString("body").trim().take(900))
                         }
                         else -> Result(null, null, false, "GitHub returned error $code.")
                     }

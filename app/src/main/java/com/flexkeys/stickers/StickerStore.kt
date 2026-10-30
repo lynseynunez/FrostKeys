@@ -30,6 +30,15 @@ object StickerStore {
         file.delete()
     }
 
+    /** Puts back a sticker from a backup, under its original name. The caller checks the name and size. */
+    fun restore(context: Context, name: String, bytes: ByteArray) {
+        try {
+            File(dir(context), name).writeBytes(bytes)
+        } catch (e: IOException) {
+            Log.w(TAG, "Could not restore sticker", e)
+        }
+    }
+
     /** Adds the image at [uri] as a sticker. Blocking; call from a background thread. */
     fun import(context: Context, uri: Uri): Boolean {
         if (list(context).size >= MAX_COUNT) return false

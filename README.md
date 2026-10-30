@@ -94,13 +94,14 @@ keeps your settings. That is fine for personal use.
 
 For a release signed with a key only you hold:
 
-1. Create a key on your computer (keep the file and passwords safe, and never commit them):
-   `keytool -genkeypair -v -keystore sakurikey-release.jks -alias sakurikey -keyalg RSA -keysize 2048 -validity 10000`
-2. Turn it into text: `base64 -w0 sakurikey-release.jks` (on Mac: `base64 -i sakurikey-release.jks`).
-3. In the GitHub repository open **Settings → Secrets and variables → Actions** and add four secrets:
-   `RELEASE_KEYSTORE_BASE64` (the text from step 2), `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`
-   (`sakurikey` above) and `RELEASE_KEY_PASSWORD`.
-4. Publish a release as above. The workflow now signs with your key.
+1. On your computer run `tools/make_release_key.sh`. It creates the key outside the repository (back it up, and
+   never commit it) and prints four values.
+2. In the GitHub repository open **Settings → Secrets and variables → Actions** and add them as secrets:
+   `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`.
+3. Publish a release as above. The workflow now signs with your key.
+
+Each release's notes are written automatically from the commit titles since the last release, and the app's
+**Check for updates** shows them.
 
 Heads up: a release signed with your own key differs from the debug builds, so Android will not install it over
 one. Export a backup first (Settings → Backup & sharing), uninstall the debug build, install the release, then
