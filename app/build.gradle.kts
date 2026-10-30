@@ -77,6 +77,16 @@ android {
     testOptions {
         // Unit tests run on the JVM; Android framework calls that aren't needed return defaults.
         unitTests.isReturnDefaultValues = true
+        // The settings smoke test runs the real screen under Robolectric, which needs the app's resources.
+        unitTests.isIncludeAndroidResources = true
+        // The smoke test runs on its own (-PsmokeOnly) so the quick tests never wait for it or depend on it.
+        unitTests.all {
+            if (project.hasProperty("smokeOnly")) {
+                it.filter.includeTestsMatching("*SettingsSmokeTest")
+            } else {
+                it.filter.excludeTestsMatching("*SettingsSmokeTest")
+            }
+        }
     }
 }
 
@@ -84,4 +94,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // The real org.json, because the one in the Android stub jar does nothing in unit tests.
     testImplementation("org.json:json:20231013")
+    // Runs the Settings screen on the JVM for the smoke test.
+    testImplementation("org.robolectric:robolectric:4.13")
 }

@@ -31,6 +31,11 @@ jobs:
       - name: Stamp the build with its commit (shown in Settings > About)
         run: echo "$GITHUB_SHA" > app/src/main/assets/build_id.txt
 
+      # Opens the real Settings screen and every page, so a crash on opening fails here and not on the phone.
+      - name: Settings smoke test
+        continue-on-error: true # report-only until it has been seen passing in CI
+        run: gradle testDebugUnitTest -PsmokeOnly --stacktrace
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 

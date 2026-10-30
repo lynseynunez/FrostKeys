@@ -354,6 +354,17 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private fun dockVisibility(): Int =
         if (topics().firstOrNull { it.id == currentPage }?.showsPreview == true) View.VISIBLE else View.GONE
 
+    /** For the smoke test: the id of every settings page. */
+    internal fun topicIds(): List<String> = topics().map { it.id }
+
+    /** For the smoke test: opens a page as a tap on its home row would. */
+    internal fun openTopicForTest(id: String) {
+        topics().firstOrNull { it.id == id }?.let { showTopic(it) }
+    }
+
+    /** For the smoke test: back to the home list. */
+    internal fun openHomeForTest() = showHome()
+
     private fun showHome() {
         currentPage = null
         accentViews.clear()
