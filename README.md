@@ -61,6 +61,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Key press color: pressed keys glow white, in your accent, along the blue-purple-pink gradient, or in your photo's color
 - Hold the clipboard button to paste your latest copy without opening the panel
 - Optional animated glass (off by default, with speed and intensity sliders): aurora (drifting color), light flow, or rising bubbles
+- Optional depth effect (off by default): the main subject of your photo stays sharp in front of the blurred glass and shifts slightly as you tilt. Uses ML Kit through Google Play services; the photo is processed on the phone and the model is downloaded once
 - Optional tilt shimmer: a soft highlight slides across the glass and the lettering drifts a hair as you tilt your phone (off by default, uses the motion sensor only while the keyboard is showing)
 - Optional typing animations (off by default, with a strength slider): sparkles, ripple, warp-speed streaks when you type fast, glow bloom, ink splash, firecracker and paint splatter
 - Key motion: sink, pop, bounce, tilt or float up when a key is pressed
@@ -132,7 +133,7 @@ To pick a background photo, tap **Choose photo** under *Liquid glass*.
 
 ## Build it yourself
 
-The project uses plain Gradle with no wrapper, and no libraries beyond the Android framework and the Kotlin standard library.
+The project uses plain Gradle with no wrapper, and no libraries beyond the Android framework, the Kotlin standard library and (for the optional depth effect) ML Kit subject segmentation.
 
 | Tool | Version |
 | --- | --- |
@@ -203,8 +204,10 @@ layout, build a `LayoutDef` from `RowDef`s and `KeyDef`s (see `Layouts.symbols` 
 - When you use AI rewrite, the text you choose to rewrite and the style instruction go to
   `api.groq.com` or `generativelanguage.googleapis.com` (your choice) with your own key. It is never used in password fields, and the key is
   never included in backups.
+- The optional depth effect uses Google Play services to find the subject of your photo. The photo stays on the phone;
+  the only network use is the one-time download of Google's small model.
 - Voice typing hands audio to your phone's own speech recognizer app; SakuriKey itself never records audio.
-- No analytics, crash reporting or third-party libraries.
+- No analytics or crash reporting. The only library is Google's ML Kit subject segmentation, used only if you turn on the optional depth effect (see below).
 - Learned words (`files/user_words.tsv`), clipboard history (`files/clipboard.json`), phrases (`files/snippets.json`)
   and the background photo (`files/background.jpg`) live in app-internal storage. Android's own backup is disabled;
   use Settings > Backup & sharing to make your own.

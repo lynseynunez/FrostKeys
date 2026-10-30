@@ -132,6 +132,10 @@ class Prefs private constructor(context: Context) {
     var customFixes by string(KEY_CUSTOM_FIXES, "")
     /** Highlights on the glass shift slightly as the phone is tilted. */
     var shimmer by bool(KEY_SHIMMER, false)
+    /** Optional: the photo's main subject is drawn sharp in front of the blurred glass (see SubjectCutout). */
+    var depthEffect by bool(KEY_DEPTH_EFFECT, false)
+    /** How strongly the sharp subject shows, 0..100. */
+    var depthStrength by int(KEY_DEPTH_STRENGTH, 90)
     /** Each key catches its own small glint of light as the phone tilts. */
     var keyGlints by bool(KEY_KEY_GLINTS, false)
     /** How strong the tilt shimmer is, 0..100. */
@@ -238,6 +242,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_ANIMATION_SPEED = "animation_speed"
         const val KEY_ANIMATION_TILT = "animation_tilt"
         const val KEY_ANIMATION_INTENSITY = "animation_intensity"
+        const val KEY_DEPTH_EFFECT = "depth_effect"
+        const val KEY_DEPTH_STRENGTH = "depth_strength"
         const val KEY_KEY_GLINTS = "key_glints"
         const val KEY_SHIMMER = "shimmer"
         const val KEY_SHIMMER_STRENGTH = "shimmer_strength"
@@ -269,7 +275,7 @@ class Prefs private constructor(context: Context) {
             KEY_SPLIT_KEYS, KEY_SPLIT_GAP, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
             KEY_SPACE_GLASS, KEY_SPACE_STYLE, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
-            KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,
+            KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_DEPTH_EFFECT, KEY_DEPTH_STRENGTH, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,
         )
 
         @Volatile private var instance: Prefs? = null

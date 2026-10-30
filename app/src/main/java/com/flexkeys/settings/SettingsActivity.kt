@@ -30,6 +30,7 @@ import com.flexkeys.ai.AiClient
 import com.flexkeys.ai.GeminiClient
 import com.flexkeys.ai.GroqClient
 import com.flexkeys.clipboard.ClipboardStore
+import com.flexkeys.depth.SubjectCutout
 import com.flexkeys.diagnostics.Diagnostics
 import com.flexkeys.gif.KlipyClient
 import com.flexkeys.layout.Layouts
@@ -93,6 +94,20 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         when (key) {
             Prefs.KEY_LAYOUT, Prefs.KEY_NUMBER_ROW, Prefs.KEY_PREVIEW, Prefs.KEY_PUNCTUATION, Prefs.KEY_CUSTOM_KEYS -> previewController.refresh()
+            Prefs.KEY_DEPTH_EFFECT -> {
+                if (prefs.depthEffect && !SubjectCutout.exists(this) && BackgroundImageStore.exists(this)) {
+                    toast("Finding the subject in your photo…")
+                    SubjectCutout.generate(this) { ok, message ->
+                        toast(message)
+                        if (ok) prefs.backgroundVersion = System.currentTimeMillis()
+                    }
+                } else if (prefs.depthEffect && !BackgroundImageStore.exists(this)) {
+                    toast("Choose a background photo first")
+                } else {
+                    prefs.backgroundVersion = System.currentTimeMillis()
+                }
+                applyKeyboardTheme()
+            }
             Prefs.KEY_BG_VERSION -> {
                 preview.reloadPhoto()
                 loadPagePhoto()
@@ -570,6 +585,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Animation speed", 0, 100, prefs::animationSpeed) { "$it%" }
         slider("Animation intensity", 0, 100, prefs::animationIntensity) { "$it%" }
         toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
+        toggle("Depth effect (beta)", "The main subject of your photo stays sharp in front of the blurred glass, and shifts slightly as you tilt. Needs Google Play services.", prefs::depthEffect)
+        slider("Depth strength", 0, 100, prefs::depthStrength) { "$it%" }
         toggle("Key glints", "Each key catches its own flash of light as you tilt the phone", prefs::keyGlints)
         toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
         slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }

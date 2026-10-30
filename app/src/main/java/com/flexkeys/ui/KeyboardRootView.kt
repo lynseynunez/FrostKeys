@@ -177,7 +177,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     private val shimmerOn get() = shimmerPrefs.shimmer && !saving
 
     /** Anything that needs the tilt readings. */
-    private val tiltWanted get() = (shimmerPrefs.shimmer || shimmerPrefs.keyGlints) && !saving
+    private val tiltWanted get() = (shimmerPrefs.shimmer || shimmerPrefs.keyGlints || shimmerPrefs.depthEffect) && !saving
     private val shimmerAmount get() = shimmerPrefs.shimmerStrength.coerceIn(0, 100) / 100f
 
     override val shimmerX: Float get() = if (tiltWanted) tilt.x * shimmerAmount else 0f
@@ -487,11 +487,13 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         val maxDim = maxOf(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels)
         loader.execute {
             val bitmap = BackgroundImageStore.load(app, maxDim)
+            val cutout = if (Prefs.get(app).depthEffect) com.flexkeys.depth.SubjectCutout.load(app, maxDim) else null
             post {
                 if (request != photoRequest) {
                     bitmap?.recycle()
                     return@post
                 }
+                backdrop.setSubject(cutout)
                 // The previous bitmap is not recycled: an already recorded display list may
                 // still reference it. It is garbage collected once nothing draws it.
                 backdrop.setPhoto(bitmap)
@@ -555,6 +557,17 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             sheetPaint.alpha = (theme.sheetGradientAlpha * 255f).toInt().coerceIn(0, 255)
             canvas.drawRect(sheetRect, sheetPaint)
             sheetPaint.shader = null
+        }
+        // The depth effect: the photo's subject, sharp, in front of the blurred glass and behind the keys.
+        if (shimmerPrefs.depthEffect && backdrop.hasSubject) {
+            val tiltOn = tilt.running
+            backdrop.drawSubject(
+                canvas,
+                alpha = shimmerPrefs.depthStrength.coerceIn(0, 100) / 100f * theme.backgroundOpacity,
+                dx = if (tiltOn) tilt.x * theme.dp(14f) else 0f,
+                dy = if (tiltOn) tilt.y * theme.dp(9f) else 0f,
+                scale = 1.03f,
+            )
         }
         val animStyle = shimmerPrefs.glassAnimation
         if (animStyle != GlassAnimation.OFF && isShown && !saving) {
