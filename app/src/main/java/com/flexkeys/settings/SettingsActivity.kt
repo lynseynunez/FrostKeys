@@ -1374,7 +1374,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private var pendingBackupWithPhoto = false
 
     private fun backupCard() = card("Backup & sharing") {
-        text("Save your settings, learned words and phrases to a file, and restore them after reinstalling or on another phone. API keys are never included.", secondary = true)
+        text("Save your settings, learned words, phrases, pinned clipboard items and favorite GIFs to a file, and restore them after reinstalling or on another phone. API keys are never included, and only what you pinned from the clipboard (never the rest of its history).", secondary = true)
         buttons(Triple("Export backup", true) {
             AlertDialog.Builder(this@SettingsActivity)
                 .setMessage("Include your background photo and stickers in the backup? This can make the file large.")

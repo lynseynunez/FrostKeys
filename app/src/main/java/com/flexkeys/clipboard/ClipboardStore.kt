@@ -129,6 +129,20 @@ class ClipboardStore private constructor(context: Context) {
         changed()
     }
 
+    /** The pinned items' text, for backups. */
+    fun pinnedTexts(): List<String> = items.filter { it.pinned }.sortedByDescending { it.time }.map { it.text }
+
+    /** Includes the pinned items in backups (only what you pinned, never the rest of the history). */
+    object BackupSection : com.flexkeys.settings.BackupManager.Section {
+        override val id = "pinned_clips"
+        override fun export(context: Context): String = pinnedToJson(get(context).pinnedTexts())
+        override fun import(context: Context, data: String) {
+            val store = get(context)
+            // Oldest first, so the restored list keeps its order.
+            for (text in pinnedFromJson(data).reversed()) store.pinText(text)
+        }
+    }
+
     private fun changed() {
         save()
         listeners.toList().forEach { it() }
@@ -177,6 +191,20 @@ class ClipboardStore private constructor(context: Context) {
         /** Auto-delete choices in the same order as the setting: never, 1 hour, 1 day, 1 week. */
         private val EXPIRY_MS = longArrayOf(0L, 3_600_000L, 86_400_000L, 604_800_000L)
         private const val MAX_LENGTH = 10_000
+        private const val MAX_PINNED_IN_BACKUP = 100
+
+        internal fun pinnedToJson(texts: List<String>): String {
+            val array = JSONArray()
+            texts.take(MAX_PINNED_IN_BACKUP).forEach { array.put(it) }
+            return array.toString()
+        }
+
+        internal fun pinnedFromJson(data: String): List<String> = try {
+            val array = JSONArray(data)
+            (0 until minOf(array.length(), MAX_PINNED_IN_BACKUP)).mapNotNull { array.optString(it).takeIf { s -> s.isNotBlank() }?.take(MAX_LENGTH) }
+        } catch (e: JSONException) {
+            emptyList()
+        }
         private val writer = Executors.newSingleThreadExecutor()
 
         @Volatile private var instance: ClipboardStore? = null

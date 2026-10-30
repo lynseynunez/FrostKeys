@@ -2,6 +2,7 @@ package com.flexkeys.settings
 
 import android.content.Context
 import android.util.Base64
+import com.flexkeys.clipboard.ClipboardStore
 import com.flexkeys.phrases.SnippetStore
 import com.flexkeys.stickers.StickerStore
 import com.flexkeys.suggest.SuggestionEngine
@@ -12,7 +13,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Backs up and restores settings, learned words and (optionally) the background photo as one JSON
+ * Backs up and restores settings, learned words, phrases, pinned clipboard items, favorite GIFs and (optionally) the background photo as one JSON
  * file the user keeps. API keys and the translator email are never included.
  */
 object BackupManager {
@@ -32,7 +33,7 @@ object BackupManager {
         fun import(context: Context, data: String)
     }
 
-    private val sections: List<Section> = listOf(SnippetStore.BackupSection)
+    private val sections: List<Section> = listOf(SnippetStore.BackupSection, ClipboardStore.BackupSection)
 
     /** Settings as JSON, each with its type so it can be restored exactly. Secrets are left out. */
     internal fun prefsToJson(all: Map<String, *>): JSONObject {

@@ -97,6 +97,8 @@ class Prefs private constructor(context: Context) {
     var klipyKey by string(KEY_KLIPY_KEY, "")
     /** Random id Klipy asks for; generated on the device, not linked to anything. */
     var klipyCustomerId by string(KEY_KLIPY_CUSTOMER, "")
+    /** The user's starred GIFs (see GifFavorites). */
+    var gifFavorites by string(KEY_GIF_FAVORITES, "")
     /** AI rewrite is off until the user turns it on and adds their own Gemini key. */
     var aiEnabled by bool(KEY_AI_ENABLED, false)
     /** The user's own rewrite styles, one "name<TAB>instruction" per line (see AiPresets). */
@@ -256,6 +258,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_GIFS = "gifs_enabled"
         const val KEY_KLIPY_KEY = "klipy_key"
         const val KEY_KLIPY_CUSTOMER = "klipy_customer_id"
+        const val KEY_GIF_FAVORITES = "gif_favorites"
         const val KEY_PUNCTUATION = "punctuation_keys"
         const val KEY_SMART_CLIPS = "smart_clips"
         const val KEY_CALCULATOR = "calculator"

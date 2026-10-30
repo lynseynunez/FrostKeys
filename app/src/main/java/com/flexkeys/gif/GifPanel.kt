@@ -46,6 +46,8 @@ class GifPanel(
     private var hasMore = false
     private var loading = false
     private var generation = 0
+    /** Showing the starred GIFs instead of a search. */
+    private var showingFavorites = false
 
     private val searchBox = TextView(context)
     private val chips = LinearLayout(context)
@@ -65,7 +67,10 @@ class GifPanel(
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
             setPadding(dp(16f), dp(8f), dp(16f), dp(8f))
             maxLines = 1
-            setOnClickListener { listener.onGifSearchRequested() }
+            setOnClickListener {
+                showingFavorites = false
+                listener.onGifSearchRequested()
+            }
         }
         header.addView(searchBox, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(6f) })
         addView(header, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -139,16 +144,18 @@ class GifPanel(
 
     private fun updateSearchBox() {
         val t = host?.theme
-        searchBox.text = if (query.isEmpty()) "Search GIFs" else query
-        searchBox.setTextColor(if (query.isEmpty()) t?.secondaryTextColor ?: 0x99000000.toInt() else t?.textColor ?: 0xFF000000.toInt())
+        val empty = query.isEmpty() && !showingFavorites
+        searchBox.text = if (showingFavorites) "Favorites" else if (query.isEmpty()) "Search GIFs" else query
+        searchBox.setTextColor(if (empty) t?.secondaryTextColor ?: 0x99000000.toInt() else t?.textColor ?: 0xFF000000.toInt())
     }
 
     private fun buildChips() {
         val t = host?.theme ?: return
         chips.removeAllViews()
-        for (label in CATEGORIES) {
+        for (label in listOf(FAVORITES) + CATEGORIES) {
+            val isFavorites = label == FAVORITES
             val value = if (label == CATEGORIES[0]) "" else label.lowercase()
-            val selected = query.equals(value, ignoreCase = true)
+            val selected = if (isFavorites) showingFavorites else !showingFavorites && query.equals(value, ignoreCase = true)
             chips.addView(TextView(context).apply {
                 text = label
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
@@ -157,7 +164,8 @@ class GifPanel(
                 setPadding(dp(14f), 0, dp(14f), 0)
                 background = GlassTiles.tile(host, if (selected) GlassTiles.accent(t) else GlassTiles.neutral(t), dp(17f).toFloat())
                 setOnClickListener {
-                    query = value
+                    showingFavorites = isFavorites
+                    if (!isFavorites) query = value
                     updateSearchBox()
                     buildChips()
                     load(reset = true)
@@ -184,6 +192,22 @@ class GifPanel(
     private fun load(reset: Boolean) {
         if (!prefs.gifsEnabled) {
             showStatus("GIF search is turned off.\nTurn it on in SakuriKey settings.", needsSettings = true)
+            return
+        }
+        if (showingFavorites) {
+            generation++
+            hasMore = false
+            loading = false
+            columns.forEach { it.removeAllViews() }
+            columnWeight.fill(0f)
+            scroll.scrollTo(0, 0)
+            val saved = GifFavorites.all(prefs)
+            if (saved.isEmpty()) {
+                showStatus("No favorites yet.\nTap the star on a GIF, or long-press it, to keep it here.")
+            } else {
+                showStatus(null)
+                saved.forEach(::addTile)
+            }
             return
         }
         val key = prefs.klipyKey.trim()
@@ -229,7 +253,20 @@ class GifPanel(
         val t = host?.theme
         val tile = GifTile(context, aspect, dp(12f).toFloat()).apply {
             setBackgroundColor(t?.keyFill ?: 0x33FFFFFF)
-            setOnClickListener { listener.onGifPicked(item) }
+            favorite = GifFavorites.contains(prefs, item.id)
+            val toggleStar = {
+                val now = GifFavorites.toggle(prefs, item)
+                favorite = now
+                if (showingFavorites && !now) {
+                    // Gone from the favorites view: rebuild the grid without it.
+                    load(reset = true)
+                }
+            }
+            setOnClickListener { if (starHit) toggleStar() else listener.onGifPicked(item) }
+            setOnLongClickListener {
+                toggleStar()
+                true
+            }
         }
         columns[col].addView(tile, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { bottomMargin = dp(6f) })
@@ -244,8 +281,22 @@ class GifPanel(
         }
     }
 
-    /** A rounded image whose height follows the GIF's aspect ratio. */
+    /** A rounded image whose height follows the GIF's aspect ratio, with a star in the corner for favorites. */
     private class GifTile(context: Context, private val aspect: Float, radius: Float) : ImageView(context) {
+        var favorite = false
+            set(value) {
+                field = value
+                invalidate()
+            }
+
+        /** True when the last touch started on the star, so a tap there stars the GIF instead of sending it. */
+        var starHit = false
+            private set
+
+        private val density = resources.displayMetrics.density
+        private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        private val starSize get() = 30f * density
+
         init {
             scaleType = ScaleType.CENTER_CROP
             clipToOutline = true
@@ -260,10 +311,33 @@ class GifPanel(
             val w = MeasureSpec.getSize(widthMeasureSpec)
             setMeasuredDimension(w, (w * aspect).toInt())
         }
+
+        override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+            if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+                starHit = event.x >= width - starSize * 1.4f && event.y <= starSize * 1.4f
+            }
+            return super.onTouchEvent(event)
+        }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            super.onDraw(canvas)
+            val r = starSize / 2f
+            val cx = width - r - 5f * density
+            val cy = r + 5f * density
+            paint.style = android.graphics.Paint.Style.FILL
+            paint.color = 0x66000000
+            canvas.drawCircle(cx, cy, r, paint)
+            paint.textAlign = android.graphics.Paint.Align.CENTER
+            paint.textSize = starSize * 0.62f
+            paint.color = if (favorite) 0xFFFFD54F.toInt() else 0xFFFFFFFF.toInt()
+            val fm = paint.fontMetrics
+            canvas.drawText(if (favorite) "★" else "☆", cx, cy - (fm.ascent + fm.descent) / 2f, paint)
+        }
     }
 
     private companion object {
         const val ATTRIBUTION = "klipy_attribution"
+        const val FAVORITES = "★ Favorites"
         val CATEGORIES = listOf("Trending", "Happy", "Sad", "Love", "LOL", "Thanks", "Yes", "No", "OMG", "Hug", "Bye", "Wow")
     }
 }
