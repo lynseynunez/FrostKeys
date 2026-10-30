@@ -196,6 +196,9 @@ class PhotoAdjustActivity : Activity() {
             canvas.drawRect(window, edgePaint)
         }
 
+        override fun performClick(): Boolean = super.performClick()
+
+        @android.annotation.SuppressLint("ClickableViewAccessibility")
         override fun onTouchEvent(event: MotionEvent): Boolean {
             val bmp = photo ?: return true
             scaler.onTouchEvent(event)

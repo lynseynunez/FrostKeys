@@ -67,7 +67,7 @@ All use the user's own free API key (Groq or Gemini), are off by default, and ar
 
 - [~] **Tablet and foldable layouts (L).** *First version done: keyboard width (auto narrower on tablets, wide, medium, compact), position (center, left, right) and split keys with an adjustable gap. Floating mode and foldable posture handling are still to do.* Split keyboard and floating mode, with sizing that suits a tablet.
   Needs testing on the owner's tablet.
-- [ ] **Android version coverage (M).** Check the older-Android fallbacks (blur, the glass sheet, sensors,
+- [x] **Android version coverage (M).** *Lint now runs in CI: 0 errors and no calls that need a newer Android than the minimum (26). Not yet tried on a real older phone.* Check the older-Android fallbacks (blur, the glass sheet, sensors,
   window setup) so nothing breaks off the newest version.
 
 ## Suggested order

@@ -40,6 +40,7 @@ class Feedback(context: Context, private val prefs: Prefs) {
     }
 
     /** Plays the haptic style chosen in settings: the phone's own tick/click/heavy effects, or a custom strength. */
+    @android.annotation.SuppressLint("InlinedApi") // the effect numbers are plain ints, only used on Android 10+
     private fun buzz(long: Boolean) {
         val v = vibrator ?: return
         if (!v.hasVibrator()) return
