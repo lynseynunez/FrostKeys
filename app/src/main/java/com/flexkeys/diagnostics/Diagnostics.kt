@@ -41,8 +41,9 @@ object Diagnostics {
 
     private val keyMicros = Ring(SAMPLES)
     private val inputDelayMs = Ring(SAMPLES)
-    @Volatile private var frames = 0L
-    @Volatile private var slowFrames = 0L
+    private val frameLock = Any()
+    private var frames = 0L
+    private var slowFrames = 0L
 
     /** How long the keyboard took to handle one key press. */
     fun recordKey(nanos: Long) = keyMicros.add(nanos / 1_000)
@@ -53,8 +54,11 @@ object Diagnostics {
     fun clear(context: Context) {
         keyMicros.clear()
         inputDelayMs.clear()
-        frames = 0
-        slowFrames = 0
+        synchronized(frameLock) {
+            frames = 0
+            slowFrames = 0
+        }
+        lastFrameNanos = 0
         File(context.filesDir, CRASH_FILE).delete()
     }
 
@@ -68,9 +72,11 @@ object Diagnostics {
         override fun doFrame(frameTimeNanos: Long) {
             if (lastFrameNanos != 0L) {
                 val ms = (frameTimeNanos - lastFrameNanos) / 1_000_000
-                frames++
-                // More than about one and a half frames at 60 Hz counts as a hitch.
-                if (ms > 24) slowFrames++
+                synchronized(frameLock) {
+                    frames++
+                    // More than about one and a half frames at 60 Hz counts as a hitch.
+                    if (ms > 24) slowFrames++
+                }
             }
             lastFrameNanos = frameTimeNanos
             if (SystemClock.uptimeMillis() - lastTyping < 800) {
@@ -108,8 +114,8 @@ object Diagnostics {
     fun report(context: Context): String {
         val key = stats(keyMicros.snapshot(), 1000.0)
         val delay = stats(inputDelayMs.snapshot(), 1.0)
-        val f = frames
-        val slowPercent = if (f == 0L) 0.0 else slowFrames * 100.0 / f
+        val (f, slow) = synchronized(frameLock) { frames to slowFrames }
+        val slowPercent = if (f == 0L) 0.0 else slow * 100.0 / f
         val sb = StringBuilder()
         sb.append("SakuriKey ").append(version(context)).append('\n')
         sb.append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append(", Android ").append(Build.VERSION.RELEASE)
@@ -123,7 +129,7 @@ object Diagnostics {
             sb.append("Touch waited before handling: median %.0f ms, 95th %.0f ms, slowest %.0f ms  [%s]\n".format(
                 delay.median, delay.p95, delay.max, verdict(delay.p95 < BUDGET_INPUT_DELAY_P95_MS)))
             sb.append("Slow frames while typing: %d of %d (%.0f%%)  [%s]\n".format(
-                slowFrames, f, slowPercent, verdict(slowPercent < BUDGET_SLOW_FRAME_PERCENT)))
+                slow, f, slowPercent, verdict(slowPercent < BUDGET_SLOW_FRAME_PERCENT)))
             sb.append("\nBudget: key median under %.0f ms, 95th under %.0f ms, touch wait 95th under %.0f ms, slow frames under %.0f%%.\n"
                 .format(BUDGET_KEY_MEDIAN_MS, BUDGET_KEY_P95_MS, BUDGET_INPUT_DELAY_P95_MS, BUDGET_SLOW_FRAME_PERCENT))
             sb.append("If \"touch waited\" is high but \"time to handle a key\" is low, the phone was busy with something else.\n")
@@ -156,10 +162,11 @@ object Diagnostics {
                 val entry = "--- crash on thread ${thread.name} at ${java.util.Date()} ---\n$trace\n"
                 val old = if (file.isFile) file.readText() else ""
                 file.writeText((entry + old).take(MAX_CRASH_BYTES))
-            } catch (e: Exception) {
-                // Never let the recorder itself get in the way.
+            } catch (e: Throwable) {
+                // Never let the recorder itself get in the way, even when memory is what ran out.
+            } finally {
+                previous?.uncaughtException(thread, error)
             }
-            previous?.uncaughtException(thread, error)
         }
     }
 

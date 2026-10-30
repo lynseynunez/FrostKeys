@@ -543,10 +543,10 @@ class KeyboardView(context: Context) : View(context) {
 
     // ---- touch ----------------------------------------------------------------------------------
 
-    @SuppressLint("ClickableViewAccessibility")
     /** When the touch being handled actually happened, to measure how long it waited for the main thread. */
     private var pointerEventTime = 0L
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         pointerEventTime = event.eventTime
         when (event.actionMasked) {

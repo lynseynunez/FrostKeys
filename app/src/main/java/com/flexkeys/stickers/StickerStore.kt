@@ -30,12 +30,30 @@ object StickerStore {
         file.delete()
     }
 
-    /** Puts back a sticker from a backup, under its original name. The caller checks the name and size. */
-    fun restore(context: Context, name: String, bytes: ByteArray) {
-        try {
-            File(dir(context), name).writeBytes(bytes)
+    /**
+     * Whether [bytes] are a real image no bigger than the stickers this app makes. Checks only the size
+     * recorded in the image, without decoding it.
+     */
+    fun isUsableImage(bytes: ByteArray): Boolean {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        return bounds.outWidth in 1..MAX_DIM && bounds.outHeight in 1..MAX_DIM
+    }
+
+    /**
+     * Puts back a sticker from a backup under its original name. The caller checks the name. Returns false
+     * if the image is unusable, the sticker limit is reached or the file could not be written.
+     */
+    fun restore(context: Context, name: String, bytes: ByteArray): Boolean {
+        if (list(context).size >= MAX_COUNT || !isUsableImage(bytes)) return false
+        val file = File(dir(context), name)
+        return try {
+            file.writeBytes(bytes)
+            true
         } catch (e: IOException) {
             Log.w(TAG, "Could not restore sticker", e)
+            file.delete()
+            false
         }
     }
 

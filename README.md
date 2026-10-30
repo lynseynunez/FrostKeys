@@ -64,6 +64,12 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Optional Gboard-style comma and period keys beside the space bar
 - Manage learned words: search, add and remove them
 
+## Tests and diagnostics
+
+Every push runs the unit tests (`gradle testDebugUnitTest`) before building: autocorrect on real typos and on words
+that must never change, a speed budget for suggestions, backups, layouts and other logic. In the app,
+**Settings > Diagnostics** can record typing timing on the phone and show a report against a performance budget.
+
 ## Install the APK (no Android Studio needed)
 
 Every push builds a debug APK on GitHub Actions.

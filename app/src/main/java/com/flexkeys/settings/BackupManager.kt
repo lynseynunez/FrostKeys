@@ -21,6 +21,8 @@ object BackupManager {
     private const val VERSION = 1
     private const val MAX_STICKERS = 200
     private const val MAX_STICKER_BYTES = 2_000_000
+    private const val MAX_STICKER_TOTAL_BYTES = 24_000_000L
+    private val STICKER_NAME = Regex("[A-Za-z0-9_-]{1,64}\\.png")
     private val SECRET_KEYS = setOf(Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATE_EMAIL, Prefs.KEY_GEMINI_KEY, Prefs.KEY_GROQ_KEY)
 
     /** Extra data (like phrases) that other parts of the app add to a backup. */
@@ -68,8 +70,8 @@ object BackupManager {
         return result
     }
 
-    /** A sticker file name that is safe to write: plain letters, digits, dots and dashes, ending in .png. */
-    internal fun isSafeStickerName(name: String): Boolean = Regex("[A-Za-z0-9_-]{1,64}\\.png").matches(name)
+    /** A sticker file name that is safe to write: letters, digits, underscores and dashes, then .png. */
+    internal fun isSafeStickerName(name: String): Boolean = STICKER_NAME.matches(name)
 
     fun export(context: Context, includeImages: Boolean): String {
         val prefs = Prefs.get(context)
@@ -83,7 +85,13 @@ object BackupManager {
             val f = BackgroundImageStore.file(context)
             if (f.isFile) root.put("photo", Base64.encodeToString(f.readBytes(), Base64.NO_WRAP))
             val stickers = JSONObject()
-            for (file in StickerStore.list(context)) stickers.put(file.name, Base64.encodeToString(file.readBytes(), Base64.NO_WRAP))
+            var total = 0L
+            for (file in StickerStore.list(context)) {
+                // Keep the backup a size that can be built in memory, and skip what import would refuse.
+                if (file.length() > MAX_STICKER_BYTES || total + file.length() > MAX_STICKER_TOTAL_BYTES) continue
+                total += file.length()
+                stickers.put(file.name, Base64.encodeToString(file.readBytes(), Base64.NO_WRAP))
+            }
             if (stickers.length() > 0) root.put("stickers", stickers)
         }
         return root.toString()
@@ -98,46 +106,54 @@ object BackupManager {
             return Result(false, "That file isn't a SakuriKey backup.")
         }
         if (root.optString("app") != APP) return Result(false, "That file isn't a SakuriKey backup.")
+
+        // Read and check everything first, so a damaged file changes nothing.
+        val settings: Map<String, Any>
+        val photo: ByteArray?
+        val stickerFiles = ArrayList<Pair<String, ByteArray>>()
         try {
-            val prefs = Prefs.get(context)
-            val editor = prefs.sp.edit()
-            val p = root.optJSONObject("prefs")
-            if (p != null) {
-                for ((key, value) in parsePrefs(p)) {
-                    when (value) {
-                        is Boolean -> editor.putBoolean(key, value)
-                        is Int -> editor.putInt(key, value)
-                        is Long -> editor.putLong(key, value)
-                        is Float -> editor.putFloat(key, value)
-                        is String -> editor.putString(key, value)
-                    }
-                }
-            }
-            editor.apply()
-            root.optString("words").takeIf { it.isNotEmpty() }?.let { SuggestionEngine.get(context).user.importText(it) }
-            val extra = root.optJSONObject("sections")
-            if (extra != null) for (s in sections) extra.optString(s.id).takeIf { it.isNotEmpty() }?.let { s.import(context, it) }
+            settings = root.optJSONObject("prefs")?.let { parsePrefs(it) } ?: emptyMap()
+            photo = root.optString("photo").takeIf { it.isNotEmpty() }?.let { Base64.decode(it, Base64.DEFAULT) }
             root.optJSONObject("stickers")?.let { stickers ->
-                var restored = 0
                 for (name in stickers.keys()) {
-                    if (restored >= MAX_STICKERS || !isSafeStickerName(name)) continue
+                    if (stickerFiles.size >= MAX_STICKERS || !isSafeStickerName(name)) continue
                     val bytes = Base64.decode(stickers.getString(name), Base64.DEFAULT)
-                    if (bytes.size > MAX_STICKER_BYTES) continue
-                    StickerStore.restore(context, name, bytes)
-                    restored++
+                    if (bytes.size <= MAX_STICKER_BYTES) stickerFiles.add(name to bytes)
                 }
-            }
-            root.optString("photo").takeIf { it.isNotEmpty() }?.let {
-                BackgroundImageStore.file(context).writeBytes(Base64.decode(it, Base64.DEFAULT))
-                prefs.backgroundVersion = System.currentTimeMillis()
             }
         } catch (e: JSONException) {
             return Result(false, "That backup is damaged.")
-        } catch (e: IOException) {
-            return Result(false, "Couldn't restore the photo.")
         } catch (e: IllegalArgumentException) {
             return Result(false, "That backup is damaged.")
         }
-        return Result(true, "Backup restored.")
+
+        val prefs = Prefs.get(context)
+        val editor = prefs.sp.edit()
+        for ((key, value) in settings) {
+            when (value) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is String -> editor.putString(key, value)
+            }
+        }
+        editor.apply()
+        root.optString("words").takeIf { it.isNotEmpty() }?.let { SuggestionEngine.get(context).user.importText(it) }
+        val extra = root.optJSONObject("sections")
+        if (extra != null) for (s in sections) extra.optString(s.id).takeIf { it.isNotEmpty() }?.let { s.import(context, it) }
+
+        var imagesFailed = 0
+        for ((name, bytes) in stickerFiles) if (!StickerStore.restore(context, name, bytes)) imagesFailed++
+        if (photo != null) {
+            try {
+                BackgroundImageStore.file(context).writeBytes(photo)
+                prefs.backgroundVersion = System.currentTimeMillis()
+            } catch (e: IOException) {
+                imagesFailed++
+            }
+        }
+        return if (imagesFailed == 0) Result(true, "Backup restored.")
+        else Result(true, "Backup restored, but $imagesFailed image(s) could not be restored.")
     }
 }

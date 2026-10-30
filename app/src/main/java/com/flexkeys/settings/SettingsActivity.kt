@@ -891,12 +891,13 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         text("Turn this on, type for a while, then open the report to see if lag comes from the keyboard or the phone. " +
             "Crashes are always saved on this phone too. Nothing is ever sent anywhere.", secondary = true)
         buttons(Triple("Show report", false) {
+            val report = Diagnostics.report(this@SettingsActivity)
             AlertDialog.Builder(this@SettingsActivity)
                 .setTitle("Typing report")
-                .setMessage(Diagnostics.report(this@SettingsActivity))
+                .setMessage(report)
                 .setPositiveButton("Copy") { _, _ ->
                     val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    cm.setPrimaryClip(android.content.ClipData.newPlainText("SakuriKey report", Diagnostics.report(this@SettingsActivity)))
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("SakuriKey report", report))
                     toast("Report copied")
                 }
                 .setNegativeButton("Close", null)
@@ -1002,6 +1003,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 }
             } catch (e: java.io.IOException) {
                 "Couldn't read or write that file"
+            } catch (e: OutOfMemoryError) {
+                "That backup is too big to build. Try again without images."
             }
             runOnUiThread {
                 toast(message)
