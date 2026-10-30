@@ -145,6 +145,7 @@ class KeyboardView(context: Context) : View(context) {
     private val handler = Handler(Looper.getMainLooper())
     private val offset = PointF()
     private val tmpRect = RectF()
+    private val popupPath = android.graphics.Path()
     private var rowHeight = 0f
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -572,9 +573,23 @@ class KeyboardView(context: Context) : View(context) {
 
         val popup = pointers.values.firstNotNullOfOrNull { it.popup }
         if (popup != null) {
-            // Dark frosted glass like the emoji panel: the blurred photo shows through, darkened.
-            val popupFill = GlassTheme.withAlpha(if (t.dark) Color.BLACK else Color.WHITE, 0.30f + 0.2f * t.glassOpacity)
-            h.painter.draw(canvas, popup.rect, t.cornerRadiusPx + t.dp(2f), h.backdrop, offset.x, offset.y, popupFill)
+            // A piece of the sheet itself (blurred photo and tint), then the same tile tint the emoji panel has.
+            val popupRadius = t.cornerRadiusPx + t.dp(2f)
+            popupPath.reset()
+            popupPath.addRoundRect(popup.rect, popupRadius, popupRadius, android.graphics.Path.Direction.CW)
+            canvas.save()
+            canvas.clipPath(popupPath)
+            canvas.translate(-offset.x, -offset.y)
+            h.drawSheetBackground(canvas)
+            canvas.restore()
+            h.painter.draw(canvas, popup.rect, popupRadius, null, offset.x, offset.y, t.sheetTint, rim = false)
+            fillPaint.style = Paint.Style.STROKE
+            fillPaint.strokeWidth = t.dp(1f)
+            fillPaint.color = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.22f else 0.5f)
+            tmpRect.set(popup.rect)
+            tmpRect.inset(t.dp(0.5f), t.dp(0.5f))
+            canvas.drawRoundRect(tmpRect, popupRadius, popupRadius, fillPaint)
+            fillPaint.style = Paint.Style.FILL
             textPaint.textSize = rowHeight * 0.38f * t.fontScale
             popup.options.forEachIndexed { i, option ->
                 val left = popup.rect.left + (i % popup.cols) * popup.cellWidth

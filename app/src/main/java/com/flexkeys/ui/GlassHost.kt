@@ -1,5 +1,6 @@
 package com.flexkeys.ui
 
+import android.graphics.Canvas
 import android.graphics.PointF
 import android.graphics.Shader
 import android.view.View
@@ -18,6 +19,12 @@ interface GlassHost {
 
     /** Writes the position of [view]'s top-left corner within the backdrop into [out]. */
     fun backdropOffset(view: View, out: PointF)
+
+    /**
+     * Paints the keyboard sheet's own look (blurred photo, tint, gradient) onto [canvas], in backdrop coordinates.
+     * The caller clips to the area it wants, so a floating menu can look like a piece of the sheet.
+     */
+    fun drawSheetBackground(canvas: Canvas) = Unit
 
     /** The blue/purple/pink gradient across the whole keyboard, in backdrop coordinates, or null. */
     fun glassGradient(): Shader?

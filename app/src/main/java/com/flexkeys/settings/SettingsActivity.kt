@@ -1010,7 +1010,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     }
 
     private fun widthCard() = card("Width & position") {
-        picker("Keyboard width", listOf("Auto (fits the screen)", "Full", "Wide (85%)", "Medium (70%)", "Compact (55%)"), prefs.keyboardWidth + 1) { prefs.keyboardWidth = it - 1 }
+        picker("Keyboard width", listOf("Auto (full on phones, narrower on tablets)", "Full", "Wide (85%)", "Medium (70%)", "Compact (55%)"), prefs.keyboardWidth + 1) { prefs.keyboardWidth = it - 1 }
         picker("Keyboard position", listOf("Center", "Left", "Right"), prefs.keyboardPosition) { prefs.keyboardPosition = it }
         toggle("Split keys", "Leaves a gap down the middle of the letter rows for thumb typing on a tablet", prefs::splitKeys)
         slider("Split gap", 8, 30, prefs::splitGap) { "$it%" }

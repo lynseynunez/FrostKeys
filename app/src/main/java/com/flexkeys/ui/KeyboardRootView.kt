@@ -547,8 +547,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     private val layoutPrefs = Prefs.get(context)
 
     /**
-     * The share of the screen width the keyboard uses. Auto scales with the screen: a phone held upright uses it
-     * all, and wider screens (a phone sideways, a tablet) keep the keys about the size they are on a big phone.
+     * The share of the screen width the keyboard uses. Auto uses the whole width on a phone, upright or sideways,
+     * and on a tablet stops at about [AUTO_MAX_WIDTH_DP] so the keys stay a comfortable size.
      */
     private fun widthFraction(totalWidthPx: Int): Float = when (layoutPrefs.keyboardWidth) {
         0 -> 1f
@@ -557,7 +557,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         3 -> 0.55f
         else -> {
             val widthDp = totalWidthPx / resources.displayMetrics.density
-            if (widthDp <= 0f) 1f else (AUTO_MAX_WIDTH_DP / widthDp).coerceIn(0.5f, 1f)
+            if (resources.configuration.smallestScreenWidthDp < 600 || widthDp <= 0f) 1f
+            else (AUTO_MAX_WIDTH_DP / widthDp).coerceIn(0.5f, 1f)
         }
     }
 
@@ -597,16 +598,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         sheetPath.addRoundRect(sheetRect, radius, radius, Path.Direction.CW)
         canvas.save()
         canvas.clipPath(sheetPath)
-        backdrop.drawBlurred(canvas, 0f, 0f)
-        sheetPaint.style = Paint.Style.FILL
-        sheetPaint.color = theme.sheetTint
-        canvas.drawRect(sheetRect, sheetPaint)
-        gradient?.let {
-            sheetPaint.shader = it
-            sheetPaint.alpha = (theme.sheetGradientAlpha * 255f).toInt().coerceIn(0, 255)
-            canvas.drawRect(sheetRect, sheetPaint)
-            sheetPaint.shader = null
-        }
+        drawSheetBackground(canvas)
         val animStyle = shimmerPrefs.glassAnimation
         if (animStyle != GlassAnimation.OFF && isShown && !saving) {
             glassAnimation.tick(android.os.SystemClock.uptimeMillis(), shimmerPrefs.animationSpeed.coerceIn(0, 100) / 100f)
@@ -632,6 +624,19 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             canvas.drawRect(sheetRect, shimmerPaint)
         }
         canvas.restore()
+    }
+
+    override fun drawSheetBackground(canvas: Canvas) {
+        backdrop.drawBlurred(canvas, 0f, 0f)
+        sheetPaint.style = Paint.Style.FILL
+        sheetPaint.color = theme.sheetTint
+        canvas.drawRect(sheetRect, sheetPaint)
+        gradient?.let {
+            sheetPaint.shader = it
+            sheetPaint.alpha = (theme.sheetGradientAlpha * 255f).toInt().coerceIn(0, 255)
+            canvas.drawRect(sheetRect, sheetPaint)
+            sheetPaint.shader = null
+        }
     }
 
     private val overlayOffset = PointF()
@@ -672,7 +677,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     companion object {
         const val SHEET_RADIUS_DP = 26f
-        /** On wider screens the automatic keyboard width stops at about this many dp. */
+        /** On a tablet the automatic keyboard width stops at about this many dp. */
         const val AUTO_MAX_WIDTH_DP = 700f
         private val loader: ExecutorService = Executors.newSingleThreadExecutor()
     }
