@@ -546,23 +546,25 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     private var bottomPadding = 0
     private val layoutPrefs = Prefs.get(context)
 
-    /** The share of the screen width the keyboard uses. Auto means narrower on a tablet. */
-    private fun widthFraction(): Float = when (layoutPrefs.keyboardWidth) {
+    /**
+     * The share of the screen width the keyboard uses. Auto scales with the screen: a phone held upright uses it
+     * all, and wider screens (a phone sideways, a tablet) keep the keys about the size they are on a big phone.
+     */
+    private fun widthFraction(totalWidthPx: Int): Float = when (layoutPrefs.keyboardWidth) {
         0 -> 1f
         1 -> 0.85f
         2 -> 0.70f
         3 -> 0.55f
-        else -> when {
-            resources.configuration.smallestScreenWidthDp >= 600 -> 0.70f
-            // A phone turned sideways: full-width keys end up far apart, so keep the keyboard narrower.
-            resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE -> 0.75f
-            else -> 1f
+        else -> {
+            val widthDp = totalWidthPx / resources.displayMetrics.density
+            if (widthDp <= 0f) 1f else (AUTO_MAX_WIDTH_DP / widthDp).coerceIn(0.5f, 1f)
         }
     }
 
     /** Sets the side padding that gives the keyboard its width and position, and the bottom padding for the nav bar. */
-    private fun applyPaddings() {
-        val extra = (width * (1f - widthFraction())).toInt().coerceAtLeast(0)
+    private fun applyPaddings(totalWidth: Int = width) {
+        if (totalWidth <= 0) return
+        val extra = (totalWidth * (1f - widthFraction(totalWidth))).toInt().coerceAtLeast(0)
         val left = when (layoutPrefs.keyboardPosition) {
             1 -> 0
             2 -> extra
@@ -570,6 +572,12 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         }
         val right = extra - left
         if (paddingLeft != left || paddingRight != right || paddingBottom != bottomPadding) setPadding(left, 0, right, bottomPadding)
+    }
+
+    /** Paddings are settled before the children are measured, so the keys always get the narrowed width. */
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        applyPaddings(MeasureSpec.getSize(widthMeasureSpec))
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -664,6 +672,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
 
     companion object {
         const val SHEET_RADIUS_DP = 26f
+        /** On wider screens the automatic keyboard width stops at about this many dp. */
+        const val AUTO_MAX_WIDTH_DP = 700f
         private val loader: ExecutorService = Executors.newSingleThreadExecutor()
     }
 }
