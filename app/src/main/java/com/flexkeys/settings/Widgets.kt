@@ -196,20 +196,46 @@ class GlassSlider(
         canvas.drawCircle(x, cy, thumbRadius, paint)
     }
 
+    private var downX = 0f
+    private var downY = 0f
+    private var dragging = false
+    private val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+
+    private fun setFromX(x: Float) {
+        val f = ((x - thumbRadius) / (width - 2 * thumbRadius)).coerceIn(0f, 1f)
+        val v = min + Math.round(f * (max - min))
+        if (v != value) {
+            value = v
+            invalidate()
+            onChange(v)
+        }
+    }
+
+    /**
+     * A slider only moves on a sideways drag or a tap. A finger that starts on it and travels up or down just
+     * scrolls the page, so scrolling a long list can't change a setting by accident.
+     */
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                parent?.requestDisallowInterceptTouchEvent(true)
-                val f = ((event.x - thumbRadius) / (width - 2 * thumbRadius)).coerceIn(0f, 1f)
-                val v = min + Math.round(f * (max - min))
-                if (v != value) {
-                    value = v
-                    invalidate()
-                    onChange(v)
-                }
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                dragging = false
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
+            MotionEvent.ACTION_MOVE -> {
+                if (!dragging && Math.abs(event.x - downX) > slop && Math.abs(event.x - downX) > Math.abs(event.y - downY)) {
+                    dragging = true
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
+                if (dragging) setFromX(event.x)
+            }
+            MotionEvent.ACTION_UP -> {
+                // A tap (no real movement) jumps to that spot.
+                if (!dragging && Math.abs(event.x - downX) <= slop && Math.abs(event.y - downY) <= slop) setFromX(event.x)
+                parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
         }
         return true
     }

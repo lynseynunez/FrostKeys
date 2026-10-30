@@ -77,3 +77,7 @@ All use the user's own free API key (Groq or Gemini), are off by default, and ar
 
 Multiple languages, per-app profiles, an incognito toggle, theme packs with the photo, adaptive theming by time
 of day, accessibility modes, Play Store publishing. Any of these can be added back later.
+
+## Done outside the milestones
+- Settings redesigned as a short home list with one page per topic, safer toggles and sliders.
+- Rain, fireflies and waves glass animations.

@@ -60,7 +60,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Appearance tool: drag sliders for glass, photo, blur and glow right above the keys and watch the keyboard change live
 - Key press color: pressed keys glow white, in your accent, along the blue-purple-pink gradient, or in your photo's color
 - Hold the clipboard button to paste your latest copy without opening the panel
-- Optional animated glass (off by default, with speed and intensity sliders): aurora (drifting color), light flow, rising bubbles or starlight
+- Optional animated glass (off by default, with speed and intensity sliders): aurora (drifting color), light flow, rising bubbles, starlight, rain, fireflies or waves (the water slides with your tilt)
 - Reduce motion: one switch (that also follows Android's "Remove animations") turns off tilt effects, glass animation and typing effects
 - Optional liquid refraction on Android 13+ (beta): the blurred background bends around every key like light through thick glass
 - Optional tilt shimmer: a soft highlight slides across the glass and the lettering drifts a hair as you tilt your phone (off by default, uses the motion sensor only while the keyboard is showing)
@@ -128,6 +128,8 @@ Open **SakuriKey** from your app drawer. The first card walks you through it:
    anywhere, because it has no network access.
 2. **Switch to SakuriKey**: opens the keyboard picker. Choose SakuriKey.
 3. **Try it**: type in the test field.
+
+Settings opens on a short list of topics (Colors & photo, Effects & animation, Keyboard layout, Typing, and more); tap one to open its page, and use the back arrow or Back to return. Only the switch itself toggles a setting, and sliders ignore vertical scrolling, so you can scroll without changing anything by accident.
 
 The live preview at the top of the settings screen updates as you move any slider, and you can type on it.
 To pick a background photo, tap **Choose photo** under *Liquid glass*.

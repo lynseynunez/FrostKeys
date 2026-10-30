@@ -25,6 +25,11 @@ class GlassAnimation {
         const val LIGHT_FLOW = 2
         const val BUBBLES = 3
         const val STARLIGHT = 4
+        const val RAIN = 5
+        const val FIREFLIES = 6
+        const val WAVES = 7
+        private const val DROP_COUNT = 46
+        private const val FIREFLY_COUNT = 18
         private const val STAR_COUNT = 64
 
         private const val BLOBS = 4
@@ -40,6 +45,19 @@ class GlassAnimation {
             0.5f + Random.nextFloat() * 1.6f, 0.3f + Random.nextFloat() * 0.9f)
     }
     private val starPath = android.graphics.Path()
+
+    private class Drop(val x: Float, val phase: Float, val speed: Float, val length: Float, val depth: Float)
+    private val drops = List(DROP_COUNT) {
+        Drop(Random.nextFloat(), Random.nextFloat(), 0.55f + Random.nextFloat() * 0.7f, 0.05f + Random.nextFloat() * 0.07f, 0.4f + Random.nextFloat() * 0.8f)
+    }
+
+    private class Firefly(val cx: Float, val cy: Float, val ax: Float, val ay: Float, val fx: Float, val fy: Float, val phase: Float, val pulse: Float, val size: Float)
+    private val fireflies = List(FIREFLY_COUNT) {
+        Firefly(0.08f + Random.nextFloat() * 0.84f, 0.1f + Random.nextFloat() * 0.8f, 0.04f + Random.nextFloat() * 0.1f, 0.06f + Random.nextFloat() * 0.18f,
+            0.25f + Random.nextFloat() * 0.5f, 0.2f + Random.nextFloat() * 0.5f, Random.nextFloat() * 6.28f, 0.6f + Random.nextFloat() * 1.2f, 0.7f + Random.nextFloat() * 0.8f)
+    }
+    private val wavePath = android.graphics.Path()
+    private val crestPath = android.graphics.Path()
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
@@ -77,6 +95,9 @@ class GlassAnimation {
             LIGHT_FLOW -> lightFlow(canvas, w, h, intensity, theme, tiltX, tiltY)
             BUBBLES -> bubbles(canvas, w, h, intensity, theme, tiltX, tiltY)
             STARLIGHT -> starlight(canvas, w, h, intensity, theme, tiltX, tiltY)
+            RAIN -> rain(canvas, w, h, intensity, theme, tiltX, tiltY)
+            FIREFLIES -> fireflies(canvas, w, h, intensity, theme, tiltX, tiltY)
+            WAVES -> waves(canvas, w, h, intensity, theme, tiltX, tiltY)
         }
     }
 
@@ -153,6 +174,89 @@ class GlassAnimation {
                 canvas.drawCircle(x, y, r * 1.8f, paint)
             }
         }
+    }
+
+    /** Thin streaks falling at a slant that follows the tilt, with a tiny splash where each reaches the bottom. */
+    private fun rain(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        val slant = 0.18f + 0.35f * tiltX
+        val fall = 1f + 0.25f * tiltY
+        for (d in drops) {
+            val t = (d.phase + clock * 0.35f * d.speed * fall) % 1f
+            val len = h * d.length * 1.6f
+            val x = ((d.x + t * slant * 0.5f) % 1f + 1f) % 1f * w
+            val y = t * (h + len) - len
+            val a = (255f * 0.34f * d.depth * intensity).toInt().coerceIn(0, 255)
+            paint.strokeWidth = (0.8f + 1.0f * d.depth) * theme.density
+            paint.color = 0x00FFFFFF or (a shl 24)
+            canvas.drawLine(x, y, x - len * slant, y - len, paint)
+            // A small ring where the drop lands, fading as it spreads.
+            val landed = ((t - 0.92f) / 0.08f).coerceIn(0f, 1f)
+            if (t > 0.92f) {
+                paint.strokeWidth = 1f * theme.density
+                paint.color = 0x00FFFFFF or (((1f - landed) * a * 0.9f).toInt().coerceIn(0, 255) shl 24)
+                canvas.drawOval(x - landed * 14f * theme.density, h - 3f * theme.density - landed * 3f * theme.density,
+                    x + landed * 14f * theme.density, h - 3f * theme.density + landed * 3f * theme.density, paint)
+            }
+        }
+        paint.strokeCap = Paint.Cap.BUTT
+        paint.style = Paint.Style.FILL
+    }
+
+    /** Soft warm lights drifting on slow loops and pulsing on and off. Tilt nudges them like a breeze. */
+    private fun fireflies(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
+        paint.style = Paint.Style.FILL
+        val warm = if (theme.dark) 0xE8FF7A else 0xFFB32E
+        val unit = minOf(w, h * 3f) * 0.012f
+        for (f in fireflies) {
+            val x = (f.cx + f.ax * sin(clock * f.fx + f.phase) + 0.06f * tiltX * f.size) * w
+            val y = (f.cy + f.ay * cos(clock * f.fy + f.phase * 1.7f) + 0.06f * tiltY * f.size) * h
+            val pulse = sin(clock * f.pulse + f.phase) * 0.5f + 0.5f
+            val glow = pulse * pulse
+            if (glow < 0.04f) continue
+            val r = unit * f.size
+            val a = 255f * intensity * glow
+            for ((i, scale) in floatArrayOf(4.2f, 2.6f, 1.5f, 0.7f).withIndex()) {
+                val layerAlpha = a * floatArrayOf(0.08f, 0.14f, 0.28f, 0.85f)[i]
+                paint.color = warm or (layerAlpha.toInt().coerceIn(0, 255) shl 24)
+                canvas.drawCircle(x, y, r * scale, paint)
+            }
+        }
+    }
+
+    /** Layers of slow water: the surface slides with the phone's tilt and rises and falls as it tips forward and back. */
+    private fun waves(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
+        val layers = 3
+        val step = 10f * theme.density
+        for (layer in 0 until layers) {
+            val depth = 1f - layer * 0.28f
+            val level = h * (0.62f + 0.12f * layer - 0.10f * tiltY)
+            val amp = h * (0.05f + 0.012f * layer)
+            val k = (2f * 3.1416f / w) * (1.3f + 0.5f * layer)
+            val phase = clock * (0.9f + 0.35f * layer) * (if (layer % 2 == 0) 1f else -1f) + tiltX * 2.2f * depth + layer * 1.3f
+            wavePath.reset()
+            crestPath.reset()
+            wavePath.moveTo(0f, h)
+            var x = 0f
+            while (x <= w + step) {
+                val y = level + amp * sin(k * x + phase) + amp * 0.35f * sin(k * 2.3f * x - phase * 0.7f)
+                wavePath.lineTo(x, y)
+                if (x == 0f) crestPath.moveTo(x, y) else crestPath.lineTo(x, y)
+                x += step
+            }
+            wavePath.lineTo(w + step, h)
+            wavePath.close()
+            paint.style = Paint.Style.FILL
+            paint.color = 0x00FFFFFF or ((255f * (if (theme.dark) 0.07f else 0.14f) * intensity * depth).toInt().coerceIn(0, 255) shl 24)
+            canvas.drawPath(wavePath, paint)
+            // A brighter line along each crest.
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 1.4f * theme.density
+            paint.color = 0x00FFFFFF or ((255f * 0.22f * intensity * depth).toInt().coerceIn(0, 255) shl 24)
+            canvas.drawPath(crestPath, paint)
+        }
+        paint.style = Paint.Style.FILL
     }
 
     private fun bubbles(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {

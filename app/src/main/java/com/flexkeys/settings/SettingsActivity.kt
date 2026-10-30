@@ -56,6 +56,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private lateinit var previewController: PreviewController
     private lateinit var previewDock: View
     private lateinit var setupCard: LinearLayout
+    private lateinit var list: LinearLayout
+    private lateinit var scroll: ScrollView
+    /** The settings page being shown, or null for the home list. */
+    private var currentPage: String? = null
     private var systemDark = false
     private var photoRequest = 0
 
@@ -161,11 +165,11 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         page.addView(column)
 
-        val scroll = ScrollView(this).apply {
+        scroll = ScrollView(this).apply {
             isVerticalScrollBarEnabled = false
             clipToPadding = false
         }
-        val list = LinearLayout(this).apply {
+        list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16f), dp(32f), dp(16f), dp(24f))
         }
@@ -179,24 +183,103 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             insets
         }
 
-        list.addView(header())
-        setupCard = card()
-        list.addView(setupCard)
-        list.addView(appearanceCard())
-        list.addView(layoutCard())
-        list.addView(typingCard())
-        list.addView(feedbackCard())
-        list.addView(gifCard())
-        list.addView(translatorCard())
-        list.addView(aiCard())
-        list.addView(clipboardCard())
-        list.addView(backupCard())
-        list.addView(privacyCard())
-        list.addView(diagnosticsCard())
-        list.addView(aboutCard())
+        showHome()
 
         column.addView(previewDockView())
         return page
+    }
+
+    // ---- navigation: a short home list, and one page per topic ----
+
+    private class Topic(val id: String, val title: String, val summary: String, val cards: () -> List<View>)
+
+    private fun topics(): List<Topic> = listOf(
+        Topic("colors", "Colors & photo", "Tint, accent, background photo, glass and blur") {
+            listOf(colorsCard(), photoCard(), glassCard())
+        },
+        Topic("effects", "Effects & animation", "Typing effects, glass animation, tilt and motion") {
+            listOf(typingEffectsCard(), glassAnimationCard(), motionCard())
+        },
+        Topic("layout", "Keyboard layout", "Layout, size, fonts, space bar, width and position") {
+            listOf(layoutCard(), widthCard())
+        },
+        Topic("typing", "Typing", "Suggestions, autocorrect, learned words, phrases") { listOf(typingCard()) },
+        Topic("feedback", "Sound & vibration", "Haptics and key sounds") { listOf(feedbackCard()) },
+        Topic("extras", "GIFs & translator", "Klipy GIF search and the translator") { listOf(gifCard(), translatorCard()) },
+        Topic("ai", "AI rewrite", "Groq or Gemini, your own rewrite styles") { listOf(aiCard()) },
+        Topic("clipboard", "Clipboard", "History, codes and auto-delete") { listOf(clipboardCard()) },
+        Topic("backup", "Backup & sharing", "Save and restore settings, share your look") { listOf(backupCard()) },
+        Topic("about", "About & privacy", "Privacy, diagnostics, updates") { listOf(privacyCard(), diagnosticsCard(), aboutCard()) },
+    )
+
+    private fun showHome() {
+        currentPage = null
+        accentViews.clear()
+        list.removeAllViews()
+        list.addView(header())
+        setupCard = card()
+        list.addView(setupCard)
+        buildSetupCard()
+        for (topic in topics()) list.addView(topicRow(topic))
+        scroll.scrollTo(0, 0)
+    }
+
+    private fun showTopic(topic: Topic) {
+        currentPage = topic.id
+        accentViews.clear()
+        list.removeAllViews()
+        list.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(6f), dp(12f), dp(6f), dp(4f))
+            addView(TextView(context).apply {
+                text = "‹  All settings"
+                setTextColor(palette.secondary)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                setPadding(0, dp(6f), dp(24f), dp(10f))
+                setOnClickListener { showHome() }
+            })
+            addView(TextView(context).apply {
+                text = topic.title
+                setTextColor(palette.text)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f)
+                typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            })
+        })
+        for (c in topic.cards()) list.addView(c)
+        scroll.scrollTo(0, 0)
+    }
+
+    /** A big tappable row on the home list. Only a tap on the row opens the page, so scrolling past is safe. */
+    private fun topicRow(topic: Topic): View = card().apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(20f), dp(16f), dp(16f), dp(16f))
+        val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        texts.addView(TextView(context).apply {
+            text = topic.title
+            setTextColor(palette.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        })
+        texts.addView(TextView(context).apply {
+            text = topic.summary
+            setTextColor(palette.secondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
+            setPadding(0, dp(2f), 0, 0)
+        })
+        addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(TextView(context).apply {
+            text = "›"
+            setTextColor(palette.secondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
+        })
+        isClickable = true
+        setOnClickListener { showTopic(topic) }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (currentPage != null) showHome() else @Suppress("DEPRECATION") super.onBackPressed()
     }
 
     private fun previewDockView(): View {
@@ -276,39 +359,16 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             .apply { topMargin = dp(14f) }
     }
 
-    /** A card that folds up to just its title, so the long list of settings stays easy to scan. */
+    /** A card with a title. Each topic page shows its cards open, so nothing needs unfolding. */
     private fun card(title: String, build: LinearLayout.() -> Unit): View = card().apply {
-        val body = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = if (title in openCards) View.VISIBLE else View.GONE
-        }
-        val chevron = TextView(context).apply {
-            setTextColor(palette.secondary)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
-            text = if (title in openCards) "⌄" else "›"
-        }
-        val header = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            isClickable = true
-            setOnClickListener {
-                val open = body.visibility != View.VISIBLE
-                body.visibility = if (open) View.VISIBLE else View.GONE
-                chevron.text = if (open) "⌄" else "›"
-                if (open) openCards.add(title) else openCards.remove(title)
-            }
-            addView(TextView(context).apply {
-                text = title
-                setTextColor(palette.text)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
-                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                setPadding(0, dp(2f), 0, dp(2f))
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(chevron)
-        }
-        addView(header)
-        addView(body)
-        body.build()
+        addView(TextView(context).apply {
+            text = title
+            setTextColor(palette.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setPadding(0, 0, 0, dp(4f))
+        })
+        build()
     }
 
     private fun LinearLayout.text(value: String, secondary: Boolean = false, topPad: Float = 10f): TextView {
@@ -344,7 +404,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         val sw = PillSwitch(context, prop.get(), palette) { prop.set(it) }
         accentViews.add(sw)
         row.addView(sw)
-        row.setOnClickListener { sw.toggle() }
+        // Only the switch itself changes the setting, so scrolling past a row can't flip it by accident.
         addView(row)
     }
 
@@ -532,7 +592,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         })
     }
 
-    private fun appearanceCard() = card("Liquid glass") {
+    private fun colorsCard() = card("Colors") {
         presetRow()
         segmented("Tint", listOf("Auto", "Light", "Dark"), prefs.themeMode) { prefs.themeMode = it }
         text("Accent", topPad = 14f)
@@ -541,7 +601,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             ringColor = palette.text
             onColorChanged = { prefs.accentColor = it }
         })
-        text("Background photo", topPad = 14f)
+    }
+
+    private fun photoCard() = card("Background photo") {
         text("Shown behind the glass. A private copy stays inside the app.", secondary = true)
         buttons(Triple("Choose photo", true) { pickPhoto() }, Triple("Remove", false) {
             BackgroundImageStore.delete(this@SettingsActivity)
@@ -563,30 +625,24 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         })
         toggle("Adapt tint to photo", "Light or dark follows how bright the photo is.", prefs::adaptTint)
         slider("Photo opacity", 0, 100, prefs::backgroundOpacity) { "$it%" }
+    }
+
+    private fun glassCard() = card("Glass") {
         slider("Glass opacity", 0, 100, prefs::glassOpacity) { "$it%" }
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
-        toggle("Pause animations on low battery", "Stops the glass animation and tilt effects at 20% or in battery saver", prefs::batterySaver)
-        toggle("Reduce motion", "Turns off tilt effects, glass animation and typing effects together", prefs::reduceMotion)
-        toggle("Follow Android's \"Remove animations\"", "Also rest the effects when that accessibility setting is on", prefs::followSystemMotion)
-        picker("Glass animation", listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight"), prefs.glassAnimation) { prefs.glassAnimation = it }
-        slider("Animation speed", 0, 100, prefs::animationSpeed) { "$it%" }
-        slider("Animation intensity", 0, 100, prefs::animationIntensity) { "$it%" }
-        toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             toggle("Liquid refraction (beta)", "Bends the blurred background around every key, like light through thick glass", prefs::refraction)
             slider("Refraction strength", 0, 100, prefs::refractionStrength) { "$it%" }
         } else {
             text("Liquid refraction needs Android 13 or newer.", secondary = true)
         }
-        toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
-        slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
-        slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
-        picker("Keyboard width", listOf("Auto (narrower on tablets)", "Full", "Wide (85%)", "Medium (70%)", "Compact (55%)"), prefs.keyboardWidth + 1) { prefs.keyboardWidth = it - 1 }
-        picker("Keyboard position", listOf("Center", "Left", "Right"), prefs.keyboardPosition) { prefs.keyboardPosition = it }
-        toggle("Split keys", "Leaves a gap down the middle of the letter rows for thumb typing on a tablet", prefs::splitKeys)
-        slider("Split gap", 8, 30, prefs::splitGap) { "$it%" }
-        picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            text("Live blur needs Android 12. This phone uses a lighter frosted look.", secondary = true)
+        }
+    }
+
+    private fun typingEffectsCard() = card("Typing effects") {
         picker("Key press color", listOf("White", "Accent", "Gradient", "Photo", "Rainbow"), prefs.pressStyle) { prefs.pressStyle = it }
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }
         picker("Typing animation", listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight"), prefs.typingEffect) { prefs.typingEffect = it }
@@ -598,9 +654,28 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Change color every press", "Otherwise the spotlight's color follows where the key is across the keyboard", prefs::spotlightCycle)
         buttons(Triple("Edit custom spotlight colors", false) { showSpotlightColors() })
         text("Warp speed shows streaks when you type fast.", secondary = true)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            text("Live blur needs Android 12. This phone uses a lighter frosted look.", secondary = true)
-        }
+    }
+
+    private fun glassAnimationCard() = card("Glass animation") {
+        picker("Glass animation", listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight", "Rain", "Fireflies", "Waves"), prefs.glassAnimation) { prefs.glassAnimation = it }
+        slider("Animation speed", 0, 100, prefs::animationSpeed) { "$it%" }
+        slider("Animation intensity", 0, 100, prefs::animationIntensity) { "$it%" }
+        toggle("Animation follows tilt", "The animation slides and sways as you tilt your phone", prefs::animationTilt)
+    }
+
+    private fun motionCard() = card("Tilt & motion") {
+        toggle("Tilt shimmer", "Glass highlights shift slightly as you tilt your phone", prefs::shimmer)
+        slider("Shimmer strength", 0, 100, prefs::shimmerStrength) { "$it%" }
+        toggle("Reduce motion", "Turns off tilt effects, glass animation and typing effects together", prefs::reduceMotion)
+        toggle("Follow Android's \"Remove animations\"", "Also rest the effects when that accessibility setting is on", prefs::followSystemMotion)
+        toggle("Pause animations on low battery", "Stops the glass animation and tilt effects at 20% or in battery saver", prefs::batterySaver)
+    }
+
+    private fun widthCard() = card("Width & position") {
+        picker("Keyboard width", listOf("Auto (narrower on tablets)", "Full", "Wide (85%)", "Medium (70%)", "Compact (55%)"), prefs.keyboardWidth + 1) { prefs.keyboardWidth = it - 1 }
+        picker("Keyboard position", listOf("Center", "Left", "Right"), prefs.keyboardPosition) { prefs.keyboardPosition = it }
+        toggle("Split keys", "Leaves a gap down the middle of the letter rows for thumb typing on a tablet", prefs::splitKeys)
+        slider("Split gap", 8, 30, prefs::splitGap) { "$it%" }
     }
 
     private fun layoutCard() = card("Layout & size") {
@@ -625,6 +700,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Comma & period keys", "Show , and . beside the space bar, like Gboard", prefs::punctuationKeys)
         toggle("Number row", "Always show 1–0 above the letters", prefs::numberRow)
         toggle("Key preview", "Pop up a bubble above keys as you type", prefs::keyPreview)
+        slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
+        picker("Space bar style", listOf("Frosted card", "Outline only", "Clear glass", "Underline", "Accent tint"), prefs.spaceStyle) { prefs.spaceStyle = it }
     }
 
     private fun typingCard() = card("Typing") {
@@ -1068,9 +1145,6 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
     private companion object {
-        /** Titles of the cards the user has opened; kept while the app is running. */
-        private val openCards = hashSetOf("Liquid glass")
-
         const val REQUEST_PHOTO = 1
         const val REQUEST_EXPORT = 2
         const val REQUEST_IMPORT = 3
