@@ -581,9 +581,10 @@ class KeyboardView(context: Context) : View(context) {
             canvas.save()
             canvas.clipPath(popupPath)
             canvas.translate(-offset.x, -offset.y)
-            h.drawSheetBackground(canvas)
+            h.drawFrostedBehind(canvas, prefs.popupBlur.coerceIn(0, 100) / 100f * t.dp(POPUP_MAX_BLUR_DP))
             canvas.restore()
-            h.painter.draw(canvas, popup.rect, popupRadius, null, offset.x, offset.y, t.sheetTint, rim = false)
+            val tint = GlassTheme.withAlpha(if (t.dark) Color.BLACK else Color.WHITE, prefs.popupOpacity.coerceIn(0, 100) / 100f)
+            h.painter.draw(canvas, popup.rect, popupRadius, null, offset.x, offset.y, tint, rim = false)
             textPaint.textSize = rowHeight * 0.38f * t.fontScale
             popup.options.forEachIndexed { i, option ->
                 val left = popup.rect.left + (i % popup.cols) * popup.cellWidth
@@ -881,6 +882,8 @@ class KeyboardView(context: Context) : View(context) {
         const val LONG_PRESS_MS = 380L
         /** Long-press menus with more options than this wrap to two rows. */
         const val POPUP_ONE_ROW_MAX = 8
+        /** The long-press menu blurs what is behind it by up to this much. */
+        const val POPUP_MAX_BLUR_DP = 14f
         /** How far down a swipe on a key must go to type its corner symbol. */
         const val SWIPE_DOWN_DP = 40f
         const val SPACE_CARD = 0

@@ -173,6 +173,9 @@ class Prefs private constructor(context: Context) {
     var myLooks by string(KEY_MY_LOOKS, "")
     /** Keyboard height when the phone is sideways: 0 auto, 1 short, 2 medium, 3 normal. */
     var landscapeHeight by int(KEY_LANDSCAPE_HEIGHT, 0)
+    /** The long-press menu's tint strength and how strongly it blurs what is behind it, both 0..100. */
+    var popupOpacity by int(KEY_POPUP_OPACITY, 35)
+    var popupBlur by int(KEY_POPUP_BLUR, 60)
 
     fun popupSettings() = com.flexkeys.layout.PopupSettings(
         accents = accentPopups,
@@ -258,6 +261,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_ACCENTS_FIRST = "accents_first"
         const val KEY_CORNER_HINTS = "corner_hints"
         const val KEY_LANDSCAPE_HEIGHT = "landscape_height"
+        const val KEY_POPUP_OPACITY = "popup_opacity"
+        const val KEY_POPUP_BLUR = "popup_blur"
         /** Settings that change what the letter keys offer on long-press. */
         val POPUP_KEYS: Set<String> = setOf(KEY_ACCENT_POPUPS, KEY_ACCENT_SETS, KEY_SYMBOL_POPUPS, KEY_ACCENTS_FIRST, KEY_CORNER_HINTS)
         const val KEY_CUSTOM_KEYS = "custom_keys"

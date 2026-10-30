@@ -26,6 +26,12 @@ interface GlassHost {
      */
     fun drawSheetBackground(canvas: Canvas) = Unit
 
+    /**
+     * Paints the sheet and the keys on it, blurred by [blurPx], onto [canvas] in backdrop coordinates: what a
+     * frosted-glass menu would show of what is behind it. Falls back to the plain sheet where blur is not available.
+     */
+    fun drawFrostedBehind(canvas: Canvas, blurPx: Float) = drawSheetBackground(canvas)
+
     /** The blue/purple/pink gradient across the whole keyboard, in backdrop coordinates, or null. */
     fun glassGradient(): Shader?
 

@@ -269,6 +269,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Looks gallery", "looks", "Built-in looks", "themes presets frost midnight aurora sunset sakura ocean mint candy"),
         Hit("Save current look", "looks", "My looks", "theme save custom"),
         Hit("Accent languages", "layout", "Long-press characters", "accents é ñ ü popups"),
+        Hit("Menu background", "layout", "Long-press characters", "popup transparency opacity glass"),
+        Hit("Menu blur", "layout", "Long-press characters", "popup frosted glass"),
         Hit("Accents", "layout", "Long-press characters", "popup long press"),
         Hit("Symbols and digits", "layout", "Long-press characters", "popup long press"),
         Hit("Small symbols on keys", "layout", "Long-press characters", "corner hints"),
@@ -1056,6 +1058,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Symbols and digits", "The extra symbol under each letter, like Gboard", prefs::symbolPopups)
         toggle("Accents before symbols", "Put accents first in the menu", prefs::accentsFirst)
         toggle("Small symbols on keys", "The tiny corner symbol; swipe down on a key to type it", prefs::cornerHints)
+        slider("Menu background", 0, 100, prefs::popupOpacity) { "$it%" }
+        slider("Menu blur", 0, 100, prefs::popupBlur) { if (it == 0) "Off" else "$it%" }
+        text("The menu's frosted glass: lower the background to see more of the keys behind it, raise the blur to soften them.", secondary = true)
         text("Add your own characters to any key under Typing > Phrases & extra keys.", secondary = true)
     }
 

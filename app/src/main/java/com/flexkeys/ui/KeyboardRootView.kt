@@ -639,6 +639,31 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         }
     }
 
+    private var frostNode: Any? = null // a RenderNode, typed as Any to keep this class loadable on older Android
+
+    @android.annotation.TargetApi(Build.VERSION_CODES.S)
+    override fun drawFrostedBehind(canvas: Canvas, blurPx: Float) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || !canvas.isHardwareAccelerated || width <= 0 || height <= 0) {
+            drawSheetBackground(canvas)
+            return
+        }
+        try {
+            val node = (frostNode as? android.graphics.RenderNode) ?: android.graphics.RenderNode("FlexKeysFrost").also { frostNode = it }
+            node.setPosition(0, 0, width, height)
+            val rec = node.beginRecording(width, height)
+            try {
+                drawSheetBackground(rec)
+                super.dispatchDraw(rec) // the keys, without the overlay
+            } finally {
+                node.endRecording()
+            }
+            node.setRenderEffect(if (blurPx >= 0.5f) android.graphics.RenderEffect.createBlurEffect(blurPx, blurPx, Shader.TileMode.CLAMP) else null)
+            canvas.drawRenderNode(node)
+        } catch (e: Throwable) {
+            drawSheetBackground(canvas)
+        }
+    }
+
     private val overlayOffset = PointF()
 
     override fun dispatchDraw(canvas: Canvas) {
