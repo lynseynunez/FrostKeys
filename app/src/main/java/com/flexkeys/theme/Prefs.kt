@@ -24,6 +24,8 @@ class Prefs private constructor(context: Context) {
     var spaceEmblem by string(KEY_SPACE_EMBLEM, SPACE_EMBLEM_ICON)
     /** How bright and visible the frosted space bar is, 0..100. */
     var spaceGlass by int(KEY_SPACE_GLASS, 60)
+    /** Look of the space bar: 0 frosted card, 1 outline, 2 clear glass, 3 underline, 4 accent tint. */
+    var spaceStyle by int(KEY_SPACE_STYLE, 0)
     /** Size of the space bar emblem in percent. */
     var emblemSize by int(KEY_EMBLEM_SIZE, 100)
     var cornerRadiusDp by int(KEY_CORNER, 8)
@@ -172,6 +174,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_FONT_FAMILY = "font_family"
         const val KEY_SPACE_EMBLEM = "space_emblem"
         const val KEY_SPACE_GLASS = "space_glass"
+        const val KEY_SPACE_STYLE = "space_style"
         const val KEY_EMBLEM_SIZE = "emblem_size"
         const val KEY_STYLE_GLASS = 0
         const val KEY_STYLE_TILES = 1
@@ -240,7 +243,7 @@ class Prefs private constructor(context: Context) {
         val THEME_KEYS: Set<String> = setOf(
             KEY_HEIGHT, KEY_SPACING, KEY_CORNER, KEY_FONT, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
-            KEY_SPACE_GLASS, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
+            KEY_SPACE_GLASS, KEY_SPACE_STYLE, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
             KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,
         )
 

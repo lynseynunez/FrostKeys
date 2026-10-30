@@ -295,17 +295,31 @@ class KeyboardView(context: Context) : View(context) {
 
         canvas.save()
         canvas.clipPath(cardPath)
-        // Frosted: the sheet behind (blurred photo, tint, gradient and any animation) shows through the pane.
+        // The sheet behind (blurred photo, tint, gradient and any animation) shows through the pane.
         cardPaint.style = Paint.Style.FILL
         cardPaint.shader = null
-        cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF101012.toInt(), 0.30f) else GlassTheme.withAlpha(Color.WHITE, 0.30f)
-        canvas.drawRect(0f, 0f, w, h, cardPaint)
-        // A light veil over the blur makes the pane stand out; the setting controls how much.
-        cardPaint.color = GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.02f + 0.20f * t.spaceGlass else 0.10f + 0.30f * t.spaceGlass)
-        canvas.drawRect(0f, 0f, w, h, cardPaint)
-        cardPaint.shader = cardSheen
-        canvas.drawRect(0f, 0f, w, h, cardPaint)
-        cardPaint.shader = null
+        val style = t.spaceStyle
+        if (style == SPACE_UNDERLINE) {
+            // No pane at all: a thin line under the emblem marks where the space bar is.
+            cardPaint.color = GlassTheme.withAlpha(t.glassTextFill, 0.40f)
+            val lineW = w * 0.46f
+            val lineH = t.dp(2f)
+            canvas.drawRoundRect(w / 2f - lineW / 2f, h * 0.80f, w / 2f + lineW / 2f, h * 0.80f + lineH, lineH, lineH, cardPaint)
+        } else if (style != SPACE_OUTLINE) {
+            if (style == SPACE_CARD) {
+                cardPaint.color = if (t.dark) GlassTheme.withAlpha(0xFF101012.toInt(), 0.30f) else GlassTheme.withAlpha(Color.WHITE, 0.30f)
+                canvas.drawRect(0f, 0f, w, h, cardPaint)
+            }
+            // A light veil over the blur makes the pane stand out; the setting controls how much.
+            cardPaint.color = when (style) {
+                SPACE_TINT -> GlassTheme.withAlpha(t.accent, 0.10f + 0.28f * t.spaceGlass)
+                else -> GlassTheme.withAlpha(Color.WHITE, if (t.dark) 0.02f + 0.20f * t.spaceGlass else 0.10f + 0.30f * t.spaceGlass)
+            }
+            canvas.drawRect(0f, 0f, w, h, cardPaint)
+            cardPaint.shader = cardSheen
+            canvas.drawRect(0f, 0f, w, h, cardPaint)
+            cardPaint.shader = null
+        }
         if (pressed > 0f) {
             val press = if (glow != 0) glow else t.pressedOverlay
             cardPaint.color = GlassTheme.withAlpha(press, (press ushr 24) / 255f * pressed)
@@ -313,16 +327,19 @@ class KeyboardView(context: Context) : View(context) {
         }
         canvas.restore()
 
-        // Faint light edge, brighter at the top left.
-        val stroke = t.dp(0.75f)
-        cardPaint.style = Paint.Style.STROKE
-        cardPaint.strokeWidth = stroke
-        cardPaint.shader = cardEdge
-        cardPath.reset()
-        cardPath.addRoundRect(stroke / 2f, stroke / 2f, w - stroke / 2f, h - stroke / 2f, r, r, Path.Direction.CW)
-        canvas.drawPath(cardPath, cardPaint)
-        cardPaint.shader = null
-        cardPaint.style = Paint.Style.FILL
+        // Faint light edge, brighter at the top left (a little stronger when it is the only outline).
+        if (t.spaceStyle != SPACE_UNDERLINE) {
+            val stroke = if (t.spaceStyle == SPACE_OUTLINE) t.dp(1.2f) else t.dp(0.75f)
+            cardPaint.style = Paint.Style.STROKE
+            cardPaint.strokeWidth = stroke
+            cardPaint.shader = cardEdge
+            if (t.spaceStyle == SPACE_OUTLINE) cardPaint.alpha = 255
+            cardPath.reset()
+            cardPath.addRoundRect(stroke / 2f, stroke / 2f, w - stroke / 2f, h - stroke / 2f, r, r, Path.Direction.CW)
+            canvas.drawPath(cardPath, cardPaint)
+            cardPaint.shader = null
+            cardPaint.style = Paint.Style.FILL
+        }
         canvas.restore()
     }
 
@@ -794,6 +811,11 @@ class KeyboardView(context: Context) : View(context) {
         const val LONG_PRESS_MS = 380L
         /** How far down a swipe on a key must go to type its corner symbol. */
         const val SWIPE_DOWN_DP = 40f
+        const val SPACE_CARD = 0
+        const val SPACE_OUTLINE = 1
+        const val SPACE_CLEAR = 2
+        const val SPACE_UNDERLINE = 3
+        const val SPACE_TINT = 4
         /** How far a space bar drag goes before it starts moving the cursor. */
         const val CURSOR_SWIPE_DP = 22f
         const val SLIDE_MARGIN = 0.3f

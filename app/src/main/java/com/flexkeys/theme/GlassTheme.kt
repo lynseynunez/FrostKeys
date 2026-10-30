@@ -38,6 +38,8 @@ class GlassTheme(
     val photoPanY: Float = 0f,
     /** See [Prefs.pressStyle]. */
     val pressStyle: Int = 0,
+    /** See [Prefs.spaceStyle]. */
+    val spaceStyle: Int = 0,
     val photoAccent: Int = Prefs.DEFAULT_ACCENT,
 ) {
     // Glass lettering: translucent fill, a bright thin edge, a soft shadow and the gradient shining through.
@@ -140,6 +142,7 @@ class GlassTheme(
                 photoPanX = prefs.photoPanX.coerceIn(-100, 100) / 100f,
                 photoPanY = prefs.photoPanY.coerceIn(-100, 100) / 100f,
                 pressStyle = prefs.pressStyle,
+                spaceStyle = prefs.spaceStyle,
                 photoAccent = prefs.photoAccent,
             )
         }
