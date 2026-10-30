@@ -657,8 +657,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         backdrop.release()
     }
 
-    private companion object {
+    companion object {
         const val SHEET_RADIUS_DP = 26f
-        val loader: ExecutorService = Executors.newSingleThreadExecutor()
+        private val loader: ExecutorService = Executors.newSingleThreadExecutor()
     }
 }
