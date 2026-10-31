@@ -23,7 +23,12 @@ data class Suggestions(
     val clipIndex: Int = -1,
     /** Slot index holding a calculator or unit answer, or -1. */
     val calcIndex: Int = -1,
+    /** Slot index holding the "add this word" offer after an autocorrection was undone, or -1. */
+    val learnIndex: Int = -1,
 ) {
+    /** The "add [word]" offer alone in the middle slot. */
+    fun withLearn(word: String): Suggestions = Suggestions(listOf("", "Add “$word”", ""), learnIndex = 1)
+
     /** A sum or conversion answer alone in the middle slot. */
     fun withCalc(label: String): Suggestions = Suggestions(listOf("", label, ""), calcIndex = 1)
 
@@ -393,6 +398,15 @@ class SuggestionEngine internal constructor(
         return Suggestions(slots)
     }
 
+    /**
+     * Teaches [word] for good: it counts as a real word at once, and goes on the list of words to leave alone so
+     * it is never autocorrected and is suggested as you type. Returns the new text of that list.
+     */
+    fun addToVocabulary(word: String, protectedRaw: String): String {
+        user.learn(word, null, weight = EXPLICIT_LEARN_WEIGHT)
+        return addProtected(protectedRaw, word)
+    }
+
     fun learn(word: String, prev: String?) {
         if (word.length > 1 || word.equals("a", true) || word == "I") user.learn(word, prev)
     }
@@ -447,6 +461,17 @@ class SuggestionEngine internal constructor(
     private fun isNeighbor(a: Char, b: Char): Boolean = NEIGHBORS[a]?.indexOf(b)?.let { it >= 0 } ?: false
 
     companion object {
+        /** Enough uses at once for even a typo-like word to count as learned. */
+        const val EXPLICIT_LEARN_WEIGHT = 8
+
+        /** [raw] (one word per line) with [word] added, unless it is already there in any capitalization. */
+        fun addProtected(raw: String, word: String): String {
+            val clean = word.trim()
+            if (clean.isEmpty()) return raw
+            val lines = raw.lines().map { it.trim() }.filter { it.isNotEmpty() }
+            if (lines.any { it.equals(clean, ignoreCase = true) }) return lines.joinToString("\n")
+            return (lines + clean).joinToString("\n")
+        }
         private const val LEARNED_THRESHOLD = 2
         private const val COMPLETION_PENALTY = 0.6
         private const val EDIT_WEIGHT = 3.0

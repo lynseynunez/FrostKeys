@@ -316,6 +316,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val suggestionRunnable = Runnable { updateSuggestionsNow() }
     private var calcHit: CalcHit? = null
+    /** The word just restored by undoing an autocorrection, offered in the strip so it can be added for good. */
+    private var learnOffer: String? = null
 
     /**
      * Looks up suggestions a moment after the last key, not on every key, so fast typing isn't slowed
@@ -348,7 +350,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 else -> Suggestions.EMPTY
             }.let { withOtp(it) }
         }
-        suggestions = withCalc(suggestions)
+        suggestions = withLearn(withCalc(suggestions))
         strip.suggestions = suggestions
     }
 
@@ -367,6 +369,13 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         return s.withCode(found.value)
     }
 
+    /** After undoing an autocorrection, an "Add “word”" chip. */
+    private fun withLearn(s: Suggestions): Suggestions {
+        val word = learnOffer ?: return s
+        if (composing.isNotEmpty()) return s
+        return s.withLearn(word)
+    }
+
     /** The answer to a sum or unit just typed, as a chip in the middle of the strip. */
     private fun withCalc(s: Suggestions): Suggestions {
         calcHit = null
@@ -377,10 +386,21 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         return s.withCalc(hit.label)
     }
 
+    /** Adds [word] to what the keyboard knows, and to the autocorrect "leave alone" list in Settings. */
+    private fun addWordForGood(word: String) {
+        prefs.protectedWords = engine.addToVocabulary(word, prefs.protectedWords)
+    }
+
     override fun onSuggestionPicked(index: Int, text: String) {
         val ic = currentInputConnection ?: return
         feedback.keyPress(KeyType.CHAR)
         if (text.isEmpty()) return
+        if (index == suggestions.learnIndex) {
+            learnOffer?.let { addWordForGood(it) }
+            learnOffer = null
+            updateSuggestions()
+            return
+        }
         if (index == suggestions.calcIndex) {
             val hit = calcHit ?: return
             commitPending(ic)
@@ -421,11 +441,9 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         ic.commitText(text, 1) // Replaces the composing word, if any.
         ic.commitText(" ", 1)
         ic.endBatchEdit()
-        if (learningOn) {
-            // Choosing the literal typed word over a correction marks it as a real word.
-            val chosenTyped = index == suggestions.typedIndex && suggestions.correction != null
-            if (chosenTyped) engine.user.learn(text, previous, weight = 3) else engine.learn(text, previous)
-        }
+        // Choosing the literal typed word over a correction adds it for good (even with learning off: you asked for it).
+        val chosenTyped = index == suggestions.typedIndex && suggestions.correction != null
+        if (chosenTyped) addWordForGood(text) else if (learningOn) engine.learn(text, previous)
         composing.clear()
         lastCorrection = null
         pickedSuggestion = true
@@ -712,6 +730,8 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     }
 
     private fun handleKey(key: KeyDef) {
+        // The "add this word" offer only lasts until the next key.
+        learnOffer = null
         if (root?.routeKeyToSearch(key, state.isShifted) == true) {
             if (key.type == KeyType.CHAR) {
                 state.onCharacterTyped()
@@ -951,6 +971,10 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 ic.commitText(correction.original + correction.separator, 1)
                 ic.endBatchEdit()
                 if (learningOn) engine.user.learn(correction.original, null, weight = 3)
+                // Gboard-style: offer to add the word for good, so it never needs adding in Settings.
+                if (!passwordField && correction.original.any { it.isLetter() } && !engine.isKnown(correction.original)) {
+                    learnOffer = correction.original
+                }
                 updateShiftState()
                 updateSuggestions()
                 return

@@ -82,3 +82,35 @@ class SmartTextTest {
         assertNull(SmartClip.find(""))
     }
 }
+
+class LearnWordTest {
+
+    @org.junit.Test fun protectedListGrowsOnce() {
+        val engine = com.flexkeys.suggest.SuggestionEngine
+        org.junit.Assert.assertEquals("brio", engine.addProtected("", "brio"))
+        org.junit.Assert.assertEquals("gpu\nbrio", engine.addProtected("gpu", "brio"))
+        // Already there in another capitalization: unchanged.
+        org.junit.Assert.assertEquals("Brio", engine.addProtected("Brio", "brio"))
+        org.junit.Assert.assertEquals("gpu", engine.addProtected("gpu", "  "))
+    }
+
+    @org.junit.Test fun learnOfferChip() {
+        val s = com.flexkeys.suggest.Suggestions.EMPTY.withLearn("brio")
+        org.junit.Assert.assertEquals(listOf("", "Add “brio”", ""), s.slots)
+        org.junit.Assert.assertEquals(1, s.learnIndex)
+    }
+}
+
+class LearnWordEndToEndTest {
+
+    /** A word that is one slip from a common word is corrected, until it is added for good. */
+    @org.junit.Test fun addedWordIsNoLongerCorrected() {
+        val engine = TestData.engine()
+        val word = "brio"
+        org.junit.Assert.assertNotNull("expected the test word to be corrected at first", engine.suggest(word, null, true, false).correction)
+        val raw = engine.addToVocabulary(word, "")
+        engine.setRules(raw.lines().map { it.lowercase() }.toSet(), emptyMap())
+        org.junit.Assert.assertNull(engine.suggest(word, null, true, false).correction)
+        org.junit.Assert.assertTrue(engine.isKnown(word))
+    }
+}

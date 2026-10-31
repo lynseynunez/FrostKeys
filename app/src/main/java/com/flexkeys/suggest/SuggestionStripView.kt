@@ -176,7 +176,7 @@ class SuggestionStripView(context: Context) : View(context) {
             tmp.set(contentLeft + i * slot, barRect.top, contentLeft + (i + 1) * slot, barRect.bottom)
             if (i > 0) canvas.drawLine(tmp.left, tmp.top + dp(10f), tmp.left, tmp.bottom - dp(10f), dividerPaint)
             val word = slots.getOrNull(i) ?: continue
-            val highlighted = i == suggestions.highlighted || i == suggestions.clipIndex || i == suggestions.calcIndex
+            val highlighted = i == suggestions.highlighted || i == suggestions.clipIndex || i == suggestions.calcIndex || i == suggestions.learnIndex
             if (highlighted) {
                 fillPaint.color = t.accentSoft
                 val pill = RectF(tmp).apply { inset(dp(4f), dp(5f)) }
