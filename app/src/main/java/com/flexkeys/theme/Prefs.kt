@@ -68,6 +68,8 @@ class Prefs private constructor(context: Context) {
     var backgroundVersion by long(KEY_BG_VERSION, 0L)
 
     // ---- typing ----
+    /** Suggest and autocorrect even in fields whose app asks for no suggestions (password, web address and email fields stay excluded). */
+    var ignoreNoSuggestions by bool(KEY_IGNORE_NO_SUGGESTIONS, true)
     var suggestions by bool(KEY_SUGGESTIONS, true)
     var autocorrect by bool(KEY_AUTOCORRECT, true)
     var autoCapitalize by bool(KEY_AUTOCAP, true)
@@ -265,6 +267,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_SMART_CLIPS = "smart_clips"
         const val KEY_CALCULATOR = "calculator"
         const val KEY_KEY_FEEL = "key_feel"
+        const val KEY_IGNORE_NO_SUGGESTIONS = "ignore_no_suggestions"
         const val KEY_MY_LOOKS = "my_looks"
         const val KEY_ACCENT_POPUPS = "accent_popups"
         const val KEY_ACCENT_SETS = "accent_sets"

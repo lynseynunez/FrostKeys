@@ -1134,6 +1134,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         text("Used for people and hand emoji. In the emoji panel, long-press one (marked with a small corner triangle) to pick a different tone for just that emoji.", secondary = true)
         toggle("Suggestions", "Completions and next-word predictions", prefs::suggestions)
         toggle("Autocorrect", "Fix typos on space. Backspace right after undoes it.", prefs::autocorrect)
+        toggle("Suggest where apps ask for none", "Some apps ask keyboards not to suggest. Turn off to respect that. Password, web address and email fields are always left alone.", prefs::ignoreNoSuggestions)
         toggle("Learn my words", "Improve suggestions from what you type, on-device only", prefs::learnWords)
         toggle("Auto-capitalization", null, prefs::autoCapitalize)
         toggle("Double-space period", "Tap space twice for \". \"", prefs::doubleSpacePeriod)

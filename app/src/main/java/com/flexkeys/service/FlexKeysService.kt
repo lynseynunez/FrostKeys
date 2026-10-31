@@ -179,12 +179,20 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             cls == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
         passwordField = password
         val literal = cls == InputType.TYPE_CLASS_TEXT && variation in LITERAL_VARIATIONS
-        val noSuggestions = (info.inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0
+        val noSuggestions = (info.inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0 && !prefs.ignoreNoSuggestions
         predictionOn = prefs.suggestions && cls == InputType.TYPE_CLASS_TEXT && !password && !noSuggestions
         correctionOn = predictionOn && prefs.autocorrect && !literal
         learningOn = predictionOn && prefs.learnWords && !literal &&
             (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
 
+        Diagnostics.noteField(
+            "type class $cls, variation $variation, flags ${info.inputType and InputType.TYPE_MASK_FLAGS}" +
+                (if ((info.inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) " (app asks for no suggestions)" else "") +
+                (if (password) " (password)" else "") + (if (literal) " (literal: email, web address or similar)" else "") +
+                "\nsuggestions ${if (predictionOn) "on" else "off"}, autocorrect ${if (correctionOn) "on" else "off"}" +
+                " (settings: suggestions ${if (prefs.suggestions) "on" else "off"}, autocorrect ${if (prefs.autocorrect) "on" else "off"})" +
+                "\ndictionary: ${engine.dictionary.size} words loaded",
+        )
         state.setLayer(if (numeric) Layer.NUMPAD else Layer.LETTERS)
         root?.cancelEmojiSearch()
         root?.showPanel(KeyboardRootView.Panel.NONE)

@@ -46,6 +46,13 @@ object Diagnostics {
     private var slowFrames = 0L
 
     /** How long the keyboard took to handle one key press. */
+    /** What the keyboard last learned about the text field it is typing into, shown at the top of the report. */
+    @Volatile private var lastField: String = "none yet"
+
+    fun noteField(description: String) {
+        lastField = description
+    }
+
     fun recordKey(nanos: Long) = keyMicros.add(nanos / 1_000)
 
     /** How long a touch waited before the keyboard got to look at it. A late touch means a busy main thread. */
@@ -120,6 +127,7 @@ object Diagnostics {
         sb.append("SakuriKey ").append(version(context)).append('\n')
         sb.append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append(", Android ").append(Build.VERSION.RELEASE)
             .append(" (API ").append(Build.VERSION.SDK_INT).append(")\n\n")
+        sb.append("Last text field: ").append(lastField).append("\n\n")
         if (key.count == 0) {
             sb.append("No typing recorded yet. Turn recording on, type for a while, then come back.\n")
         } else {
