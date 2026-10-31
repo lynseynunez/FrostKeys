@@ -48,7 +48,7 @@ jobs:
       # A rolling pre-release called "latest" holds the newest APK as a plain, unzipped file.
       # Pre-releases are skipped by the in-app update check, so this never looks like a version.
       - name: Update the rolling "latest" release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/heads/')
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
