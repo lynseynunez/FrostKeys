@@ -46,7 +46,7 @@ object Looks {
     )
 
     /**
-     * Typing animation: 0 off, 1 sparkles, 2 ripple, 3 warp, 4 bloom, 5 ink, 6 firecracker, 7 paint, 8 spotlight, 9 sakura petals.
+     * Typing animation: 0 off, 1 sparkles, 2 ripple, 3 warp, 4 bloom, 5 ink, 6 firecracker, 7 paint, 8 spotlight, 9 sakura petals, 10 sakura petals with the spotlight.
      * Glass animation: 0 off, 1 aurora, 2 light flow, 3 bubbles, 4 starlight, 5 rain, 6 fireflies, 7 waves, 8 sakura petals.
      */
     val builtIn: List<Look> = listOf(

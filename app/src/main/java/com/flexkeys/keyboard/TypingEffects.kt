@@ -30,6 +30,8 @@ class TypingEffects(private val density: Float) {
         const val PAINT = 7
         const val SPOTLIGHT = 8
         const val PETALS = 9
+        /** Sakura petals falling out of the key spotlight glow, tinted with the chosen spotlight colors. */
+        const val PETALS_SPOTLIGHT = 10
 
         private const val MAX_PARTICLES = 70
         private const val RIPPLE_MS = 480L
@@ -96,6 +98,20 @@ class TypingEffects(private val density: Float) {
     var spotlightCycle = false
     private var pressCount = 0
 
+    /** The key spotlight: a wide soft pool of color with a small bright core. Returns the pool color. */
+    private fun spotlight(x: Float, y: Float, reach: Float, now: Long, xFraction: Float): Int {
+        val soft = if (spotlightCycle) {
+            pressCount++
+            // Step through the colors a press at a time, blending so the change is smooth.
+            SpotlightPalettes.colorAt(spotlightColors, (pressCount % 8) / 7f)
+        } else {
+            SpotlightPalettes.colorAt(spotlightColors, xFraction)
+        }
+        bloom(x, y, reach * 2.6f * (0.6f + 0.4f * strength), 900L, soft, now)
+        bloom(x, y, reach * 0.9f * (0.6f + 0.4f * strength), 500L, 0xFFFFFFFF.toInt(), now)
+        return soft
+    }
+
     /** [xFraction] is where the key sits across the keyboard, 0 (left) to 1 (right). */
     fun onPress(style: Int, x: Float, y: Float, reach: Float, now: Long, xFraction: Float = 0.5f) {
         when (style) {
@@ -123,18 +139,21 @@ class TypingEffects(private val density: Float) {
                 if (rings.size >= 8) rings.removeAt(0)
                 rings.add(Ring(x, y, now, reach))
             }
-            SPOTLIGHT -> {
-                // A wide soft pool of the accent color with a small bright core, fading slowly so it
-                // trails behind the finger from key to key.
-                val soft = if (spotlightCycle) {
-                    pressCount++
-                    // Step through the colors a press at a time, blending so the change is smooth.
-                    SpotlightPalettes.colorAt(spotlightColors, (pressCount % 8) / 7f)
-                } else {
-                    SpotlightPalettes.colorAt(spotlightColors, xFraction)
+            SPOTLIGHT -> spotlight(x, y, reach, now, xFraction)
+            PETALS_SPOTLIGHT -> {
+                val glow = spotlight(x, y, reach, now, xFraction)
+                // Petals in the spotlight colors, softened toward white so they still read as petals.
+                repeat(2 + (3f * strength).roundToInt()) {
+                    if (sparks.size >= MAX_PARTICLES) sparks.removeAt(0)
+                    val angle = Random.nextFloat() * 2f * PI.toFloat()
+                    val speed = (20f + Random.nextFloat() * 55f) * density * (0.5f + 0.5f * strength)
+                    sparks.add(Spark(
+                        x, y, cos(angle) * speed, sin(angle) * speed - 40f * density, now, 900L + Random.nextLong(700L),
+                        (4.2f + Random.nextFloat() * 3.2f) * density * (0.6f + 0.4f * strength), false,
+                        com.flexkeys.theme.GlassTheme.lerp(glow, 0xFFFFFFFF.toInt(), 0.3f + 0.3f * Random.nextFloat()), petal = true,
+                        angle = Random.nextFloat() * 360f, spin = (Random.nextFloat() - 0.5f) * 420f,
+                    ))
                 }
-                bloom(x, y, reach * 2.6f * (0.6f + 0.4f * strength), 900L, soft, now)
-                bloom(x, y, reach * 0.9f * (0.6f + 0.4f * strength), 500L, 0xFFFFFFFF.toInt(), now)
             }
             BLOOM -> bloom(x, y, reach * 1.9f * (0.6f + 0.4f * strength), 800L, vivid(), now)
             INK -> {

@@ -208,7 +208,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         val showsPreview: Boolean = false,
     )
 
-    private val typingEffectNames = listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight", "Sakura petals")
+    private val typingEffectNames = listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight", "Sakura petals", "Sakura + spotlight")
     private val glassAnimationNames = listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight", "Rain", "Fireflies", "Waves", "Sakura petals")
 
     private fun onOff(value: Boolean) = if (value) "on" else "off"
@@ -1002,7 +1002,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         picker("Key motion", listOf("Sink", "Pop", "Bounce", "Tilt", "Float up", "None"), prefs.keyMotion) { prefs.keyMotion = it }
         picker("Typing animation", typingEffectNames, prefs.typingEffect) { prefs.typingEffect = it }
         slider("Animation strength", 0, 100, prefs::effectStrength) { "$it%" }
-        picker("Key spotlight colors", SpotlightPalettes.names, prefs.spotlightPalette) {
+        picker("Spotlight colors (also tint the Sakura + spotlight petals)", SpotlightPalettes.names, prefs.spotlightPalette) {
             prefs.spotlightPalette = it
             if (it == SpotlightPalettes.CUSTOM) showSpotlightColors()
         }
@@ -1103,6 +1103,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         EffectLook("Rainy night", 4, 5),
         EffectLook("Fireflies", 8, 6),
         EffectLook("Sakura", 9, 8),
+        EffectLook("Sakura glow", 10, 8),
         EffectLook("Ocean", 2, 7),
     )
 

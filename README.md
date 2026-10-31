@@ -20,6 +20,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Voice typing: the mic button uses your phone's own speech recognizer (no microphone permission needed)
 - Undo an autocorrection with backspace and an "Add “word”" chip appears: tap it and the word is never corrected again (it is also added to Settings > Typing > Autocorrect list). Tapping the quoted typed word does the same.
 - Sakura petals: a glass animation (petals drift, sway and tumble; tilt blows them, typing hard stirs a gust) and a typing effect (petals fly from each key), and the Sakura look uses both
+- Sakura + spotlight: the petal effect with the key spotlight's colored glow, and the petals take the spotlight colors you picked
 - Keyboard feel presets (Soft, Clicky, Mechanical, Silky): each kind of key gets its own vibration pattern, no sounds
 - Smart paste (a copied email, phone number or link appears in the suggestion bar for a few minutes) and calculator and unit chips (type 12*8 or 5 km and tap the answer), both switchable in Typing
 - Phrases can include {date}, {time}, {day}, {month}, {year} and {clipboard}
