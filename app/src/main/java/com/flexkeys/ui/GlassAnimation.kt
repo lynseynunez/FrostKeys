@@ -28,6 +28,8 @@ class GlassAnimation {
         const val RAIN = 5
         const val FIREFLIES = 6
         const val WAVES = 7
+        const val SAKURA = 8
+        private const val PETAL_COUNT = 40
         private const val DROP_COUNT = 46
         private const val FIREFLY_COUNT = 18
         private const val STAR_COUNT = 64
@@ -56,6 +58,15 @@ class GlassAnimation {
         Firefly(0.08f + Random.nextFloat() * 0.84f, 0.1f + Random.nextFloat() * 0.8f, 0.04f + Random.nextFloat() * 0.1f, 0.06f + Random.nextFloat() * 0.18f,
             0.25f + Random.nextFloat() * 0.5f, 0.2f + Random.nextFloat() * 0.5f, Random.nextFloat() * 6.28f, 0.6f + Random.nextFloat() * 1.2f, 0.7f + Random.nextFloat() * 0.8f)
     }
+    private class PetalState(
+        val x: Float, val phase: Float, val fall: Float, val sway: Float, val swayRate: Float, val size: Float,
+        val spin: Float, val flip: Float, val depth: Float, val shade: Float,
+    )
+    private val petals = List(PETAL_COUNT) {
+        PetalState(Random.nextFloat(), Random.nextFloat(), 0.7f + Random.nextFloat() * 0.6f, 0.03f + Random.nextFloat() * 0.07f,
+            0.5f + Random.nextFloat() * 0.9f, 0.7f + Random.nextFloat() * 0.8f, (Random.nextFloat() - 0.5f) * 2.4f,
+            1.2f + Random.nextFloat() * 1.8f, 0.45f + Random.nextFloat() * 0.55f, Random.nextFloat())
+    }
     private val wavePath = android.graphics.Path()
     private val crestPath = android.graphics.Path()
 
@@ -75,11 +86,20 @@ class GlassAnimation {
     private var clock = 0f
     private var last = 0L
 
+    /** 0..1: how hard the user is typing right now. Petals blow faster in a gust; it eases in and out. */
+    var energy = 0f
+    private var gust = 0f
+    /** Petals have their own clock so a gust can speed them up without jumping the other animations. */
+    private var petalClock = 0f
+
     /** Advances time. Call once per frame before [draw]. */
     fun tick(now: Long, speed: Float) {
         val dt = if (last == 0L) 0f else ((now - last).coerceIn(0L, 100L)) / 1000f
         last = now
-        clock += dt * (0.15f + 1.85f * speed)
+        val rate = 0.15f + 1.85f * speed
+        clock += dt * rate
+        gust += (energy - gust) * (dt * 2.5f).coerceAtMost(1f)
+        petalClock += dt * rate * (1f + 1.6f * gust)
     }
 
     /** Forget the previous frame time, e.g. when the keyboard was hidden for a while. */
@@ -98,6 +118,7 @@ class GlassAnimation {
             RAIN -> rain(canvas, w, h, intensity, theme, tiltX, tiltY)
             FIREFLIES -> fireflies(canvas, w, h, intensity, theme, tiltX, tiltY)
             WAVES -> waves(canvas, w, h, intensity, theme, tiltX, tiltY)
+            SAKURA -> sakura(canvas, w, h, intensity, theme, tiltX, tiltY)
         }
     }
 
@@ -202,6 +223,36 @@ class GlassAnimation {
         }
         paint.strokeCap = Paint.Cap.BUTT
         paint.style = Paint.Style.FILL
+    }
+
+    /** Sakura petals drifting down, swaying and tumbling. Tilt blows them sideways; typing hard stirs a gust. */
+    private fun sakura(canvas: Canvas, w: Float, h: Float, intensity: Float, theme: GlassTheme, tiltX: Float, tiltY: Float) {
+        paint.style = Paint.Style.FILL
+        val count = (8 + (PETAL_COUNT - 8) * intensity).toInt().coerceIn(1, PETAL_COUNT)
+        val unit = minOf(w, h * 3f) * 0.022f
+        val wind = 0.22f + 0.3f * tiltX + 0.25f * gust
+        for (i in 0 until count) {
+            val p = petals[i]
+            val t = (p.phase + petalClock * 0.045f * p.fall) % 1f
+            val size = unit * p.size
+            val y = t * (h + 4f * size) - 2f * size
+            val sway = p.sway * sin(petalClock * p.swayRate + p.phase * 6.28f) * (1f + gust)
+            var x = (p.x + sway + wind * t * p.depth) % 1f
+            if (x < 0f) x += 1f
+            x *= w
+            val angle = (petalClock * p.spin * 40f + p.phase * 360f) % 360f
+            // Tumbling: the petal turns edge-on now and then.
+            val flip = 0.28f + 0.72f * kotlin.math.abs(cos(petalClock * p.flip + p.phase * 9f))
+            val edge = minOf(t, 1f - t) // fade in at the top, out at the bottom
+            val alpha = (255f * 0.78f * p.depth * intensity.coerceAtLeast(0.35f) * (edge * 6f).coerceAtMost(1f)).toInt().coerceIn(0, 255)
+            paint.color = (Petal.color(theme.dark, p.shade) and 0x00FFFFFF) or (alpha shl 24)
+            canvas.save()
+            canvas.translate(x, y)
+            canvas.rotate(angle)
+            canvas.scale(size * flip, size * 1.15f)
+            canvas.drawPath(Petal.path, paint)
+            canvas.restore()
+        }
     }
 
     /** Soft warm lights drifting on slow loops and pulsing on and off. Tilt nudges them like a breeze. */

@@ -40,6 +40,8 @@ class Prefs private constructor(context: Context) {
     var soundVolume by int(KEY_SOUND_VOLUME, 40)
     /** 0 custom strength, 1 tick, 2 click, 3 heavy (the phone's built-in effects where available). */
     var hapticStyle by int(KEY_HAPTIC_STYLE, 0)
+    /** Keyboard feel preset (see KeyFeel): 0 keeps the older haptic style settings. */
+    var keyFeel by int(KEY_KEY_FEEL, 0)
     /** Strength of the custom vibration, 0..100. */
     var hapticStrength by int(KEY_HAPTIC_STRENGTH, 50)
     var keyPreview by bool(KEY_PREVIEW, false)
@@ -262,6 +264,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_PUNCTUATION = "punctuation_keys"
         const val KEY_SMART_CLIPS = "smart_clips"
         const val KEY_CALCULATOR = "calculator"
+        const val KEY_KEY_FEEL = "key_feel"
         const val KEY_MY_LOOKS = "my_looks"
         const val KEY_ACCENT_POPUPS = "accent_popups"
         const val KEY_ACCENT_SETS = "accent_sets"

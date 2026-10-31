@@ -22,7 +22,9 @@ class Feedback(context: Context, private val prefs: Prefs) {
         }
 
     fun keyPress(type: KeyType) {
-        if (prefs.haptics) buzz(long = false)
+        if (prefs.haptics) {
+            if (prefs.keyFeel != KeyFeel.CLASSIC) feel(type, long = false) else buzz(long = false)
+        }
         if (prefs.sound) {
             val effect = when (type) {
                 KeyType.BACKSPACE -> AudioManager.FX_KEYPRESS_DELETE
@@ -36,8 +38,54 @@ class Feedback(context: Context, private val prefs: Prefs) {
 
     /** A slightly stronger pulse for long presses (popups, caps lock). */
     fun longPress() {
-        if (prefs.haptics) buzz(long = true)
+        if (prefs.haptics) {
+            if (prefs.keyFeel != KeyFeel.CLASSIC) feel(KeyType.CHAR, long = true) else buzz(long = true)
+        }
     }
+
+    /** Plays the chosen keyboard feel for [type]: a short pattern of pulses, scaled by the strength slider. */
+    private fun feel(type: KeyType, long: Boolean) {
+        val v = vibrator ?: return
+        if (!v.hasVibrator()) return
+        val steps = KeyFeel.steps(prefs.keyFeel, type, long)
+        if (steps.isEmpty()) return
+        // The strength slider (50 = as designed) makes the whole feel stronger or fainter.
+        val gain = (0.5f + prefs.hapticStrength.coerceIn(0, 100) / 100f).coerceIn(0.3f, 1.5f)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && composeSupported(v, steps)) {
+                val composition = VibrationEffect.startComposition()
+                for (s in steps) composition.addPrimitive(primitive(s.prim), (s.scale * gain).coerceIn(0.05f, 1f), s.delayMs)
+                v.vibrate(composition.compose())
+                return
+            }
+            // Fallback: a waveform of short pulses with the gaps between them.
+            val timings = ArrayList<Long>()
+            val amplitudes = ArrayList<Int>()
+            for (s in steps) {
+                val (ms, amp) = KeyFeel.fallbackPulse(s.prim)
+                if (s.delayMs > 0) { timings.add(s.delayMs.toLong()); amplitudes.add(0) }
+                timings.add(ms)
+                amplitudes.add(if (v.hasAmplitudeControl()) (amp * s.scale * gain).toInt().coerceIn(1, 255) else VibrationEffect.DEFAULT_AMPLITUDE)
+            }
+            // A waveform starts with a pause; a zero-length one is fine.
+            timings.add(0, 0L); amplitudes.add(0, 0)
+            v.vibrate(VibrationEffect.createWaveform(timings.toLongArray(), amplitudes.toIntArray(), -1))
+        } catch (_: RuntimeException) {
+            // Vibration can be restricted on some phones; feedback is best-effort.
+        }
+    }
+
+    @android.annotation.TargetApi(Build.VERSION_CODES.R)
+    private fun primitive(p: KeyFeel.Prim): Int = when (p) {
+        KeyFeel.Prim.CLICK -> VibrationEffect.Composition.PRIMITIVE_CLICK
+        KeyFeel.Prim.TICK -> VibrationEffect.Composition.PRIMITIVE_TICK
+        KeyFeel.Prim.LOW_TICK -> VibrationEffect.Composition.PRIMITIVE_LOW_TICK
+        KeyFeel.Prim.THUD -> VibrationEffect.Composition.PRIMITIVE_THUD
+    }
+
+    @android.annotation.TargetApi(Build.VERSION_CODES.R)
+    private fun composeSupported(v: Vibrator, steps: List<KeyFeel.Step>): Boolean =
+        v.areAllPrimitivesSupported(*steps.map { primitive(it.prim) }.distinct().toIntArray())
 
     /** Plays the haptic style chosen in settings: the phone's own tick/click/heavy effects, or a custom strength. */
     @android.annotation.SuppressLint("InlinedApi") // the effect numbers are plain ints, only used on Android 10+

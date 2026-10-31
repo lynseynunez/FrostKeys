@@ -29,6 +29,7 @@ class TypingEffects(private val density: Float) {
         const val FIRECRACKER = 6
         const val PAINT = 7
         const val SPOTLIGHT = 8
+        const val PETALS = 9
 
         private const val MAX_PARTICLES = 70
         private const val RIPPLE_MS = 480L
@@ -40,6 +41,8 @@ class TypingEffects(private val density: Float) {
     private class Spark(
         val x: Float, val y: Float, val vx: Float, val vy: Float, val born: Long, val life: Long, val size: Float,
         val tinted: Boolean, val color: Int = 0, val trail: Boolean = false,
+        /** A tumbling sakura petal: starting angle, spin in degrees a second. */
+        val petal: Boolean = false, val angle: Float = 0f, val spin: Float = 0f,
     )
     /** A soft colored glow that spreads out from a key and fades. */
     private class Bloom(val x: Float, val y: Float, val born: Long, val life: Long, val reach: Float, val shader: RadialGradient)
@@ -103,6 +106,17 @@ class TypingEffects(private val density: Float) {
                 sparks.add(Spark(
                     x, y, cos(angle) * speed, sin(angle) * speed - 25f * density, now,
                     420L + Random.nextLong(300L), (2.2f + Random.nextFloat() * 2.8f) * density * (0.6f + 0.4f * strength), Random.nextInt(3) == 0,
+                ))
+            }
+            PETALS -> repeat(2 + (3f * strength).roundToInt()) {
+                if (sparks.size >= MAX_PARTICLES) sparks.removeAt(0)
+                val angle = Random.nextFloat() * 2f * PI.toFloat()
+                val speed = (20f + Random.nextFloat() * 55f) * density * (0.5f + 0.5f * strength)
+                sparks.add(Spark(
+                    x, y, cos(angle) * speed, sin(angle) * speed - 40f * density, now, 900L + Random.nextLong(700L),
+                    (4.2f + Random.nextFloat() * 3.2f) * density * (0.6f + 0.4f * strength), false,
+                    com.flexkeys.ui.Petal.color(true, Random.nextFloat()), petal = true,
+                    angle = Random.nextFloat() * 360f, spin = (Random.nextFloat() - 0.5f) * 420f,
                 ))
             }
             RIPPLE -> {
@@ -178,7 +192,16 @@ class TypingEffects(private val density: Float) {
             }
             val alpha = (((1f - t) * 230f * fade).toInt().coerceIn(0, 255) shl 24)
             paint.color = (base and 0x00FFFFFF) or alpha
-            if (s.trail) {
+            if (s.petal) {
+                // A petal drifts down slowly and spins; it flutters edge-on now and then.
+                val flip = 0.35f + 0.65f * kotlin.math.abs(cos(sec * 5f + s.angle))
+                canvas.save()
+                canvas.translate(px, py)
+                canvas.rotate(s.angle + s.spin * sec)
+                canvas.scale(s.size * flip, s.size * 1.15f)
+                canvas.drawPath(com.flexkeys.ui.Petal.path, paint)
+                canvas.restore()
+            } else if (s.trail) {
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = s.size
                 paint.strokeCap = Paint.Cap.ROUND

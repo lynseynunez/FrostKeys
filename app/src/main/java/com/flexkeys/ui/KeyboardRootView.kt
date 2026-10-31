@@ -601,6 +601,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         drawSheetBackground(canvas)
         val animStyle = shimmerPrefs.glassAnimation
         if (animStyle != GlassAnimation.OFF && isShown && !saving) {
+            glassAnimation.energy = if (typingBusy) 1f else 0f
             glassAnimation.tick(android.os.SystemClock.uptimeMillis(), shimmerPrefs.animationSpeed.coerceIn(0, 100) / 100f)
             glassAnimation.draw(canvas, animStyle, width.toFloat(), height.toFloat(),
                 shimmerPrefs.animationIntensity.coerceIn(0, 100) / 100f, theme,

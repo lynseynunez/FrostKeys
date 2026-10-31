@@ -46,8 +46,8 @@ object Looks {
     )
 
     /**
-     * Typing animation: 0 off, 1 sparkles, 2 ripple, 3 warp, 4 bloom, 5 ink, 6 firecracker, 7 paint, 8 spotlight.
-     * Glass animation: 0 off, 1 aurora, 2 light flow, 3 bubbles, 4 starlight, 5 rain, 6 fireflies, 7 waves.
+     * Typing animation: 0 off, 1 sparkles, 2 ripple, 3 warp, 4 bloom, 5 ink, 6 firecracker, 7 paint, 8 spotlight, 9 sakura petals.
+     * Glass animation: 0 off, 1 aurora, 2 light flow, 3 bubbles, 4 starlight, 5 rain, 6 fireflies, 7 waves, 8 sakura petals.
      */
     val builtIn: List<Look> = listOf(
         look("Frost", Prefs.THEME_LIGHT, 0xFF5B8CFF, 30, 60, gradient = 25),
@@ -56,7 +56,7 @@ object Looks {
         look("Sunset", Prefs.THEME_LIGHT, 0xFFFF6B6B, 40, 50, gradient = 35, typing = 1),
         look("Clear", Prefs.THEME_AUTO, 0xFF22B8CF, 8, 30, gradient = 0),
         look("Graphite", Prefs.THEME_DARK, 0xFF8A93A6, 55, 40, tiles = true, corner = 8),
-        look("Sakura", Prefs.THEME_DARK, 0xFFFF7EB6, 30, 65, gradient = 40, typing = 1, animation = 6),
+        look("Sakura", Prefs.THEME_DARK, 0xFFFF7EB6, 30, 65, gradient = 40, typing = 9, animation = 8),
         look("Ocean", Prefs.THEME_DARK, 0xFF3AA0FF, 28, 70, gradient = 40, typing = 2, animation = 7),
         look("Mint", Prefs.THEME_LIGHT, 0xFF2BC49A, 35, 55, gradient = 25),
         look("Candy", Prefs.THEME_LIGHT, 0xFFFF5FA2, 40, 45, gradient = 50, typing = 8, corner = 20),

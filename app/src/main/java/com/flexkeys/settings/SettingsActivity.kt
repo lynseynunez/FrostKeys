@@ -35,6 +35,7 @@ import com.flexkeys.diagnostics.Diagnostics
 import com.flexkeys.gif.KlipyClient
 import com.flexkeys.layout.Layouts
 import com.flexkeys.service.Feedback
+import com.flexkeys.service.KeyFeel
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.theme.BackgroundImageStore
 import com.flexkeys.theme.Fonts
@@ -207,8 +208,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         val showsPreview: Boolean = false,
     )
 
-    private val typingEffectNames = listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight")
-    private val glassAnimationNames = listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight", "Rain", "Fireflies", "Waves")
+    private val typingEffectNames = listOf("Off", "Sparkles", "Ripple", "Warp speed", "Glow bloom", "Ink splash", "Firecracker", "Paint splatter", "Key spotlight", "Sakura petals")
+    private val glassAnimationNames = listOf("Off", "Aurora", "Light flow", "Bubbles", "Starlight", "Rain", "Fireflies", "Waves", "Sakura petals")
 
     private fun onOff(value: Boolean) = if (value) "on" else "off"
 
@@ -242,8 +243,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             cards = { listOf(typingCard(), typingToolsCard()) },
             advancedHint = "Clean up or clear learned words", advanced = { listOf(typingCleanupCard()) }, showsPreview = true),
         Topic("feedback", "📳", "Sound & vibration",
-            summary = { "Vibration ${onOff(prefs.haptics)} · sound ${onOff(prefs.sound)}" },
-            cards = { listOf(feedbackCard()) }),
+            summary = { "Vibration ${onOff(prefs.haptics)} · ${KeyFeel.names.getOrElse(prefs.keyFeel) { "Classic" }.substringBefore(" (")} feel · sound ${onOff(prefs.sound)}" },
+            cards = { listOf(feedbackCard()) }, showsPreview = true),
         Topic("extras", "🌐", "GIFs & translator",
             summary = { "GIFs ${onOff(prefs.gifsEnabled)} · translator ${onOff(prefs.translatorEnabled)}" },
             cards = { listOf(gifCard(), translatorCard()) }),
@@ -329,6 +330,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Clear learned words", "typing", "Cleanup", "forget reset"),
         Hit("Vibrate on key press", "feedback", "Sound & vibration", "haptics buzz"),
         Hit("Haptic style", "feedback", "Sound & vibration", "tick click heavy strength"),
+        Hit("Keyboard feel", "feedback", "Sound & vibration", "soft clicky mechanical silky thock haptic vibration"),
         Hit("Sound on key press", "feedback", "Sound & vibration", "volume click"),
         Hit("GIF search", "extras", "GIFs", "klipy api key"),
         Hit("Translator", "extras", "Translator", "mymemory language"),
@@ -1100,6 +1102,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         EffectLook("Dreamy", 2, 1),
         EffectLook("Rainy night", 4, 5),
         EffectLook("Fireflies", 8, 6),
+        EffectLook("Sakura", 9, 8),
         EffectLook("Ocean", 2, 7),
     )
 
@@ -1166,6 +1169,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     private fun feedbackCard() = card("Sound & vibration") {
         toggle("Vibrate on key press", null, prefs::haptics)
+        picker("Keyboard feel", KeyFeel.names, prefs.keyFeel) { prefs.keyFeel = it }
+        text("Soft, Clicky, Mechanical and Silky give each kind of key its own feel. Try them on the keyboard below.", secondary = true)
         segmented("Haptic style", listOf("Custom", "Tick", "Click", "Heavy"), prefs.hapticStyle) { prefs.hapticStyle = it }
         slider("Custom strength", 0, 100, prefs::hapticStrength) { "$it%" }
         text("Tick, Click and Heavy use your phone's built-in vibration effects (Android 10+). Strength applies to Custom.", secondary = true)
