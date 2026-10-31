@@ -82,3 +82,5 @@ of day, accessibility modes, Play Store publishing. Any of these can be added ba
 - Settings redesigned: home list with icons and live summaries, search, recently changed, grouped cards, collapsed Advanced sections, quick looks, and a preview only on appearance pages.
 - Rain, fireflies and waves glass animations.
 - Looks gallery (14 built-in looks as thumbnails, save and delete your own), long-press accent and symbol popups you can tune (accent languages, order, corner symbols, two-row menus), and a landscape keyboard height.
+- Add a word where you undo its autocorrection (an "Add “word”" chip), and tapping the quoted typed word adds it too, so nothing needs adding in Settings.
+- Clipboard Recent and Pinned tabs, pinned items and favorite GIFs in backups, favorite GIFs, smart paste, calculator and unit chips, and a required Settings smoke test in the build.
