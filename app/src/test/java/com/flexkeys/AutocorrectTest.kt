@@ -29,6 +29,18 @@ class AutocorrectTest {
     }
 
     @Test
+    fun fixesWordsWithTwoLettersLeftOut() {
+        val cases = mapOf(
+            "somthng" to "something", "probly" to "probably", "defintly" to "definitely",
+            "thnks" to "thanks", "wrld" to "world", "frends" to "friends", "evrything" to "everything",
+            "importnt" to "important", "comfrtable" to "comfortable", "diffrent" to "different",
+        )
+        val engine = TestData.engine()
+        val misses = cases.filter { (typed, want) -> fix(typed, engine)?.equals(want, ignoreCase = true) != true }
+        assertTrue("Not corrected as expected: $misses", misses.isEmpty())
+    }
+
+    @Test
     fun leavesCorrectWordsAlone() {
         val words = ("the quick brown fox jumps over lazy dog hello world please thanks sorry okay yes no maybe tonight " +
             "tomorrow today going coming sleep awake time waste your don't can't won't i'm it's that's lol yup nope " +

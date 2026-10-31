@@ -285,6 +285,18 @@ class SuggestionEngine internal constructor(
             }
         }
 
+        // Two letters left out ("somthng" -> "something"): look at words with the same first letter that contain
+        // everything typed, in order, plus one or two more letters. Only for words nothing else explained.
+        if (correctable && !hasCompletions && lower.length in 4..MISSING_LETTERS_MAX_LENGTH &&
+            !dictionary.contains(lower) && !isLearned(lower)) {
+            dictionary.forEachWithPrefix(lower.substring(0, 1)) { word, freq ->
+                val extra = word.length - lower.length
+                if (extra in 1..2 && isSubsequence(lower, word)) {
+                    add(word, score(word, freq, prev) - EDIT_WEIGHT * 0.95 * extra - 0.5, 0.95 * extra)
+                }
+            }
+        }
+
         val ranked = candidates.entries
             .filter { it.key != lower }
             .sortedByDescending { it.value.score }
@@ -458,6 +470,13 @@ class SuggestionEngine internal constructor(
         }
     }
 
+    /** True if every letter of [small] appears in [big], in the same order. */
+    private fun isSubsequence(small: String, big: String): Boolean {
+        var i = 0
+        for (c in big) if (i < small.length && small[i] == c) i++
+        return i == small.length
+    }
+
     private fun isNeighbor(a: Char, b: Char): Boolean = NEIGHBORS[a]?.indexOf(b)?.let { it >= 0 } ?: false
 
     companion object {
@@ -516,6 +535,7 @@ class SuggestionEngine internal constructor(
         private const val SPLIT_MIN_FREQ = 20_000
         /** Two-slip corrections are only tried on unknown words up to this long (they are the costly ones). */
         private const val TWO_SLIP_MAX_LENGTH = 10
+        private const val MISSING_LETTERS_MAX_LENGTH = 12
         private const val SHORT_PREFIX_MIN_FREQ = 3_000
         /** A dictionary word rarer than this might be two words stuck together. */
         private const val RARE_WORD_FREQ = 10_000
