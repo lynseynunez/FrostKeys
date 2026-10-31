@@ -90,7 +90,7 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: gradle assembleRelease -PappVersionName="$VERSION" -PappVersionCode="${{ github.run_number }}" --stacktrace
+        run: gradle assembleRelease -PappVersionName="$VERSION" -PappVersionCode="$(git rev-list --count HEAD)" --stacktrace
 
       - name: Name the APK
         run: cp app/build/outputs/apk/release/app-release.apk "SakuriKey-v${VERSION}.apk"

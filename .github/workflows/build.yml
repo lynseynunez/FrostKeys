@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the commit count below needs the whole history
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -36,7 +38,11 @@ jobs:
         run: gradle testDebugUnitTest -PsmokeOnly --stacktrace
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        # The version number is the commit count, so every later build (test or release) can be installed over an earlier one.
+        run: |
+          gradle assembleDebug --stacktrace \
+            -PappVersionCode="$(git rev-list --count HEAD)" \
+            -PappVersionName="$(tr -d ' \n\r' < release-version.txt)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
