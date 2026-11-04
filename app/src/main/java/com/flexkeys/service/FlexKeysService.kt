@@ -76,6 +76,25 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     private var passwordField = false
     private val snippets by lazy { SnippetStore.get(this) }
     private val composing = StringBuilder()
+    /** Where each letter of the composing word was tapped: fx, fy pairs; NaN where unknown. Kept in step with [composing] lazily. */
+    private val trail = ArrayList<Float>()
+    /** The tap position of the key being handled right now, if it is a letter tap. */
+    private var pendingTouch: FloatArray? = null
+    private var touchNow: FloatArray? = null
+
+    private fun syncTrail() {
+        val want = 2 * composing.length
+        while (trail.size > want) trail.removeAt(trail.size - 1)
+        while (trail.size < want) trail.add(Float.NaN)
+    }
+
+    /** The tap positions of the composing word for autocorrect, or null if none are known. */
+    private fun touchHints(): FloatArray? {
+        if (composing.isEmpty()) return null
+        syncTrail()
+        if (trail.none { !it.isNaN() }) return null
+        return trail.toFloatArray()
+    }
     private var selectionEnd = -1
     private var swipeAnchor = -1
     private var swipeText = ""
@@ -349,7 +368,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             val ctx = readContext(ic)
             // Gboard-style emoji suggestions for the word being typed or just typed.
             when {
-                composing.isNotEmpty() -> engine.suggest(composing.toString(), ctx.previous, correctionOn, ctx.sentenceStart).let { s ->
+                composing.isNotEmpty() -> engine.suggest(composing.toString(), ctx.previous, correctionOn, ctx.sentenceStart, touchHints()).let { s ->
                     EmojiIndex.forWord(composing.toString()).firstOrNull()?.let { s.withEmoji(EmojiIndex.displayFor(prefs, it)) } ?: s
                 }
                 ctx.afterSpace -> engine.predict(ctx.previous, ctx.sentenceStart).let { s ->
@@ -445,6 +464,12 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             return
         }
         val previous = readContext(ic).previous
+        // Typed X, tapped Y (not just finishing the word): remember it as your own fix.
+        val typedNow = composing.toString()
+        if (learningOn && typedNow.length >= 2 && index != suggestions.typedIndex &&
+            !text.startsWith(typedNow, ignoreCase = true) && !text.equals(typedNow, ignoreCase = true)) {
+            engine.fixes.record(typedNow, text)
+        }
         ic.beginBatchEdit()
         ic.commitText(text, 1) // Replaces the composing word, if any.
         ic.commitText(" ", 1)
@@ -724,16 +749,26 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
 
     override fun onKeyDown(key: KeyDef) = feedback.keyPress(key.type)
 
+    override fun onKeyTouch(fx: Float, fy: Float) {
+        pendingTouch = floatArrayOf(fx, fy)
+    }
+
     override fun onKey(key: KeyDef) {
-        if (!prefs.diagnostics) {
-            handleKey(key)
-            return
-        }
-        val start = System.nanoTime()
+        touchNow = pendingTouch
+        pendingTouch = null
         try {
-            handleKey(key)
+            if (!prefs.diagnostics) {
+                handleKey(key)
+                return
+            }
+            val start = System.nanoTime()
+            try {
+                handleKey(key)
+            } finally {
+                Diagnostics.recordKey(System.nanoTime() - start)
+            }
         } finally {
-            Diagnostics.recordKey(System.nanoTime() - start)
+            touchNow = null
         }
     }
 
@@ -870,7 +905,13 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         lastCorrection = null
         if (!composingIntact(ic)) composing.clear()
         if (predictionOn && isWordChar(text)) {
+            syncTrail()
             composing.append(text)
+            val t = touchNow
+            repeat(text.length) { i ->
+                trail.add(if (i == 0 && t != null) t[0] else Float.NaN)
+                trail.add(if (i == 0 && t != null) t[1] else Float.NaN)
+            }
             ic.setComposingText(composing, 1)
             pickedSuggestion = false
         } else {
@@ -898,6 +939,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     /** Commits the composing word, autocorrecting it if asked, and learns it. */
     private fun commitComposing(ic: InputConnection, autocorrect: Boolean, expand: Boolean = false) {
         val typed = composing.toString()
+        val hintsForTyped = touchHints()
         val phrase = if (expand) snippets.expansion(typed)?.let { SnippetVariables.expand(it, clipboard = latestClipText()) } else null
         if (phrase != null) {
             ic.commitText(phrase, 1)
@@ -911,7 +953,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         if (autocorrect) {
             val shownForThisWord = suggestions.typedIndex >= 0 &&
                 suggestions.slots.getOrNull(suggestions.typedIndex) == typed
-            val correction = if (shownForThisWord) suggestions.correction else engine.suggest(typed, previous, true, context?.sentenceStart ?: true).correction
+            val correction = if (shownForThisWord) suggestions.correction else engine.suggest(typed, previous, true, context?.sentenceStart ?: true, hintsForTyped).correction
             if (correction != null && correction != typed) {
                 final = correction
                 lastCorrection = Correction(typed, correction)
@@ -979,6 +1021,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 ic.commitText(correction.original + correction.separator, 1)
                 ic.endBatchEdit()
                 if (learningOn) engine.user.learn(correction.original, null, weight = 3)
+                engine.fixes.reject(correction.original, correction.corrected)
                 // Gboard-style: offer to add the word for good, so it never needs adding in Settings.
                 if (!passwordField && correction.original.any { it.isLetter() } && !engine.isKnown(correction.original)) {
                     learnOffer = correction.original
@@ -1021,6 +1064,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         ic.deleteSurroundingText(word.length, 0)
         ic.setComposingText(word, 1)
         ic.endBatchEdit()
+        syncTrail()
         composing.append(word)
     }
 

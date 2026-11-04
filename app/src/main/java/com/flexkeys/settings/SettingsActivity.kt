@@ -1164,6 +1164,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         buttons(Triple("Clear learned words", false) {
             confirm("Forget every word SakuriKey has learned from your typing?") {
                 SuggestionEngine.get(this@SettingsActivity).user.clear()
+                SuggestionEngine.get(this@SettingsActivity).fixes.clear()
                 toast("Learned words cleared")
             }
         })

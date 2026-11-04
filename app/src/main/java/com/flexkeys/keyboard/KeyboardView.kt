@@ -47,6 +47,12 @@ class KeyboardView(context: Context) : View(context) {
         /** A key went down. Used for haptics and sounds. */
         fun onKeyDown(key: KeyDef)
 
+        /**
+         * Where the finger was on a letter key just before [onKey]: how far right ([fx]) and down ([fy]) of the key's
+         * center, as fractions of its size (about -0.5 to 0.5). Lets autocorrect tell which neighbor a tap may have meant.
+         */
+        fun onKeyTouch(fx: Float, fy: Float) {}
+
         /** A key was tapped (or, for backspace, pressed and repeated while held). */
         fun onKey(key: KeyDef)
 
@@ -89,6 +95,9 @@ class KeyboardView(context: Context) : View(context) {
         var cursorAnchorX = downX
         var popup: Popup? = null
         var longPress: Runnable? = null
+        /** The last place the finger was, for how close to the key's edge the tap landed. */
+        var lastX = downX
+        var lastY = downY
     }
 
     /** A long-press menu laid out as [cols] columns; more than [POPUP_ONE_ROW_MAX] options wrap to a second row. */
@@ -759,6 +768,8 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun onPointerMove(id: Int, x: Float, y: Float) {
         val p = pointers[id] ?: return
+        p.lastX = x
+        p.lastY = y
         val popup = p.popup
         if (popup != null) {
             val idx = popup.indexAt(x, y)
@@ -838,7 +849,15 @@ class KeyboardView(context: Context) : View(context) {
                 listener?.onText(popup.options[popup.selected])
             }
             p.cursorMode && p.key.def.type == KeyType.BACKSPACE -> listener?.onBackspaceSwipeEnd()
-            !p.handled -> listener?.onKey(p.key.def)
+            !p.handled -> {
+                if (p.key.def.type == KeyType.CHAR && p.key.def.isLetter) {
+                    val c = p.key.cell
+                    if (c.width() > 0f && c.height() > 0f) {
+                        listener?.onKeyTouch((p.lastX - c.centerX()) / c.width(), (p.lastY - c.centerY()) / c.height())
+                    }
+                }
+                listener?.onKey(p.key.def)
+            }
         }
     }
 

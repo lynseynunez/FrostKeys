@@ -61,6 +61,8 @@ class SuggestionEngine internal constructor(
     val user: UserDictionary,
     /** Where the user's own autocorrect rules are read from; null means none (used by tests). */
     private val rulePrefs: Prefs? = null,
+    /** Fixes the user made by hand (typed X, tapped Y). */
+    val fixes: FixMemory = FixMemory(null),
 ) {
 
     @Volatile
@@ -97,7 +99,9 @@ class SuggestionEngine internal constructor(
             val typoMap = loadTypos(app)
             val pairs = loadBigrams(app)
             val learned = user.loadBlocking()
+            val ownFixes = fixes.loadBlocking()
             main.post {
+                fixes.install(ownFixes)
                 dictionary = dict
                 bigrams = pairs
                 typos = typoMap + PERSONAL_TYPOS
@@ -183,7 +187,7 @@ class SuggestionEngine internal constructor(
         if (dictionary.contains(w) || w.length < 3) return false
         return typoLikeCache.getOrPut(w) {
             var found = false
-            forEachEdit(w) { edit, _ ->
+            forEachEdit(w) { edit, _, _ ->
                 if (!found && dictionary.frequency(edit) >= TYPO_NEIGHBOR_FREQ) found = true
             }
             found
@@ -229,7 +233,7 @@ class SuggestionEngine internal constructor(
      * @param sentenceStart true when [typed] begins a sentence; a capitalized word elsewhere is
      * probably a name and is left alone.
      */
-    fun suggest(typed: String, prev: String?, allowCorrection: Boolean, sentenceStart: Boolean = true): Suggestions {
+    fun suggest(typed: String, prev: String?, allowCorrection: Boolean, sentenceStart: Boolean = true, touch: FloatArray? = null): Suggestions {
         if (typed.isEmpty()) return Suggestions.EMPTY
         refreshRules()
         val lower = typed.lowercase(Locale.ROOT)
@@ -260,10 +264,10 @@ class SuggestionEngine internal constructor(
             !hasInnerCapital(typed) && !(capitalized && !sentenceStart)
         if (correctable) {
             var bestEdit = Double.NEGATIVE_INFINITY
-            forEachEdit(lower) { edit, cost ->
+            forEachEdit(lower, touch) { edit, cost, bonus ->
                 val freq = dictionary.frequency(edit)
                 if (freq > 0 || isLearned(edit)) {
-                    val s = score(edit, freq, prev) - EDIT_WEIGHT * cost
+                    val s = score(edit, freq, prev) - EDIT_WEIGHT * cost + bonus
                     if (s > bestEdit) bestEdit = s
                     add(dictionary.displayForm(edit) ?: edit, s, cost)
                 }
@@ -271,7 +275,7 @@ class SuggestionEngine internal constructor(
             // Two slips in one word ("tgungs" -> "things"). Only when one edit found nothing good
             // and the word isn't the start of a real word, to keep typing fast.
             if (bestEdit < CORRECTION_THRESHOLD && !hasCompletions && lower.length in 4..TWO_SLIP_MAX_LENGTH && !dictionary.contains(lower)) {
-                forEachEdit(lower) { first, cost1 ->
+                forEachEdit(lower) { first, cost1, _ ->
                     forEachLikelySlip(first) { edit, cost2 ->
                         if (edit != lower) {
                             val freq = dictionary.frequency(edit)
@@ -295,6 +299,14 @@ class SuggestionEngine internal constructor(
                     add(word, score(word, freq, prev) - EDIT_WEIGHT * 0.95 * extra - 0.5, 0.95 * extra)
                 }
             }
+        }
+
+        // A fix the user made by hand before: offered once, applied on its own from the second time.
+        val remembered = if (correctable && !isLearned(lower)) fixes.preferred(lower)?.takeIf { isKnown(it.first) } else null
+        if (remembered != null) {
+            val shown = dictionary.displayForm(remembered.first) ?: remembered.first
+            // One earlier time puts it near the top without correcting; twice outranks everything else.
+            add(shown, if (remembered.second >= REMEMBERED_AUTO_COUNT) CORRECTION_THRESHOLD + 6.0 else CORRECTION_THRESHOLD - 0.05, 0.5)
         }
 
         val ranked = candidates.entries
@@ -343,6 +355,8 @@ class SuggestionEngine internal constructor(
         if (correction == null && correctable && prev != null) {
             ConfusableFixes.fix(lower, prev.lowercase(Locale.ROOT))?.let { correction = applyCase(it, typed) }
         }
+        // A fix the user made by hand twice is applied even to a word that is itself a real word.
+        if (remembered != null && remembered.second >= REMEMBERED_AUTO_COUNT) correction = applyCase(dictionary.displayForm(remembered.first) ?: remembered.first, typed)
         // The user's own fixes win over everything else.
         if (allowCorrection) customFixes[lower]?.let { correction = it }
         val others = ranked.map { applyCase(it.display, typed) }.filter { it != correction }
@@ -432,20 +446,27 @@ class SuggestionEngine internal constructor(
     }
 
     /** Enumerates single edits of [w] with a cost that favors likely typos on a phone keyboard. */
-    private inline fun forEachEdit(w: String, block: (String, Double) -> Unit) {
+    private inline fun forEachEdit(w: String, touch: FloatArray? = null, block: (String, Double, Double) -> Unit) {
         val n = w.length
         for (i in 0..n) {
             if (i < n) {
                 // Extra character; doubled letters are especially common.
-                block(w.removeRange(i, i + 1), if (i > 0 && w[i] == w[i - 1]) 0.5 else 0.9)
+                block(w.removeRange(i, i + 1), if (i > 0 && w[i] == w[i - 1]) 0.5 else 0.9, 0.0)
                 for (c in ALPHABET) {
                     if (c == w[i]) continue
-                    val cost = if (isNeighbor(w[i], c)) 0.6 else 1.0
-                    block(w.substring(0, i) + c + w.substring(i + 1), cost)
+                    val neighbor = isNeighbor(w[i], c)
+                    val cost = if (neighbor) 0.6 else 1.0
+                    // Where the finger landed: near the edge toward this neighbor makes it likelier, the middle of the key less so.
+                    var bonus = 0.0
+                    if (neighbor && touch != null && touch.size >= 2 * (i + 1)) {
+                        val lean = KeyGeometry.lean(w[i], c, touch[2 * i], touch[2 * i + 1])
+                        if (lean != null) bonus = EDIT_WEIGHT * 0.6 * lean
+                    }
+                    block(w.substring(0, i) + c + w.substring(i + 1), cost, bonus)
                 }
             }
             if (i < n - 1 && w[i] != w[i + 1]) {
-                block(w.substring(0, i) + w[i + 1] + w[i] + w.substring(i + 2), SWAP_COST)
+                block(w.substring(0, i) + w[i + 1] + w[i] + w.substring(i + 2), SWAP_COST, 0.0)
             }
             for (c in ALPHABET) {
                 // A missed apostrophe or a missed double letter are the most common slips.
@@ -455,7 +476,7 @@ class SuggestionEngine internal constructor(
                     doubled -> 0.35
                     else -> 0.95
                 }
-                block(w.substring(0, i) + c + w.substring(i), cost)
+                block(w.substring(0, i) + c + w.substring(i), cost, 0.0)
             }
         }
     }
@@ -535,6 +556,8 @@ class SuggestionEngine internal constructor(
         private const val SPLIT_MIN_FREQ = 20_000
         /** Two-slip corrections are only tried on unknown words up to this long (they are the costly ones). */
         private const val TWO_SLIP_MAX_LENGTH = 10
+        /** Times the user must fix a word the same way by hand before it is fixed automatically. */
+        private const val REMEMBERED_AUTO_COUNT = 2
         private const val MISSING_LETTERS_MAX_LENGTH = 12
         private const val SHORT_PREFIX_MIN_FREQ = 3_000
         /** A dictionary word rarer than this might be two words stuck together. */
@@ -568,7 +591,7 @@ class SuggestionEngine internal constructor(
 
         fun get(context: Context): SuggestionEngine =
             instance ?: synchronized(this) {
-                instance ?: SuggestionEngine(UserDictionary(context.applicationContext), Prefs.get(context.applicationContext))
+                instance ?: SuggestionEngine(UserDictionary(context.applicationContext), Prefs.get(context.applicationContext), FixMemory(context.applicationContext))
                     .also {
                         instance = it
                         it.loadAsync(context)
