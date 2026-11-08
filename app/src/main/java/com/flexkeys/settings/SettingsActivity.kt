@@ -92,6 +92,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     override fun onResume() {
         super.onResume()
         buildSetupCard()
+        preview.refreshRefraction()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

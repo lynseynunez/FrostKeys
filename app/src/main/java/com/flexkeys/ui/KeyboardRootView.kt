@@ -193,6 +193,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
         syncShimmer()
+        if (visibility == VISIBLE) refreshRefraction()
     }
 
     override fun onDetachedFromWindow() {
@@ -554,6 +555,26 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     private var refractionRetries = 0
+
+    /**
+     * Brings the refraction back after the keyboard was hidden and shown again (for example when switching apps). While it
+     * was hidden the keys count as not shown, which turns the effect off, and nothing else turns it on again until the
+     * layout changes.
+     */
+    fun refreshRefraction() {
+        refractionRetries = 0
+        post { updateRefraction() }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        refreshRefraction()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (visibility == VISIBLE) refreshRefraction()
+    }
 
     /** Redraws now and on the next two frames, so a changed effect always shows without waiting for a key press. */
     private fun redrawRefraction() {

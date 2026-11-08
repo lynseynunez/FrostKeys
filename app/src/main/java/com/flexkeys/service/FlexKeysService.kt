@@ -193,6 +193,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     override fun onWindowShown() {
         super.onWindowShown()
         drawBehindNavigationBar()
+        root?.refreshRefraction()
     }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
@@ -226,6 +227,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         root?.cancelEmojiSearch()
         root?.showPanel(KeyboardRootView.Panel.NONE)
         refreshKeyboard()
+        root?.refreshRefraction()
         updateShiftState()
         updateSuggestions()
         VoiceBridge.take()?.let { insertSpoken(it) }
