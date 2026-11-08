@@ -49,6 +49,12 @@ object Diagnostics {
     /** What the keyboard last learned about the text field it is typing into, shown at the top of the report. */
     @Volatile private var lastField: String = "none yet"
 
+    @Volatile private var refractionState: String = "unknown"
+
+    fun noteRefraction(state: String) {
+        refractionState = state
+    }
+
     fun noteField(description: String) {
         lastField = description
     }
@@ -127,7 +133,8 @@ object Diagnostics {
         sb.append("SakuriKey ").append(version(context)).append('\n')
         sb.append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append(", Android ").append(Build.VERSION.RELEASE)
             .append(" (API ").append(Build.VERSION.SDK_INT).append(")\n\n")
-        sb.append("Last text field: ").append(lastField).append("\n\n")
+        sb.append("Last text field: ").append(lastField).append('\n')
+        sb.append("Liquid refraction: ").append(refractionState).append("\n\n")
         if (key.count == 0) {
             sb.append("No typing recorded yet. Turn recording on, type for a while, then come back.\n")
         } else {

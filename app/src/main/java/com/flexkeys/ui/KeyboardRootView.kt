@@ -518,6 +518,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         val onlySpace = !layoutPrefs.refraction
         if ((onlySpace && !layoutPrefs.liquidSpace) || !showingKeys) {
             backdrop.setRefraction(false, FloatArray(0), 0, 0f, 0f, 0f)
+            redrawRefraction()
             return
         }
         val offset = PointF()
@@ -536,16 +537,30 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             }
         }
         if (n == 0) {
+            // The keys are not laid out yet: try again in a moment instead of leaving refraction off.
             backdrop.setRefraction(false, rects, 0, 0f, 0f, 0f)
+            redrawRefraction()
+            postDelayed({ if (refractionRetries++ < 5) updateRefraction() }, 120L)
             return
         }
+        refractionRetries = 0
         val droplet = layoutPrefs.refractionStyle == 0
         // The droplet look reaches further in and bends a bit less, so it reads as a smooth lens, not a ring.
         val bevel = (minSide * (if (droplet) 0.46f else 0.34f)).coerceAtLeast(theme.dp(6f))
         val s = layoutPrefs.refractionStrength.coerceIn(0, 100) / 100f
         val bend = bevel * (if (droplet) 0.10f + 0.55f * s else 0.15f + 0.75f * s)
         backdrop.setRefraction(true, rects, n, theme.cornerRadiusPx.coerceAtMost(minSide / 2f), bevel, bend, droplet)
+        redrawRefraction()
+    }
+
+    private var refractionRetries = 0
+
+    /** Redraws now and on the next two frames, so a changed effect always shows without waiting for a key press. */
+    private fun redrawRefraction() {
+        com.flexkeys.diagnostics.Diagnostics.noteRefraction(backdrop.refractionStatus())
         invalidate()
+        postInvalidateOnAnimation()
+        postDelayed({ invalidate() }, 50L)
     }
 
     private var bottomPadding = 0
