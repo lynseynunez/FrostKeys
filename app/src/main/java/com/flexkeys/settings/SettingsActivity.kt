@@ -287,6 +287,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Gradient glow", "colors", "Glass"),
         Hit("Liquid refraction", "colors", "Glass", "bend beta lens droplets water"),
         Hit("Refraction look", "colors", "Glass", "water droplets crisp glass soft"),
+        Hit("Liquid space bar", "colors", "Glass", "spacebar droplet always refraction"),
         Hit("Quick looks", "effects", "Quick looks", "preset combo"),
         Hit("Key press color", "effects", "Typing effects", "highlight"),
         Hit("Key motion", "effects", "Typing effects", "sink pop bounce tilt float"),
@@ -991,7 +992,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            toggle("Liquid refraction (beta)", "Bends the blurred background around every key, like light through thick glass", prefs::refraction)
+            toggle("Liquid space bar", "The space bar is always water-droplet glass, even with refraction off for the other keys", prefs::liquidSpace)
+            toggle("Liquid refraction (beta)", "Every key bends the blurred background like light through thick glass", prefs::refraction)
             segmented("Refraction look", listOf("Water droplets", "Crisp glass"), prefs.refractionStyle) { prefs.refractionStyle = it }
             slider("Refraction strength", 0, 100, prefs::refractionStrength) { "$it%" }
         } else {

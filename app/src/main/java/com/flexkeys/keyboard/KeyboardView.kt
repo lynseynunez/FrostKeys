@@ -221,6 +221,11 @@ class KeyboardView(context: Context) : View(context) {
         for (k in keys) block(k.visual)
     }
 
+    /** Like [forEachKeyRect], but also says what kind of key each is, so the space bar can be treated on its own. */
+    fun forEachKey(block: (KeyType, RectF) -> Unit) {
+        for (k in keys) block(k.def.type, k.visual)
+    }
+
     private fun layoutKeys() {
         keys.clear()
         val def = layout ?: return

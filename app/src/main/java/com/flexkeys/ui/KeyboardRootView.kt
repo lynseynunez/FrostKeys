@@ -514,7 +514,9 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     private fun updateRefraction() {
         if (Build.VERSION.SDK_INT < 33) return
         val showingKeys = panel == Panel.NONE && keyboardView.isShown
-        if (!layoutPrefs.refraction || !showingKeys) {
+        // With refraction on every key is liquid glass; with it off the space bar can still be.
+        val onlySpace = !layoutPrefs.refraction
+        if ((onlySpace && !layoutPrefs.liquidSpace) || !showingKeys) {
             backdrop.setRefraction(false, FloatArray(0), 0, 0f, 0f, 0f)
             return
         }
@@ -523,8 +525,8 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
         val rects = FloatArray(RefractionShader.MAX_RECTS * 4)
         var n = 0
         var minSide = Float.MAX_VALUE
-        keyboardView.forEachKeyRect { r ->
-            if (n < RefractionShader.MAX_RECTS) {
+        keyboardView.forEachKey { type, r ->
+            if (n < RefractionShader.MAX_RECTS && (!onlySpace || type == com.flexkeys.layout.KeyType.SPACE)) {
                 rects[n * 4] = r.left + offset.x
                 rects[n * 4 + 1] = r.top + offset.y
                 rects[n * 4 + 2] = r.right + offset.x
