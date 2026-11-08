@@ -285,7 +285,8 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Glass opacity", "colors", "Glass", "transparency see through"),
         Hit("Blur", "colors", "Glass", "frosted"),
         Hit("Gradient glow", "colors", "Glass"),
-        Hit("Liquid refraction", "colors", "Glass", "bend beta lens"),
+        Hit("Liquid refraction", "colors", "Glass", "bend beta lens droplets water"),
+        Hit("Refraction look", "colors", "Glass", "water droplets crisp glass soft"),
         Hit("Quick looks", "effects", "Quick looks", "preset combo"),
         Hit("Key press color", "effects", "Typing effects", "highlight"),
         Hit("Key motion", "effects", "Typing effects", "sink pop bounce tilt float"),
@@ -991,6 +992,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             toggle("Liquid refraction (beta)", "Bends the blurred background around every key, like light through thick glass", prefs::refraction)
+            segmented("Refraction look", listOf("Water droplets", "Crisp glass"), prefs.refractionStyle) { prefs.refractionStyle = it }
             slider("Refraction strength", 0, 100, prefs::refractionStrength) { "$it%" }
         } else {
             text("Liquid refraction needs Android 13 or newer.", secondary = true)

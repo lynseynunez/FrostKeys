@@ -148,6 +148,8 @@ class Prefs private constructor(context: Context) {
     /** Liquid refraction around every key (Android 13+). Off by default. */
     var refraction by bool(KEY_REFRACTION, false)
     var refractionStrength by int(KEY_REFRACTION_STRENGTH, 55)
+    /** 0: soft water droplets (default), 1: the crisp glass look. */
+    var refractionStyle by int(KEY_REFRACTION_STYLE, 0)
     /** One switch that turns off sensor-driven shifts, looping glass animations and typing effects. */
     var reduceMotion by bool(KEY_REDUCE_MOTION, false)
     /** Also rest the effects when Android's "Remove animations" setting is on. */
@@ -306,6 +308,7 @@ class Prefs private constructor(context: Context) {
         const val KEY_SPOTLIGHT_CYCLE = "spotlight_cycle"
         const val KEY_REFRACTION = "refraction"
         const val KEY_REFRACTION_STRENGTH = "refraction_strength"
+        const val KEY_REFRACTION_STYLE = "refraction_style"
         const val KEY_REDUCE_MOTION = "reduce_motion"
         const val KEY_FOLLOW_SYSTEM_MOTION = "follow_system_motion"
         const val KEY_SHIMMER = "shimmer"
@@ -338,7 +341,7 @@ class Prefs private constructor(context: Context) {
             KEY_SPLIT_KEYS, KEY_SPLIT_GAP, KEY_THEME_MODE, KEY_ACCENT, KEY_BG_OPACITY,
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
             KEY_SPACE_GLASS, KEY_SPACE_STYLE, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
-            KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_REFRACTION, KEY_REFRACTION_STRENGTH, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,
+            KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_REFRACTION, KEY_REFRACTION_STRENGTH, KEY_REFRACTION_STYLE, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,
         )
 
         @Volatile private var instance: Prefs? = null

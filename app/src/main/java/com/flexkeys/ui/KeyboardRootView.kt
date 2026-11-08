@@ -537,9 +537,12 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             backdrop.setRefraction(false, rects, 0, 0f, 0f, 0f)
             return
         }
-        val bevel = (minSide * 0.34f).coerceAtLeast(theme.dp(6f))
+        val droplet = layoutPrefs.refractionStyle == 0
+        // The droplet look reaches further in and bends a bit less, so it reads as a smooth lens, not a ring.
+        val bevel = (minSide * (if (droplet) 0.46f else 0.34f)).coerceAtLeast(theme.dp(6f))
         val s = layoutPrefs.refractionStrength.coerceIn(0, 100) / 100f
-        backdrop.setRefraction(true, rects, n, theme.cornerRadiusPx.coerceAtMost(minSide / 2f), bevel, bevel * (0.15f + 0.75f * s))
+        val bend = bevel * (if (droplet) 0.10f + 0.55f * s else 0.15f + 0.75f * s)
+        backdrop.setRefraction(true, rects, n, theme.cornerRadiusPx.coerceAtMost(minSide / 2f), bevel, bend, droplet)
         invalidate()
     }
 
