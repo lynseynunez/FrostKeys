@@ -36,10 +36,13 @@ object TestData {
     }
 
     /** A fresh engine with nothing learned. */
-    fun engine(fixes: com.flexkeys.suggest.FixMemory = com.flexkeys.suggest.FixMemory(null)): SuggestionEngine {
+    fun engine(
+        fixes: com.flexkeys.suggest.FixMemory = com.flexkeys.suggest.FixMemory(null),
+        habits: com.flexkeys.suggest.HabitMemory = com.flexkeys.suggest.HabitMemory(null),
+    ): SuggestionEngine {
         val file = File.createTempFile("user_words", ".tsv").apply { delete(); deleteOnExit() }
         val user = UserDictionary(file)
         user.install(emptyMap<String, Int>() to emptyMap())
-        return SuggestionEngine(user, null, fixes).also { it.setData(dictionary, typos, bigrams) }
+        return SuggestionEngine(user, null, fixes, habits).also { it.setData(dictionary, typos, bigrams) }
     }
 }

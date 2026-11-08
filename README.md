@@ -20,6 +20,7 @@ Groq or Gemini key; only the text you choose to rewrite).
 - Voice typing: the mic button uses your phone's own speech recognizer (no microphone permission needed)
 - Undo an autocorrection with backspace and an "Add “word”" chip appears: tap it and the word is never corrected again (it is also added to Settings > Typing > Autocorrect list). Tapping the quoted typed word does the same.
 - Autocorrect uses where your finger landed on the key (a tap near the edge toward a neighbor makes that neighbor likelier) and learns fixes you make by hand (type X, tap suggestion Y: offered next time, applied on its own the second time; undoing an autocorrection forgets it). Both stay on the phone
+- My typing habits (Settings > Typing): the keyboard learns which letters you mix up (they are corrected more readily), turns a period typed where a space was meant ("bro.what") back into a space unless it looks like a real period (web addresses, abbreviations, numbers), pauses that fix itself if you keep undoing it, and shows what it noticed. All on the phone; Forget my habits clears it
 - Sakura petals: a glass animation (petals drift, sway and tumble; tilt blows them, typing hard stirs a gust) and a typing effect (petals fly from each key), and the Sakura look uses both
 - Sakura + spotlight: the petal effect with the key spotlight's colored glow, and the petals take the spotlight colors you picked
 - Keyboard feel presets (Soft, Clicky, Mechanical, Silky): each kind of key gets its own vibration pattern, no sounds

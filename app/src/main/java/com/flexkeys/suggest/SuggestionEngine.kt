@@ -63,6 +63,8 @@ class SuggestionEngine internal constructor(
     private val rulePrefs: Prefs? = null,
     /** Fixes the user made by hand (typed X, tapped Y). */
     val fixes: FixMemory = FixMemory(null),
+    /** How this person types: letters they mix up, stray periods, missed spaces. */
+    val habits: HabitMemory = HabitMemory(null),
 ) {
 
     @Volatile
@@ -100,8 +102,10 @@ class SuggestionEngine internal constructor(
             val pairs = loadBigrams(app)
             val learned = user.loadBlocking()
             val ownFixes = fixes.loadBlocking()
+            val ownHabits = habits.loadBlocking()
             main.post {
                 fixes.install(ownFixes)
+                habits.install(ownHabits)
                 dictionary = dict
                 bigrams = pairs
                 typos = typoMap + PERSONAL_TYPOS
@@ -148,6 +152,8 @@ class SuggestionEngine internal constructor(
     private var rulesRawProtected = ""
     private var rulesRawFixes = ""
     private var protectedWords: Set<String> = emptySet()
+    /** Whether learned typing habits count in this lookup (the setting, read once per lookup). */
+    private var habitsOn = true
     private var customFixes: Map<String, String> = emptyMap()
 
     private fun refreshRules() {
@@ -236,6 +242,7 @@ class SuggestionEngine internal constructor(
     fun suggest(typed: String, prev: String?, allowCorrection: Boolean, sentenceStart: Boolean = true, touch: FloatArray? = null): Suggestions {
         if (typed.isEmpty()) return Suggestions.EMPTY
         refreshRules()
+        habitsOn = rulePrefs?.learnHabits ?: true
         val lower = typed.lowercase(Locale.ROOT)
         val candidates = HashMap<String, Candidate>()
         fun add(display: String, s: Double, cost: Double) {
@@ -462,6 +469,8 @@ class SuggestionEngine internal constructor(
                         val lean = KeyGeometry.lean(w[i], c, touch[2 * i], touch[2 * i + 1])
                         if (lean != null) bonus = EDIT_WEIGHT * 0.6 * lean
                     }
+                    // A slip this person makes often (m where they meant n) is likelier than the same slip from anyone.
+                    if (habitsOn) bonus += habits.bonus(w[i], c)
                     block(w.substring(0, i) + c + w.substring(i + 1), cost, bonus)
                 }
             }
@@ -591,7 +600,7 @@ class SuggestionEngine internal constructor(
 
         fun get(context: Context): SuggestionEngine =
             instance ?: synchronized(this) {
-                instance ?: SuggestionEngine(UserDictionary(context.applicationContext), Prefs.get(context.applicationContext), FixMemory(context.applicationContext))
+                instance ?: SuggestionEngine(UserDictionary(context.applicationContext), Prefs.get(context.applicationContext), FixMemory(context.applicationContext), HabitMemory(context.applicationContext))
                     .also {
                         instance = it
                         it.loadAsync(context)

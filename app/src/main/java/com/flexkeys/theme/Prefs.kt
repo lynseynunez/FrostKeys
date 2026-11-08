@@ -70,6 +70,10 @@ class Prefs private constructor(context: Context) {
     // ---- typing ----
     /** Suggest and autocorrect even in fields whose app asks for no suggestions (password, web address and email fields stay excluded). */
     var ignoreNoSuggestions by bool(KEY_IGNORE_NO_SUGGESTIONS, true)
+    /** Learn from how I type (which letters I mix up, stray periods, missed spaces), on this phone only. */
+    var learnHabits by bool(KEY_LEARN_HABITS, true)
+    /** Turn a period typed straight after a word, with no space, into a space when it looks like a slip. */
+    var fixStrayPeriod by bool(KEY_FIX_STRAY_PERIOD, true)
     var suggestions by bool(KEY_SUGGESTIONS, true)
     var autocorrect by bool(KEY_AUTOCORRECT, true)
     var autoCapitalize by bool(KEY_AUTOCAP, true)
@@ -267,6 +271,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_SMART_CLIPS = "smart_clips"
         const val KEY_CALCULATOR = "calculator"
         const val KEY_KEY_FEEL = "key_feel"
+        const val KEY_LEARN_HABITS = "learn_habits"
+        const val KEY_FIX_STRAY_PERIOD = "fix_stray_period"
         const val KEY_IGNORE_NO_SUGGESTIONS = "ignore_no_suggestions"
         const val KEY_MY_LOOKS = "my_looks"
         const val KEY_ACCENT_POPUPS = "accent_popups"

@@ -11,6 +11,13 @@ object KeyGeometry {
         "zxcvbnm".forEachIndexed { i, c -> put(c, i + 1.5f to 2f) }
     }
 
+    /** The distance between two letter keys in key widths, or null if either is not a letter key. */
+    fun distance(a: Char, b: Char): Float? {
+        val p = positions[a.lowercaseChar()] ?: return null
+        val q = positions[b.lowercaseChar()] ?: return null
+        return hypot(q.first - p.first, q.second - p.second)
+    }
+
     /** The unit direction (x to the right, y downward) from key [from] to key [to], or null if either is not a letter key. */
     fun direction(from: Char, to: Char): Pair<Float, Float>? {
         val a = positions[from.lowercaseChar()] ?: return null

@@ -240,7 +240,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             advancedHint = "Width, position, split keys", advanced = { listOf(widthCard()) }, showsPreview = true),
         Topic("typing", "✍️", "Typing",
             summary = { "Autocorrect ${onOff(prefs.autocorrect)} · suggestions ${onOff(prefs.suggestions)}" },
-            cards = { listOf(typingCard(), typingToolsCard()) },
+            cards = { listOf(typingCard(), typingHabitsCard(), typingToolsCard()) },
             advancedHint = "Clean up or clear learned words", advanced = { listOf(typingCleanupCard()) }, showsPreview = true),
         Topic("feedback", "📳", "Sound & vibration",
             summary = { "Vibration ${onOff(prefs.haptics)} · ${KeyFeel.names.getOrElse(prefs.keyFeel) { "Classic" }.substringBefore(" (")} feel · sound ${onOff(prefs.sound)}" },
@@ -322,6 +322,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Auto-capitalization", "typing", "Typing", "capital"),
         Hit("Double-space period", "typing", "Typing"),
         Hit("Smart paste", "typing", "Typing", "email phone link clipboard suggestion"),
+        Hit("My typing habits", "typing", "My typing habits", "learn adapt personal mix up letters"),
+        Hit("Fix a period typed instead of a space", "typing", "My typing habits", "stray period missed space bro.what"),
+        Hit("Forget my habits", "typing", "My typing habits", "reset clear"),
         Hit("Calculator and unit chips", "typing", "Typing", "math convert km miles kg lb temperature"),
         Hit("Autocorrect list", "typing", "My words & tools", "protected always change"),
         Hit("Learned words", "typing", "My words & tools", "manage"),
@@ -1142,6 +1145,33 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Calculator and unit chips", "Type 12*8 or 5 km and tap the answer in the suggestion bar", prefs::calculator)
     }
 
+    private fun typingHabitsCard() = card("My typing habits") {
+        text("SakuriKey notices how you type and adjusts, on this phone only: letters you often mix up are corrected more readily, and a period typed where a space was meant is turned back into a space.", secondary = true)
+        toggle("Learn my typing habits", "Letters I mix up, stray periods and missed spaces", prefs::learnHabits)
+        toggle("Fix a period typed instead of a space", "\"bro.what\" becomes \"bro what\". Backspace right after undoes it, and it pauses itself if you keep undoing it.", prefs::fixStrayPeriod)
+        val habits = SuggestionEngine.get(this@SettingsActivity).habits.insights()
+        val lines = ArrayList<String>()
+        if (habits.periodFixed + habits.periodUndone > 0) {
+            val after = if (habits.periodLetters.isEmpty()) "" else ", most often after " + habits.periodLetters.joinToString(", ") { "\"$it\"" }
+            lines.add("Stray periods fixed: ${habits.periodFixed}$after" + if (habits.periodUndone > 0) " (you undid ${habits.periodUndone})" else "")
+            if (habits.periodPaused) lines.add("The period fix is paused because you undid it often. Turn it off and on again to restart it.")
+        }
+        if (habits.splitFixed + habits.splitUndone > 0) {
+            lines.add("Words typed without a space, split for you: ${habits.splitFixed}" + if (habits.splitUndone > 0) " (you undid ${habits.splitUndone})" else "")
+        }
+        if (habits.mixUps.isNotEmpty()) {
+            lines.add("Letters you mix up most: " + habits.mixUps.joinToString(", ") { "${it.first}→${it.second} (${it.third}×)" })
+        }
+        text(if (lines.isEmpty()) "Nothing learned yet. Keep typing and this fills in." else lines.joinToString("\n"), secondary = true)
+        buttons(Triple("Forget my habits", false) {
+            confirm("Forget everything SakuriKey learned about how you type?") {
+                SuggestionEngine.get(this@SettingsActivity).habits.clear()
+                toast("Habits forgotten")
+                refreshPage()
+            }
+        })
+    }
+
     private fun typingToolsCard() = card("My words & tools") {
         buttons(Triple("Autocorrect list (leave alone / always fix)", true) {
             startActivity(Intent(this@SettingsActivity, CorrectionsActivity::class.java))
@@ -1165,6 +1195,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             confirm("Forget every word SakuriKey has learned from your typing?") {
                 SuggestionEngine.get(this@SettingsActivity).user.clear()
                 SuggestionEngine.get(this@SettingsActivity).fixes.clear()
+                SuggestionEngine.get(this@SettingsActivity).habits.clear()
                 toast("Learned words cleared")
             }
         })

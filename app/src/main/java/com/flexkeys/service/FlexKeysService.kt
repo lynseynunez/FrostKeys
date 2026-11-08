@@ -40,8 +40,10 @@ import com.flexkeys.settings.PhrasesActivity
 import com.flexkeys.settings.SettingsActivity
 import com.flexkeys.settings.StickersActivity
 import com.flexkeys.suggest.CalcHit
+import com.flexkeys.suggest.HabitMemory
 import com.flexkeys.suggest.SmartClip
 import com.flexkeys.suggest.SmartText
+import com.flexkeys.suggest.SpaceSlips
 import com.flexkeys.suggest.SuggestionEngine
 import com.flexkeys.suggest.SuggestionStripView
 import com.flexkeys.suggest.Suggestions
@@ -105,7 +107,15 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
     /** A suggestion was just committed together with an automatic space. */
     private var pickedSuggestion = false
 
-    private data class Correction(val original: String, val corrected: String, var separator: String = "")
+    private data class Correction(
+        val original: String, val corrected: String, var separator: String = "",
+        /** What kind of change this was, so undoing it teaches the right thing. */
+        val kind: Kind = Kind.WORD,
+        /** For a one-letter slip fixed: the letter typed and the letter meant. */
+        val slip: Pair<Char, Char>? = null,
+    ) {
+        enum class Kind { WORD, PERIOD, SPLIT }
+    }
 
     private lateinit var clipboard: ClipboardManager
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { captureClip() }
@@ -469,6 +479,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         if (learningOn && typedNow.length >= 2 && index != suggestions.typedIndex &&
             !text.startsWith(typedNow, ignoreCase = true) && !text.equals(typedNow, ignoreCase = true)) {
             engine.fixes.record(typedNow, text)
+            if (prefs.learnHabits) oneLetterSlipOf(typedNow, text)?.let { engine.habits.recordConfusion(it.first, it.second, weight = 2) }
         }
         ic.beginBatchEdit()
         ic.commitText(text, 1) // Replaces the composing word, if any.
@@ -936,6 +947,20 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         updateSuggestions()
     }
 
+    /** If [corrected] differs from [typed] by exactly one swapped-in letter, the letter typed and the letter meant. */
+    private fun oneLetterSlipOf(typed: String, corrected: String): Pair<Char, Char>? {
+        if (typed.length != corrected.length) return null
+        var found: Pair<Char, Char>? = null
+        for (i in typed.indices) {
+            val a = typed[i].lowercaseChar()
+            val b = corrected[i].lowercaseChar()
+            if (a == b) continue
+            if (found != null || a !in 'a'..'z' || b !in 'a'..'z') return null
+            found = a to b
+        }
+        return found
+    }
+
     /** Commits the composing word, autocorrecting it if asked, and learns it. */
     private fun commitComposing(ic: InputConnection, autocorrect: Boolean, expand: Boolean = false) {
         val typed = composing.toString()
@@ -950,13 +975,42 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         val context = if (learningOn || autocorrect) readContext(ic) else null
         val previous = context?.previous
         var final = engine.displayForm(typed)
+        var oneLetterSlip: Pair<Char, Char>? = null
         if (autocorrect) {
             val shownForThisWord = suggestions.typedIndex >= 0 &&
                 suggestions.slots.getOrNull(suggestions.typedIndex) == typed
             val correction = if (shownForThisWord) suggestions.correction else engine.suggest(typed, previous, true, context?.sentenceStart ?: true, hintsForTyped).correction
             if (correction != null && correction != typed) {
                 final = correction
-                lastCorrection = Correction(typed, correction)
+                oneLetterSlip = oneLetterSlipOf(typed, correction)
+                val split = correction.contains(' ') && !typed.contains(' ')
+                lastCorrection = Correction(typed, correction, kind = if (split) Correction.Kind.SPLIT else Correction.Kind.WORD, slip = oneLetterSlip)
+                if (prefs.learnHabits && learningOn) {
+                    oneLetterSlip?.let { engine.habits.recordConfusion(it.first, it.second) }
+                    if (split) engine.habits.add(HabitMemory.SPLIT_FIXED)
+                }
+            }
+        }
+        // A period typed where a space was meant ("bro.what" -> "bro what"), unless it looks like a real period.
+        if (autocorrect && correctionOn && learningOn && prefs.fixStrayPeriod && prefs.learnHabits && typed.length >= 2 && !engine.habits.periodFixPaused()) {
+            val before = ic.getTextBeforeCursor(typed.length + 40, 0)?.toString()
+            if (before != null && before.endsWith(typed)) {
+                val slip = SpaceSlips.periodSlip(before.dropLast(typed.length), typed) { engine.isKnown(it) }
+                if (slip != null) {
+                    // The word is lowercase unless it is always capitalized: the capital came from the period before it.
+                    val shown = if (final.length > 1 && final[0].isUpperCase() && final.drop(1).none { it.isUpperCase() }) engine.displayForm(final.lowercase()) else final
+                    ic.beginBatchEdit()
+                    ic.finishComposingText()
+                    ic.deleteSurroundingText(typed.length + 1, 0)
+                    ic.commitText(" $shown", 1)
+                    ic.endBatchEdit()
+                    composing.clear()
+                    lastCorrection = Correction(".$typed", " $shown", kind = Correction.Kind.PERIOD)
+                    engine.habits.add(HabitMemory.PERIOD_FIXED)
+                    engine.habits.noteStrayPeriodAfter(slip.previousWord.last())
+                    if (learningOn) engine.learn(shown, null)
+                    return
+                }
             }
         }
         ic.commitText(final, 1)
@@ -1020,11 +1074,20 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 ic.deleteSurroundingText(committed.length, 0)
                 ic.commitText(correction.original + correction.separator, 1)
                 ic.endBatchEdit()
-                if (learningOn) engine.user.learn(correction.original, null, weight = 3)
-                engine.fixes.reject(correction.original, correction.corrected)
-                // Gboard-style: offer to add the word for good, so it never needs adding in Settings.
-                if (!passwordField && correction.original.any { it.isLetter() } && !engine.isKnown(correction.original)) {
-                    learnOffer = correction.original
+                if (correction.kind == Correction.Kind.PERIOD) {
+                    // It was a real period after all: remember, and the fix pauses itself if this keeps happening.
+                    if (prefs.learnHabits) engine.habits.add(HabitMemory.PERIOD_UNDONE)
+                } else {
+                    if (learningOn) engine.user.learn(correction.original, null, weight = 3)
+                    engine.fixes.reject(correction.original, correction.corrected)
+                    if (prefs.learnHabits) {
+                        correction.slip?.let { engine.habits.forgetConfusion(it.first, it.second) }
+                        if (correction.kind == Correction.Kind.SPLIT) engine.habits.add(HabitMemory.SPLIT_UNDONE)
+                    }
+                    // Gboard-style: offer to add the word for good, so it never needs adding in Settings.
+                    if (!passwordField && correction.original.any { it.isLetter() } && !engine.isKnown(correction.original)) {
+                        learnOffer = correction.original
+                    }
                 }
                 updateShiftState()
                 updateSuggestions()
