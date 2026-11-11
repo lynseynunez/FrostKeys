@@ -65,6 +65,8 @@ class SuggestionEngine internal constructor(
     val fixes: FixMemory = FixMemory(null),
     /** How this person types: letters they mix up, stray periods, missed spaces. */
     val habits: HabitMemory = HabitMemory(null),
+    /** A short private record of what autocorrect did and whether it was undone. */
+    val log: AutocorrectLog = AutocorrectLog(null),
 ) {
 
     @Volatile
@@ -103,9 +105,11 @@ class SuggestionEngine internal constructor(
             val learned = user.loadBlocking()
             val ownFixes = fixes.loadBlocking()
             val ownHabits = habits.loadBlocking()
+            val ownLog = log.loadBlocking()
             main.post {
                 fixes.install(ownFixes)
                 habits.install(ownHabits)
+                log.install(ownLog)
                 dictionary = dict
                 bigrams = pairs
                 typos = typoMap + PERSONAL_TYPOS
@@ -154,6 +158,7 @@ class SuggestionEngine internal constructor(
     private var protectedWords: Set<String> = emptySet()
     /** Whether learned typing habits count in this lookup (the setting, read once per lookup). */
     private var habitsOn = true
+    private var careful = 0.0
     private var customFixes: Map<String, String> = emptyMap()
 
     private fun refreshRules() {
@@ -243,6 +248,8 @@ class SuggestionEngine internal constructor(
         if (typed.isEmpty()) return Suggestions.EMPTY
         refreshRules()
         habitsOn = rulePrefs?.learnHabits ?: true
+        // Many recent changes undone: ask for more confidence before changing a word, until it settles.
+        careful = if (rulePrefs?.autoTune ?: true) log.carefulness() else 0.0
         val lower = typed.lowercase(Locale.ROOT)
         val candidates = HashMap<String, Candidate>()
         fun add(display: String, s: Double, cost: Double) {
@@ -328,7 +335,7 @@ class SuggestionEngine internal constructor(
             correction = applyCase(typoFix, typed)
         } else if (correctable) {
             // Capitalized words are often names, so they need a clearer win to be changed.
-            var threshold = if (capitalized) CORRECTION_THRESHOLD + 2.0 else CORRECTION_THRESHOLD
+            var threshold = (if (capitalized) CORRECTION_THRESHOLD + 2.0 else CORRECTION_THRESHOLD) + careful
             // A long misspelled word with one clearly best match can be fixed on a lower score.
             val lead = if (ranked.size > 1) ranked[0].score - ranked[1].score else Double.MAX_VALUE
             if (lower.length >= LONG_WORD_LENGTH && lead >= LONG_WORD_LEAD) threshold -= LONG_WORD_THRESHOLD_DISCOUNT
@@ -600,7 +607,7 @@ class SuggestionEngine internal constructor(
 
         fun get(context: Context): SuggestionEngine =
             instance ?: synchronized(this) {
-                instance ?: SuggestionEngine(UserDictionary(context.applicationContext), Prefs.get(context.applicationContext), FixMemory(context.applicationContext), HabitMemory(context.applicationContext))
+                instance ?: SuggestionEngine(UserDictionary(context.applicationContext), Prefs.get(context.applicationContext), FixMemory(context.applicationContext), HabitMemory(context.applicationContext), AutocorrectLog(context.applicationContext))
                     .also {
                         instance = it
                         it.loadAsync(context)

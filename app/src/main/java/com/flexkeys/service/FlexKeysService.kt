@@ -39,6 +39,7 @@ import com.flexkeys.phrases.SnippetStore
 import com.flexkeys.settings.PhrasesActivity
 import com.flexkeys.settings.SettingsActivity
 import com.flexkeys.settings.StickersActivity
+import com.flexkeys.suggest.AutocorrectLog
 import com.flexkeys.suggest.CalcHit
 import com.flexkeys.suggest.HabitMemory
 import com.flexkeys.suggest.SmartClip
@@ -425,8 +426,12 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         return s.withCalc(hit.label)
     }
 
+    /** True when the autocorrect log should record (never in password fields). */
+    private fun loggingOn() = prefs.autocorrectLog && learningOn
+
     /** Adds [word] to what the keyboard knows, and to the autocorrect "leave alone" list in Settings. */
     private fun addWordForGood(word: String) {
+        engine.log.forgetUnknown(word)
         prefs.protectedWords = engine.addToVocabulary(word, prefs.protectedWords)
     }
 
@@ -987,11 +992,17 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 oneLetterSlip = oneLetterSlipOf(typed, correction)
                 val split = correction.contains(' ') && !typed.contains(' ')
                 lastCorrection = Correction(typed, correction, kind = if (split) Correction.Kind.SPLIT else Correction.Kind.WORD, slip = oneLetterSlip)
+                if (loggingOn()) engine.log.recordFix(if (split) AutocorrectLog.Kind.SPLIT else AutocorrectLog.Kind.WORD, typed, correction)
                 if (prefs.learnHabits && learningOn) {
                     oneLetterSlip?.let { engine.habits.recordConfusion(it.first, it.second) }
                     if (split) engine.habits.add(HabitMemory.SPLIT_FIXED)
                 }
             }
+        }
+        // A word nothing recognized, left as typed: counted, so the review screen can offer to add or fix it.
+        if (autocorrect && correctionOn && loggingOn() && lastCorrection?.original != typed && typed.length >= 3 &&
+            typed.all { it.isLetter() || it == '\'' } && !engine.isKnown(typed)) {
+            engine.log.noteUnknown(typed)
         }
         // A period typed where a space was meant ("bro.what" -> "bro what"), unless it looks like a real period.
         if (autocorrect && correctionOn && learningOn && prefs.fixStrayPeriod && prefs.learnHabits && typed.length >= 2 && !engine.habits.periodFixPaused()) {
@@ -1009,6 +1020,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                     composing.clear()
                     lastCorrection = Correction(".$typed", " $shown", kind = Correction.Kind.PERIOD)
                     engine.habits.add(HabitMemory.PERIOD_FIXED)
+                    if (loggingOn()) engine.log.recordFix(AutocorrectLog.Kind.PERIOD, ".$typed", " $shown")
                     engine.habits.noteStrayPeriodAfter(slip.previousWord.last())
                     if (learningOn) engine.learn(shown, null)
                     return
@@ -1076,6 +1088,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
                 ic.deleteSurroundingText(committed.length, 0)
                 ic.commitText(correction.original + correction.separator, 1)
                 ic.endBatchEdit()
+                if (loggingOn()) engine.log.markUndone(correction.original, correction.corrected)
                 if (correction.kind == Correction.Kind.PERIOD) {
                     // It was a real period after all: remember, and the fix pauses itself if this keeps happening.
                     if (prefs.learnHabits) engine.habits.add(HabitMemory.PERIOD_UNDONE)

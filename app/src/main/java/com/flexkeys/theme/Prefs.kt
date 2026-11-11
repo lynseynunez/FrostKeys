@@ -74,6 +74,10 @@ class Prefs private constructor(context: Context) {
     var learnHabits by bool(KEY_LEARN_HABITS, true)
     /** Turn a period typed straight after a word, with no space, into a space when it looks like a slip. */
     var fixStrayPeriod by bool(KEY_FIX_STRAY_PERIOD, true)
+    /** Keep a private record of autocorrect changes and unrecognized words for the review screen. */
+    var autocorrectLog by bool(KEY_AUTOCORRECT_LOG, true)
+    /** Autocorrect asks for more confidence while many recent changes were undone. */
+    var autoTune by bool(KEY_AUTO_TUNE, true)
     var suggestions by bool(KEY_SUGGESTIONS, true)
     var autocorrect by bool(KEY_AUTOCORRECT, true)
     var autoCapitalize by bool(KEY_AUTOCAP, true)
@@ -275,6 +279,8 @@ class Prefs private constructor(context: Context) {
         const val KEY_SMART_CLIPS = "smart_clips"
         const val KEY_CALCULATOR = "calculator"
         const val KEY_KEY_FEEL = "key_feel"
+        const val KEY_AUTOCORRECT_LOG = "autocorrect_log"
+        const val KEY_AUTO_TUNE = "auto_tune"
         const val KEY_LEARN_HABITS = "learn_habits"
         const val KEY_FIX_STRAY_PERIOD = "fix_stray_period"
         const val KEY_IGNORE_NO_SUGGESTIONS = "ignore_no_suggestions"

@@ -49,6 +49,11 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".settings.AutocorrectReviewActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".settings.StickersActivity"
             android:exported="false" />
 
