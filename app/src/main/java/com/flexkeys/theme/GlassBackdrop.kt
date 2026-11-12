@@ -68,6 +68,7 @@ class GlassBackdrop {
     private var refractionBroken = false
     /** The soft water-droplet look; falls back to the crisp look on a phone that cannot compile it. */
     private var refractionDroplet = false
+    private var refractionLens = false
     private var dropletBroken = false
     private var refractionShader: Any? = null // RefractionShader, typed as Any to keep this class loadable on older Android
 
@@ -76,15 +77,17 @@ class GlassBackdrop {
         Build.VERSION.SDK_INT < 33 -> "not available (needs Android 13)"
         refractionBroken -> "turned itself off: this phone could not run the shader"
         !refractionOn -> "off"
+        refractionLens && !dropletBroken -> "Sakuri lens on $refractionCount keys"
         refractionDroplet && !dropletBroken -> "water droplets on $refractionCount keys"
         refractionDroplet -> "crisp glass on $refractionCount keys (this phone could not run the droplet look)"
         else -> "crisp glass on $refractionCount keys"
     }
 
     /** [rects] holds [count] key rectangles (left, top, right, bottom) in backdrop pixels. Turns the effect off when [enabled] is false. */
-    fun setRefraction(enabled: Boolean, rects: FloatArray, count: Int, radius: Float, bevel: Float, strength: Float, droplet: Boolean = false) {
-        if (droplet != refractionDroplet) {
+    fun setRefraction(enabled: Boolean, rects: FloatArray, count: Int, radius: Float, bevel: Float, strength: Float, droplet: Boolean = false, lens: Boolean = false) {
+        if (droplet != refractionDroplet || lens != refractionLens) {
             refractionDroplet = droplet
+            refractionLens = lens
             refractionShader = null
         }
         refractionOn = enabled && count > 0 && Build.VERSION.SDK_INT >= 33 && !refractionBroken
@@ -102,7 +105,7 @@ class GlassBackdrop {
         if (!refractionOn) return blur
         return try {
             // A new shader each time, so the one already attached to the node is never changed behind its back.
-            val shader = RefractionShader(refractionDroplet && !dropletBroken).also { refractionShader = it }
+            val shader = RefractionShader(refractionDroplet && !dropletBroken, refractionLens && !dropletBroken).also { refractionShader = it }
             val padded = refractionRects.copyOf(RefractionShader.MAX_RECTS * 4)
             val fx = shader.effect(padded, minOf(refractionCount, RefractionShader.MAX_RECTS), refractionRadius, refractionBevel, refractionStrength)
             if (blur != null) RenderEffect.createChainEffect(fx, blur) else fx

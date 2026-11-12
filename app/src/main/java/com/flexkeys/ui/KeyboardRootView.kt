@@ -1,7 +1,10 @@
 package com.flexkeys.ui
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Shader
 import android.os.Build
@@ -545,12 +548,13 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             return
         }
         refractionRetries = 0
-        val droplet = layoutPrefs.refractionStyle == 0
+        val lens = layoutPrefs.refractionStyle == 2
+        val droplet = layoutPrefs.refractionStyle == 0 || lens
         // The droplet look reaches further in and bends a bit less, so it reads as a smooth lens, not a ring.
         val bevel = (minSide * (if (droplet) 0.46f else 0.34f)).coerceAtLeast(theme.dp(6f))
         val s = layoutPrefs.refractionStrength.coerceIn(0, 100) / 100f
         val bend = bevel * (if (droplet) 0.10f + 0.55f * s else 0.15f + 0.75f * s)
-        backdrop.setRefraction(true, rects, n, theme.cornerRadiusPx.coerceAtMost(minSide / 2f), bevel, bend, droplet)
+        backdrop.setRefraction(true, rects, n, theme.cornerRadiusPx.coerceAtMost(minSide / 2f), bevel, bend, droplet, lens)
         redrawRefraction()
     }
 
@@ -679,6 +683,30 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             canvas.drawRect(sheetRect, sheetPaint)
             sheetPaint.shader = null
         }
+        drawGrain(canvas)
+    }
+
+    private var grainShader: Shader? = null
+    private val grainPaint = Paint()
+
+    /** Fine film grain over the glass, from the Sakuri launcher's look. Nothing is drawn at 0. */
+    private fun drawGrain(canvas: Canvas) {
+        val amount = layoutPrefs.grain.coerceIn(0, 100)
+        if (amount == 0) return
+        val shader = grainShader ?: run {
+            val size = 96
+            val px = IntArray(size * size)
+            val rnd = java.util.Random(7)
+            for (i in px.indices) {
+                val v = rnd.nextInt(256)
+                px[i] = Color.argb(255, v, v, v)
+            }
+            BitmapShader(Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                .also { grainShader = it }
+        }
+        grainPaint.shader = shader
+        grainPaint.alpha = (amount * 0.3f).toInt().coerceIn(0, 255) // at most about 12% strength
+        canvas.drawRect(sheetRect, grainPaint)
     }
 
     private var frostNode: Any? = null // a RenderNode, typed as Any to keep this class loadable on older Android

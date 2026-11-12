@@ -1,6 +1,7 @@
 package com.flexkeys.theme
 
 import android.content.Context
+import android.os.Build
 import android.content.res.Configuration
 import android.graphics.Color
 
@@ -136,12 +137,12 @@ class GlassTheme(
             }
             return GlassTheme(
                 dark = dark,
-                accent = prefs.accentColor or 0xFF000000.toInt(),
+                accent = (if (prefs.wallpaperTint) wallpaperAccent(context) else null) ?: (prefs.accentColor or 0xFF000000.toInt()),
                 glassOpacity = prefs.glassOpacity.coerceIn(0, 100) / 100f,
                 backgroundOpacity = prefs.backgroundOpacity.coerceIn(0, 100) / 100f,
                 // Blur slider 0..100 maps to 0..32dp.
                 blurRadiusPx = prefs.blurStrength.coerceIn(0, 100) / 100f * 32f * dm.density,
-                cornerRadiusPx = prefs.cornerRadiusDp.coerceIn(0, 30) * dm.density,
+                cornerRadiusPx = ((if (prefs.matchSystemCorners) systemCornerDp(context) else null) ?: prefs.cornerRadiusDp).coerceIn(0, 30) * dm.density,
                 keySpacingPx = prefs.keySpacingDp.coerceIn(0, 16) * dm.density,
                 fontScale = prefs.fontPercent.coerceIn(60, 160) / 100f,
                 heightScale = prefs.heightPercent.coerceIn(60, 150) / 100f * heightFactor,
@@ -159,6 +160,24 @@ class GlassTheme(
                 spaceStyle = prefs.spaceStyle,
                 photoAccent = prefs.photoAccent,
             )
+        }
+
+        /** The main color of the current wallpaper (Android 8.1+, no permission needed), or null when it can't be read. */
+        fun wallpaperAccent(context: Context): Int? = try {
+            if (Build.VERSION.SDK_INT < 27) null
+            else android.app.WallpaperManager.getInstance(context)
+                .getWallpaperColors(android.app.WallpaperManager.FLAG_SYSTEM)?.primaryColor?.toArgb()
+        } catch (e: Throwable) {
+            null
+        }
+
+        /** The corner radius the phone uses for its own widgets, in dp (Android 12+), or null when unknown. */
+        fun systemCornerDp(context: Context): Int? = try {
+            val res = android.content.res.Resources.getSystem()
+            val id = res.getIdentifier("system_app_widget_background_radius", "dimen", "android")
+            if (id == 0) null else (res.getDimension(id) / res.displayMetrics.density).toInt()
+        } catch (e: Throwable) {
+            null
         }
 
         fun withAlpha(color: Int, alpha: Float): Int =

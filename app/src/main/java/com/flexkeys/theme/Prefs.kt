@@ -154,6 +154,14 @@ class Prefs private constructor(context: Context) {
     var refractionStrength by int(KEY_REFRACTION_STRENGTH, 55)
     /** 0: soft water droplets (default), 1: the crisp glass look. */
     var refractionStyle by int(KEY_REFRACTION_STYLE, 0)
+    /** Extra looks, all off by default so the keyboard stays as it was. */
+    var grain by int(KEY_GRAIN, 0)
+    var matchSystemCorners by bool(KEY_MATCH_CORNERS, false)
+    var wallpaperTint by bool(KEY_WALLPAPER_TINT, false)
+    /** Weekly automatic backup into a folder the user picked (a tree URI), keeping the newest four. */
+    var autoBackup by bool(KEY_AUTO_BACKUP, false)
+    var backupFolder by string(KEY_BACKUP_FOLDER, "")
+    var lastAutoBackup by long(KEY_LAST_AUTO_BACKUP, 0L)
     /** The space bar is liquid glass even when refraction for the other keys is off (Android 13+). */
     var liquidSpace by bool(KEY_LIQUID_SPACE, true)
     /** One switch that turns off sensor-driven shifts, looping glass animations and typing effects. */
@@ -314,6 +322,12 @@ class Prefs private constructor(context: Context) {
         const val KEY_SPOTLIGHT_PALETTE = "spotlight_palette"
         const val KEY_SPOTLIGHT_COLORS = "spotlight_colors"
         const val KEY_SPOTLIGHT_CYCLE = "spotlight_cycle"
+        const val KEY_GRAIN = "film_grain"
+        const val KEY_MATCH_CORNERS = "match_system_corners"
+        const val KEY_WALLPAPER_TINT = "wallpaper_tint"
+        const val KEY_AUTO_BACKUP = "auto_backup"
+        const val KEY_BACKUP_FOLDER = "backup_folder"
+        const val KEY_LAST_AUTO_BACKUP = "last_auto_backup"
         const val KEY_REFRACTION = "refraction"
         const val KEY_REFRACTION_STRENGTH = "refraction_strength"
         const val KEY_REFRACTION_STYLE = "refraction_style"
@@ -351,6 +365,7 @@ class Prefs private constructor(context: Context) {
             KEY_GLASS_OPACITY, KEY_BLUR, KEY_GRADIENT, KEY_STYLE, KEY_FONT_FAMILY, KEY_SPACE_EMBLEM,
             KEY_SPACE_GLASS, KEY_SPACE_STYLE, KEY_EMBLEM_SIZE, KEY_PHOTO_ZOOM, KEY_PHOTO_PAN_X, KEY_PHOTO_PAN_Y,
             KEY_ADAPT_TINT, KEY_PHOTO_LUMA, KEY_REFRACTION, KEY_REFRACTION_STRENGTH, KEY_REFRACTION_STYLE, KEY_LIQUID_SPACE, KEY_PRESS_STYLE, KEY_PHOTO_ACCENT,
+            KEY_GRAIN, KEY_MATCH_CORNERS, KEY_WALLPAPER_TINT,
         )
 
         @Volatile private var instance: Prefs? = null

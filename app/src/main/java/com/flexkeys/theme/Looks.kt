@@ -64,6 +64,11 @@ object Looks {
         look("Ember", Prefs.THEME_DARK, 0xFFFF8A3D, 32, 60, gradient = 35, typing = 6),
         look("Lavender", Prefs.THEME_LIGHT, 0xFF9B7BFF, 38, 55, gradient = 30, corner = 18),
         look("Slate", Prefs.THEME_DARK, 0xFF6C8AA8, 45, 35, tiles = true, corner = 10, spacing = 3),
+        // The four themes of the Sakuri launcher, so the keyboard can match it.
+        look("Sakuri Night", Prefs.THEME_DARK, 0xFFA855F7, 32, 60, gradient = 40, animation = 8),
+        look("Midnight Ice", Prefs.THEME_DARK, 0xFF2F9FDF, 30, 65, gradient = 35, animation = 4),
+        look("Rose Noir", Prefs.THEME_DARK, 0xFFE0386F, 34, 60, gradient = 40, typing = 9),
+        look("Sakuri Frost", Prefs.THEME_LIGHT, 0xFFC8A8F7, 32, 55, gradient = 30),
     )
 
     /** The current settings as a look called [name]. */

@@ -11,9 +11,9 @@ import android.os.Build
  * [RenderEffect] over the blurred backdrop. Kept in its own class so older Android versions never load it.
  */
 @TargetApi(Build.VERSION_CODES.TIRAMISU)
-class RefractionShader(droplet: Boolean = false) {
+class RefractionShader(droplet: Boolean = false, lens: Boolean = false) {
 
-    private val shader = RuntimeShader(if (droplet) DROPLET_AGSL else AGSL)
+    private val shader = RuntimeShader(if (lens) LENS_AGSL else if (droplet) DROPLET_AGSL else AGSL)
 
     /** The effect for [count] key rectangles (left, top, right, bottom in backdrop pixels), to be chained after the blur. */
     fun effect(rects: FloatArray, count: Int, radius: Float, bevel: Float, strength: Float): RenderEffect {
@@ -95,6 +95,65 @@ half4 main(float2 coord) {
     half4 bb = content.eval(coord + offset * (1.0 + 0.18 * disp));
     half3 col = half3(rr.r, g.g, bb.b);
     col = col + half3(glint * 0.22 + glow * 0.10);
+    col = min(col, half3(1.0));
+    return half4(col, g.a);
+}
+"""
+
+        /**
+         * The Sakuri lens look, borrowed from the Sakuri launcher's liquid glass: the bend is strongest right at the edge and
+         * fades out quickly toward the middle of the key, red, green and blue bend by slightly different amounts so the rim
+         * has a thin color fringe, and a soft sheen follows a light from the upper left.
+         */
+        private const val LENS_AGSL = """
+uniform shader content;
+uniform float4 rects[56];
+uniform float count;
+uniform float radius;
+uniform float bevel;
+uniform float strength;
+
+float sdBox(float2 p, float2 c, float2 h, float r) {
+    float2 q = abs(p - c) - h + float2(r, r);
+    return min(max(q.x, q.y), 0.0) + length(max(q, float2(0.0, 0.0))) - r;
+}
+
+half4 main(float2 coord) {
+    float2 offset = float2(0.0, 0.0);
+    float shine = 0.0;
+    float amount = 0.0;
+    for (int i = 0; i < 56; i++) {
+        if (float(i) >= count) { break; }
+        float4 r = rects[i];
+        float2 c = (r.xy + r.zw) * 0.5;
+        float2 h = (r.zw - r.xy) * 0.5;
+        float d = sdBox(coord, c, h, radius);
+        if (d < 0.0 && d > -bevel) {
+            float2 n = float2(
+                sdBox(coord + float2(1.0, 0.0), c, h, radius) - sdBox(coord - float2(1.0, 0.0), c, h, radius),
+                sdBox(coord + float2(0.0, 1.0), c, h, radius) - sdBox(coord - float2(0.0, 1.0), c, h, radius));
+            float nl = length(n);
+            if (nl < 0.0001) {
+                n = float2(0.0, -1.0);
+            } else {
+                n = n / nl;
+            }
+            float t = clamp(-d / bevel, 0.0, 1.0);
+            float m = pow(1.0 - t, 2.2);
+            float feather = smoothstep(0.0, 1.5, -d);
+            offset = offset - n * (strength * m * feather);
+            amount = max(amount, m * feather);
+            float facing = dot(n, normalize(float2(-0.55, -0.83)));
+            shine = max(shine, (facing * facing * 0.75 + max(-facing, 0.0) * 0.18) * exp(-(-d) / (bevel * 0.12)) * feather);
+        }
+    }
+    if (amount <= 0.0) {
+        return content.eval(coord);
+    }
+    half4 g = content.eval(coord + offset * 1.08);
+    half4 rr = content.eval(coord + offset);
+    half4 bb = content.eval(coord + offset * 1.16);
+    half3 col = half3(rr.r, g.g, bb.b) + half3(shine * 0.20);
     col = min(col, half3(1.0));
     return half4(col, g.a);
 }

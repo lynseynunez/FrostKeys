@@ -128,6 +128,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         java.io.File(filesDir, "background_subject.png").delete() // left over from a removed feature
         feedback = Feedback(this, prefs)
         engine = SuggestionEngine.get(this)
+        com.flexkeys.settings.AutoBackup.runIfDue(this)
         EmojiIndex.load(this)
         prefs.sp.registerOnSharedPreferenceChangeListener(this)
         clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager

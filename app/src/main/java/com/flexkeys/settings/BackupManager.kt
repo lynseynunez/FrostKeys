@@ -24,7 +24,7 @@ object BackupManager {
     private const val MAX_STICKER_BYTES = 2_000_000
     private const val MAX_STICKER_TOTAL_BYTES = 24_000_000L
     private val STICKER_NAME = Regex("[A-Za-z0-9_-]{1,64}\\.png")
-    private val SECRET_KEYS = setOf(Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATE_EMAIL, Prefs.KEY_GEMINI_KEY, Prefs.KEY_GROQ_KEY)
+    private val SECRET_KEYS = setOf(Prefs.KEY_KLIPY_KEY, Prefs.KEY_KLIPY_CUSTOMER, Prefs.KEY_TRANSLATE_EMAIL, Prefs.KEY_GEMINI_KEY, Prefs.KEY_GROQ_KEY, Prefs.KEY_BACKUP_FOLDER, Prefs.KEY_LAST_AUTO_BACKUP)
 
     /** Extra data (like phrases) that other parts of the app add to a backup. */
     interface Section {

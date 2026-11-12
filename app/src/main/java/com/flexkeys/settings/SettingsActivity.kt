@@ -91,6 +91,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
 
     override fun onResume() {
         super.onResume()
+        AutoBackup.runIfDue(applicationContext)
         buildSetupCard()
         preview.refreshRefraction()
     }
@@ -288,6 +289,10 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Gradient glow", "colors", "Glass"),
         Hit("Liquid refraction", "colors", "Glass", "bend beta lens droplets water"),
         Hit("Refraction look", "colors", "Glass", "water droplets crisp glass soft"),
+        Hit("Film grain", "colors", "Glass", "noise texture"),
+        Hit("Tint from my wallpaper", "colors", "Glass", "accent wallpaper colors"),
+        Hit("Match my phone's corners", "layout", "Size & shape", "corner radius system widgets"),
+        Hit("Automatic weekly backup", "backup", "Backup & sharing", "auto folder keep four"),
         Hit("Liquid space bar", "colors", "Glass", "spacebar droplet always refraction"),
         Hit("Quick looks", "effects", "Quick looks", "preset combo"),
         Hit("Key press color", "effects", "Typing effects", "highlight"),
@@ -994,10 +999,14 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         slider("Glass opacity", 0, 100, prefs::glassOpacity) { "$it%" }
         slider("Blur", 0, 100, prefs::blurStrength) { "$it%" }
         slider("Gradient glow", 0, 100, prefs::gradientStrength) { if (it == 0) "Off" else "$it%" }
+        slider("Film grain", 0, 100, prefs::grain) { if (it == 0) "Off" else "$it%" }
+        if (Build.VERSION.SDK_INT >= 27) {
+            toggle("Tint from my wallpaper", "The accent color follows your phone's wallpaper instead of the color picked above", prefs::wallpaperTint)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             toggle("Liquid space bar", "The space bar is always water-droplet glass, even with refraction off for the other keys", prefs::liquidSpace)
             toggle("Liquid refraction (beta)", "Every key bends the blurred background like light through thick glass", prefs::refraction)
-            segmented("Refraction look", listOf("Water droplets", "Crisp glass"), prefs.refractionStyle) { prefs.refractionStyle = it }
+            segmented("Refraction look", listOf("Water droplets", "Crisp glass", "Sakuri lens"), prefs.refractionStyle) { prefs.refractionStyle = it }
             slider("Refraction strength", 0, 100, prefs::refractionStrength) { "$it%" }
         } else {
             text("Liquid refraction needs Android 13 or newer.", secondary = true)
@@ -1066,6 +1075,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         segmented("Height when sideways", listOf("Auto", "Short", "Medium", "Normal"), prefs.landscapeHeight) { prefs.landscapeHeight = it }
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
         slider("Corner radius", 0, 30, prefs::cornerRadiusDp) { "$it dp" }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            toggle("Match my phone's corners", "Use the corner roundness your phone uses for its own widgets instead of the slider above", prefs::matchSystemCorners)
+        }
         slider("Font size", 60, 160, prefs::fontPercent) { "$it%" }
         slider("Suggestion word size", 50, 130, prefs::suggestionFontPercent) { "$it%" }
     }
@@ -1451,6 +1463,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
                 toast("No file picker found")
             }
         })
+        autoBackupSection()
         text("Share your look as a short code anyone can apply. It covers colors, glass, fonts and sizes, not your photo.", secondary = true)
         buttons(Triple("Share my theme", true) {
             val send = Intent(Intent.ACTION_SEND).apply {
@@ -1459,6 +1472,30 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
             }
             startActivity(Intent.createChooser(send, "Share theme code"))
         }, Triple("Apply a theme code", false) { showApplyThemeDialog() })
+    }
+
+    private fun LinearLayout.autoBackupSection() {
+        val folder = AutoBackup.folderLabel(prefs)
+        text(
+            if (folder == null) "Automatic weekly backup: pick a folder and a fresh backup is saved there about once a week, keeping the newest four. Photo and stickers are left out to keep the files small."
+            else "Automatic weekly backup to \"$folder\", keeping the newest four. " +
+                if (prefs.lastAutoBackup > 0) "Last one: ${android.text.format.DateUtils.getRelativeTimeSpanString(prefs.lastAutoBackup)}." else "None yet.",
+            secondary = true,
+        )
+        if (folder != null) toggle("Automatic weekly backup", "Turn off to stop saving new backups (the folder is remembered)", prefs::autoBackup)
+        buttons(Triple(if (folder == null) "Choose backup folder" else "Change folder", folder == null) {
+            try {
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION), REQUEST_BACKUP_FOLDER)
+            } catch (e: ActivityNotFoundException) {
+                toast("No file picker found")
+            }
+        }, Triple("Back up now", false) {
+            if (prefs.backupFolder.isEmpty()) toast("Choose a folder first") else {
+                toast("Saving backup...")
+                AutoBackup.runNow(applicationContext) { msg -> runOnUiThread { toast(msg); refreshPage() } }
+            }
+        })
     }
 
     private fun startExport(withPhoto: Boolean) {
@@ -1608,6 +1645,13 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK) return
+        if (requestCode == REQUEST_BACKUP_FOLDER) {
+            AutoBackup.rememberFolder(applicationContext, data?.data ?: return)
+            toast("Backup folder chosen")
+            refreshPage()
+            AutoBackup.runNow(applicationContext) { msg -> runOnUiThread { toast(msg); refreshPage() } }
+            return
+        }
         if (requestCode == REQUEST_EXPORT || requestCode == REQUEST_IMPORT) {
             handleBackupResult(requestCode, data?.data ?: return)
             return
@@ -1659,5 +1703,6 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         const val REQUEST_PHOTO = 1
         const val REQUEST_EXPORT = 2
         const val REQUEST_IMPORT = 3
+        const val REQUEST_BACKUP_FOLDER = 4
     }
 }
