@@ -131,6 +131,9 @@ class PreviewController(
     override fun fieldTextForPin(): String = ""
     override fun onPanelBackspace() = onKey(KeyDef("backspace", KeyType.BACKSPACE))
     override fun onPanelClosed() = root.showPanel(KeyboardRootView.Panel.NONE)
+    override fun onQuickText(text: String) = type(text)
+    override fun onQuickAction(action: SuggestionStripView.Action) = Unit
+    override fun onQuickClosed() = root.showPanel(KeyboardRootView.Panel.NONE)
     override fun onEmojiSearch() = root.setEmojiSearch(true)
 
     // GIFs need a real text field to send into, so the preview does not offer them.

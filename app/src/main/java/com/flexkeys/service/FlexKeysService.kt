@@ -242,7 +242,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             // If the AI service fails, the plain dictation is typed instead.
             AiClient.rewrite(prefs, VOICE_CLEANUP_INSTRUCTION, spoken) { cleaned, _ -> commitSpoken(cleaned ?: spoken) }
         } else {
-            commitSpoken(spoken)
+            commitSpoken(if (prefs.localFillerCleanup) com.flexkeys.voice.Fillers.clean(spoken) else spoken)
         }
     }
 
@@ -491,7 +491,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         }
         ic.beginBatchEdit()
         ic.commitText(text, 1) // Replaces the composing word, if any.
-        ic.commitText(" ", 1)
+        if (prefs.spaceAfterSuggestion) ic.commitText(" ", 1)
         ic.endBatchEdit()
         // Choosing the literal typed word over a correction adds it for good (even with learning off: you asked for it).
         val chosenTyped = index == suggestions.typedIndex && suggestions.correction != null
@@ -549,6 +549,7 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
             SuggestionStripView.Action.GIF -> togglePanel(KeyboardRootView.Panel.GIF)
             SuggestionStripView.Action.PHRASES -> togglePanel(KeyboardRootView.Panel.PHRASES)
             SuggestionStripView.Action.STICKERS -> togglePanel(KeyboardRootView.Panel.STICKERS)
+            SuggestionStripView.Action.QUICK -> togglePanel(KeyboardRootView.Panel.QUICK)
             SuggestionStripView.Action.AI -> when {
                 !prefs.aiEnabled || !AiClient.hasKey(prefs) ->
                     Toast.makeText(this, "Turn on AI rewrite and add your API key in SakuriKey settings", Toast.LENGTH_LONG).show()
@@ -724,6 +725,24 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         ic.commitText(text, 1)
         updateShiftState()
     }
+
+    override fun onQuickText(text: String) {
+        val ic = currentInputConnection ?: return
+        feedback.keyPress(KeyType.CHAR)
+        commitPending(ic)
+        ic.commitText(text, 1)
+        if (text.isNotEmpty() && text.codePointCount(0, text.length) <= 2 && !text[0].isLetterOrDigit()) EmojiIndex.addRecent(prefs, text)
+        root?.showPanel(KeyboardRootView.Panel.NONE)
+        updateShiftState()
+        updateSuggestions()
+    }
+
+    override fun onQuickAction(action: SuggestionStripView.Action) {
+        root?.showPanel(KeyboardRootView.Panel.NONE)
+        onAction(action)
+    }
+
+    override fun onQuickClosed() = onPanelClosed()
 
     override fun onEmojiSearch() {
         feedback.keyPress(KeyType.CHAR)
@@ -901,6 +920,16 @@ class FlexKeysService : InputMethodService(), KeyboardView.Listener, SuggestionS
         }
         val code = if (steps < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
         repeat(kotlin.math.abs(steps)) { sendDownUpKeyEvents(code) }
+        updateSuggestions()
+    }
+
+    override fun onCursorMoveLines(lines: Int) {
+        if (composing.isNotEmpty()) {
+            currentInputConnection?.finishComposingText()
+            composing.clear()
+        }
+        val code = if (lines < 0) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN
+        repeat(kotlin.math.abs(lines)) { sendDownUpKeyEvents(code) }
         updateSuggestions()
     }
 

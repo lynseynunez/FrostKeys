@@ -37,6 +37,8 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
     }
 
     private val prefs = Prefs.get(context)
+    /** Emoji size from Settings, 1.0 at the default 100%. */
+    private val scale = prefs.emojiSize.coerceIn(70, 160) / 100f
     private val grid = GridView(context)
     private val adapter = EmojiAdapter()
     private val tabs = CategoryTabs(context)
@@ -52,7 +54,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         EmojiIndex.load(context)
         setPadding(dp(6f), dp(6f), dp(6f), dp(4f))
         grid.numColumns = GridView.AUTO_FIT
-        grid.columnWidth = dp(44f)
+        grid.columnWidth = dp(44f * scale)
         grid.stretchMode = GridView.STRETCH_COLUMN_WIDTH
         grid.adapter = adapter
         grid.isVerticalScrollBarEnabled = false
@@ -145,7 +147,7 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
             symbolsTab -> supportedSymbols
             else -> supported(index - 1)
         }
-        grid.columnWidth = if (index == kaomojiTab) dp(116f) else dp(44f)
+        grid.columnWidth = if (index == kaomojiTab) dp(116f) else dp(44f * scale)
         adapter.notifyDataSetChanged()
         grid.setSelection(0)
         tabs.invalidate()
@@ -160,10 +162,10 @@ class EmojiPanel(context: Context, private val listener: Listener) : GlassPanelL
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
             val tv = (convertView as? EmojiCell) ?: EmojiCell(context).apply {
                 gravity = Gravity.CENTER
-                layoutParams = AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46f))
+                layoutParams = AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46f * scale))
                 includeFontPadding = false
             }
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, when (selectedTab) { kaomojiTab -> 14f; symbolsTab -> 22f; else -> 26f })
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, when (selectedTab) { kaomojiTab -> 14f; symbolsTab -> 22f; else -> 26f * scale })
             tv.maxLines = 1
             tv.text = display(items[position])
             tv.setTextColor(host?.theme?.textColor ?: Color.BLACK)

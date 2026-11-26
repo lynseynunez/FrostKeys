@@ -24,6 +24,7 @@ import com.flexkeys.phrases.PhrasesPanel
 import com.flexkeys.stickers.StickerPanel
 import com.flexkeys.texttools.TextToolsBar
 import com.flexkeys.suggest.MenuPanel
+import com.flexkeys.suggest.QuickInsertPanel
 import com.flexkeys.gif.GifPanel
 import com.flexkeys.ai.AiBar
 import com.flexkeys.fancy.FancyBar
@@ -67,9 +68,9 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
     }
 
     /** Receives emoji, clipboard pastes and panel navigation from the panels. */
-    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, MenuPanel.Listener, PhrasesPanel.Listener, StickerPanel.Listener, GifPanel.Listener, TranslateListener, ToolListener
+    interface PanelListener : EmojiPanel.Listener, ClipboardPanel.Listener, MenuPanel.Listener, PhrasesPanel.Listener, StickerPanel.Listener, GifPanel.Listener, QuickInsertPanel.Listener, TranslateListener, ToolListener
 
-    enum class Panel { NONE, EMOJI, CLIPBOARD, GIF, PHRASES, MENU, STICKERS }
+    enum class Panel { NONE, EMOJI, CLIPBOARD, GIF, PHRASES, MENU, STICKERS, QUICK }
 
     /** The GIF search being shown or typed (kept while the GIF panel is closed and reopened). */
     private var gifQuery = ""
@@ -291,6 +292,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
                 Panel.PHRASES -> PhrasesPanel(context, l)
                 Panel.STICKERS -> StickerPanel(context, l)
                 Panel.MENU -> MenuPanel(context, l) { strip.invalidate() }
+                Panel.QUICK -> QuickInsertPanel(context, l)
                 else -> ClipboardPanel(context, l)
             }
             content.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -306,6 +308,7 @@ class KeyboardRootView(context: Context, initialTheme: GlassTheme) : LinearLayou
             Panel.GIF -> SuggestionStripView.Action.GIF
             Panel.PHRASES -> SuggestionStripView.Action.PHRASES
             Panel.STICKERS -> SuggestionStripView.Action.STICKERS
+            Panel.QUICK -> SuggestionStripView.Action.QUICK
             Panel.MENU -> null
             Panel.NONE -> null
         }

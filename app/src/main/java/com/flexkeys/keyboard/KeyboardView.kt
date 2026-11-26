@@ -73,6 +73,8 @@ class KeyboardView(context: Context) : View(context) {
 
         /** While selecting from the space bar, the selection's moving end moved by [steps] characters. */
         fun onCursorSelect(steps: Int) {}
+        /** Space-bar drag up or down (when free cursor is on): move the cursor by whole lines. */
+        fun onCursorMoveLines(lines: Int) {}
 
         /** The backspace swipe ended; the selected words should be deleted. */
         fun onBackspaceSwipeEnd() {}
@@ -93,6 +95,7 @@ class KeyboardView(context: Context) : View(context) {
         var selecting = false
         val downTime = SystemClock.uptimeMillis()
         var cursorAnchorX = downX
+        var cursorAnchorY = downY
         var popup: Popup? = null
         var longPress: Runnable? = null
         /** The last place the finger was, for how close to the key's edge the tap landed. */
@@ -800,6 +803,7 @@ class KeyboardView(context: Context) : View(context) {
                 p.cursorMode = true
                 p.handled = true
                 p.cursorAnchorX = x
+                p.cursorAnchorY = y
                 p.longPress?.let { handler.removeCallbacks(it) }
                 // Resting a moment on the space bar before dragging selects text instead of moving the cursor.
                 p.selecting = SystemClock.uptimeMillis() - p.downTime >= SELECT_DWELL_MS
@@ -811,6 +815,14 @@ class KeyboardView(context: Context) : View(context) {
                 if (steps != 0) {
                     p.cursorAnchorX += steps * stepWidth
                     if (p.selecting) listener?.onCursorSelect(steps) else listener?.onCursorMove(steps)
+                }
+                if (prefs.freeCursor && !p.selecting) {
+                    val lineHeight = t.dp(26f)
+                    val lines = ((y - p.cursorAnchorY) / lineHeight).toInt()
+                    if (lines != 0) {
+                        p.cursorAnchorY += lines * lineHeight
+                        listener?.onCursorMoveLines(lines)
+                    }
                 }
             }
             return

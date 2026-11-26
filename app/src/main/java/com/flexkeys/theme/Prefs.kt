@@ -154,6 +154,11 @@ class Prefs private constructor(context: Context) {
     var refractionStrength by int(KEY_REFRACTION_STRENGTH, 55)
     /** 0: soft water droplets (default), 1: the crisp glass look. */
     var refractionStyle by int(KEY_REFRACTION_STYLE, 0)
+    /** Typing options added from keyboard research; all default to how the keyboard already worked. */
+    var spaceAfterSuggestion by bool(KEY_SPACE_AFTER_SUGGESTION, true)
+    var emojiSize by int(KEY_EMOJI_SIZE, 100)
+    var freeCursor by bool(KEY_FREE_CURSOR, false)
+    var localFillerCleanup by bool(KEY_LOCAL_FILLER, false)
     /** Extra looks, all off by default so the keyboard stays as it was. */
     var grain by int(KEY_GRAIN, 0)
     var matchSystemCorners by bool(KEY_MATCH_CORNERS, false)
@@ -322,6 +327,10 @@ class Prefs private constructor(context: Context) {
         const val KEY_SPOTLIGHT_PALETTE = "spotlight_palette"
         const val KEY_SPOTLIGHT_COLORS = "spotlight_colors"
         const val KEY_SPOTLIGHT_CYCLE = "spotlight_cycle"
+        const val KEY_SPACE_AFTER_SUGGESTION = "space_after_suggestion"
+        const val KEY_EMOJI_SIZE = "emoji_size"
+        const val KEY_FREE_CURSOR = "free_cursor"
+        const val KEY_LOCAL_FILLER = "local_filler_cleanup"
         const val KEY_GRAIN = "film_grain"
         const val KEY_MATCH_CORNERS = "match_system_corners"
         const val KEY_WALLPAPER_TINT = "wallpaper_tint"

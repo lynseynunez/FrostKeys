@@ -289,6 +289,11 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         Hit("Gradient glow", "colors", "Glass"),
         Hit("Liquid refraction", "colors", "Glass", "bend beta lens droplets water"),
         Hit("Refraction look", "colors", "Glass", "water droplets crisp glass soft"),
+        Hit("Space after a tapped suggestion", "typing", "Typing", "auto spacing suggestion"),
+        Hit("Free cursor on the space bar", "typing", "Typing", "cursor up down lines drag"),
+        Hit("Remove um and uh from dictation", "typing", "Typing", "voice filler"),
+        Hit("Emoji size", "layout", "Size & shape", "emoji bigger smaller"),
+        Hit("Quick insert", "layout", "Tools", "toolbar shortcut clipboard emoji phrases"),
         Hit("Film grain", "colors", "Glass", "noise texture"),
         Hit("Tint from my wallpaper", "colors", "Glass", "accent wallpaper colors"),
         Hit("Match my phone's corners", "layout", "Size & shape", "corner radius system widgets"),
@@ -1075,6 +1080,7 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         segmented("Height when sideways", listOf("Auto", "Short", "Medium", "Normal"), prefs.landscapeHeight) { prefs.landscapeHeight = it }
         slider("Key spacing", 0, 16, prefs::keySpacingDp) { "$it dp" }
         slider("Corner radius", 0, 30, prefs::cornerRadiusDp) { "$it dp" }
+        slider("Emoji size", 70, 160, prefs::emojiSize) { "$it%" }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             toggle("Match my phone's corners", "Use the corner roundness your phone uses for its own widgets instead of the slider above", prefs::matchSystemCorners)
         }
@@ -1160,6 +1166,9 @@ class SettingsActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeL
         toggle("Learn my words", "Improve suggestions from what you type, on-device only", prefs::learnWords)
         toggle("Auto-capitalization", null, prefs::autoCapitalize)
         toggle("Double-space period", "Tap space twice for \". \"", prefs::doubleSpacePeriod)
+        toggle("Space after a tapped suggestion", "Turn off to keep the cursor right after the word you tapped, with no space added", prefs::spaceAfterSuggestion)
+        toggle("Free cursor on the space bar", "While dragging the space bar sideways, also move up and down between lines", prefs::freeCursor)
+        toggle("Remove um and uh from dictation", "Works offline, with no AI key needed", prefs::localFillerCleanup)
         toggle("Smart paste", "Offer a copied email, phone number or link as a one-tap paste", prefs::smartClips)
         toggle("Calculator and unit chips", "Type 12*8 or 5 km and tap the answer in the suggestion bar", prefs::calculator)
     }

@@ -26,3 +26,17 @@ class AutoBackupTest {
         assertEquals(names.size, names.toSet().size)
     }
 }
+
+class FillersTest {
+    @Test fun removesFillers() {
+        assertEquals("I think we should go.", com.flexkeys.voice.Fillers.clean("um, I think we should uh go."))
+    }
+
+    @Test fun keepsRealWords() {
+        assertEquals("the umbrella is humming", com.flexkeys.voice.Fillers.clean("the umbrella is humming"))
+    }
+
+    @Test fun neverReturnsEmpty() {
+        assertEquals("um", com.flexkeys.voice.Fillers.clean("um"))
+    }
+}

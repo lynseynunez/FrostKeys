@@ -11,7 +11,7 @@ import android.graphics.RectF
 enum class Icon {
     BACKSPACE, SHIFT, SHIFT_ON, CAPS_LOCK, ENTER, ARROW_RIGHT, ARROW_LEFT, SEARCH, SEND, DONE,
     EMOJI, CLIPBOARD, SETTINGS, KEYBOARD, PIN, PIN_ON, TRASH, CLOCK, CLOSE,
-    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI, SLIDERS, STICKER, TEXT_TOOLS,
+    MENU, HIDE, GLOBE, GIF, TRANSLATE, SWAP, MIC, PHRASES, FANCY, AI, SLIDERS, STICKER, TEXT_TOOLS, QUICK,
 }
 
 object Icons {
@@ -126,6 +126,18 @@ object Icons {
                 line(0.18f, -0.04f, 0.46f, -0.04f)
                 line(0.32f, -0.04f, 0.32f, 0.34f)
                 line(-0.44f, 0.44f, 0.46f, 0.44f)
+            }
+            Icon.QUICK -> {
+                // A lightning bolt.
+                path.reset()
+                path.moveTo(x(0.10f), y(-0.42f))
+                path.lineTo(x(-0.26f), y(0.06f))
+                path.lineTo(x(0.00f), y(0.06f))
+                path.lineTo(x(-0.10f), y(0.42f))
+                path.lineTo(x(0.26f), y(-0.08f))
+                path.lineTo(x(0.00f), y(-0.08f))
+                path.close()
+                canvas.drawPath(path, paint)
             }
             Icon.STICKER -> {
                 // A square sticker with a peeling corner and a smile.
